@@ -55,7 +55,7 @@ export class Match {
     private onFinish: (m: Match) => void,
   ) {
     const botName = 'Bot Treinador';
-    const botOutfit: Outfit = { head: 'bandana_ninja', body: 'shihakusho', feet: 'botas_marinha', accessory: 'venda_olhos' };
+    const botOutfit: Outfit = { head: 'venda_olhos', body: 'shihakusho' };
     this.state = createBattle(randomInt(2 ** 31), [
       { name: a.name, outfit: a.outfit },
       b === 'bot' ? { name: botName, outfit: botOutfit } : { name: b.name, outfit: b.outfit },

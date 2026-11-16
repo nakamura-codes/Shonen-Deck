@@ -36,7 +36,7 @@ export interface CardInstance {
   id: string;
 }
 
-export type OutfitSlot = 'head' | 'body' | 'feet' | 'accessory';
+export type OutfitSlot = 'head' | 'body';
 
 export interface OutfitItem {
   id: string;
@@ -45,7 +45,8 @@ export interface OutfitItem {
   cards: string[];
 }
 
-export type Outfit = Record<OutfitSlot, string>;
+/** Peça vestida em cada espaço; null = vazio (boneco cinza). */
+export type Outfit = Record<OutfitSlot, string | null>;
 
 export interface Charge {
   uid: string;

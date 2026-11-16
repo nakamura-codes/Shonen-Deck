@@ -1,23 +1,14 @@
 import Phaser from 'phaser';
-import {
-  OUTFIT_SLOTS,
-  SLOT_LABELS,
-  buildDeck,
-  getCard,
-  getItem,
-  itemsForSlot,
-  type OutfitSlot,
-  type ServerMessage,
-} from '@oficina/shared';
+import { OUTFIT_ITEMS, OUTFIT_SLOTS, SLOT_LABELS, buildDeck, getItem, type OutfitSlot, type ServerMessage } from '@oficina/shared';
 import { session } from '../session.ts';
-import { COLORS, drawArena, makeButton, makeCard, makeCharacter, makeMiniIcon, txt } from '../ui.ts';
+import { COLORS, drawArena, makeButton, makeCard, makeCharacter, makeItemIcon, makeItemTile, makeMiniIcon, txt } from '../ui.ts';
 
-/** Tela do guarda-roupa: escolher roupas = escolher as cartas do baralho. */
+/** Inventário: vestir e tirar peças. As peças vestidas definem o baralho. */
 export class WardrobeScene extends Phaser.Scene {
   private preview?: Phaser.GameObjects.Container;
-  private rows: Phaser.GameObjects.GameObject[] = [];
-  private deckLabel?: Phaser.GameObjects.Text;
+  private dynamic: Phaser.GameObjects.GameObject[] = [];
   private tooltip?: Phaser.GameObjects.Container;
+  private deckLabel!: Phaser.GameObjects.Text;
 
   constructor() {
     super('Wardrobe');
@@ -25,36 +16,24 @@ export class WardrobeScene extends Phaser.Scene {
 
   create() {
     drawArena(this);
-    this.add.rectangle(640, 360, 1280, 720, 0x0d0a14, 0.45);
+    this.add.rectangle(640, 360, 1280, 720, 0x0d0a14, 0.5);
 
-    txt(this, 640, 44, 'Guarda-Roupa', 40, '#ffe28a', { fontStyle: 'bold', stroke: '#0d0a14', strokeThickness: 6 });
-    txt(this, 640, 84, 'Cada peça de roupa coloca 2 poderes no seu baralho.', 18, COLORS.textDim);
+    txt(this, 640, 40, 'Inventário', 40, '#ffe28a', { fontStyle: 'bold', stroke: '#0d0a14', strokeThickness: 6 });
 
-    // Pedestal + personagem.
     const g = this.add.graphics();
-    g.fillStyle(COLORS.outline).fillEllipse(300, 520, 260, 60);
-    g.fillStyle(0x3a2f55).fillEllipse(300, 514, 250, 52);
-    this.refreshPreview();
+    g.fillStyle(COLORS.outline).fillEllipse(220, 540, 240, 54);
+    g.fillStyle(0x3a2f55).fillEllipse(220, 534, 230, 46);
+    txt(this, 220, 110, session.name, 26, '#ffffff', { fontStyle: 'bold', stroke: '#0d0a14', strokeThickness: 5 });
 
-    // Nome.
-    txt(this, 300, 590, 'Seu nome', 16, COLORS.textDim);
-    const input = this.add.dom(300, 625, 'input').setOrigin(0.5);
-    const el = input.node as HTMLInputElement;
-    el.className = 'name-input';
-    el.maxLength = 16;
-    el.value = session.name;
-    el.addEventListener('input', () => {
-      session.name = el.value.trim() || session.name;
-      session.savePrefs();
-    });
+    this.deckLabel = txt(this, 220, 590, '', 16, COLORS.textDim);
+    makeButton(this, 760, 650, 260, 60, 'Procurar oponente', () => this.go(false), COLORS.gold, 22);
+    makeButton(this, 1040, 650, 240, 60, 'Treinar com bot', () => this.go(true), 0x7fc8a9, 22);
+    makeButton(this, 220, 650, 220, 40, 'Novo personagem', () => {
+      session.reset();
+      this.scene.start('Create');
+    }, 0xb0a0c8, 16);
 
-    this.drawSlots();
-
-    this.deckLabel = txt(this, 870, 560, '', 18, COLORS.textDim);
-    this.updateDeckLabel();
-
-    makeButton(this, 760, 630, 250, 60, 'Procurar oponente', () => this.go(false), COLORS.gold, 22);
-    makeButton(this, 1030, 630, 250, 60, 'Treinar com bot', () => this.go(true), 0x7fc8a9, 22);
+    this.refresh();
 
     // Se a página recarregou no meio de uma partida, o servidor manda "match" e voltamos para ela.
     const off = session.net.on((msg: ServerMessage) => {
@@ -69,70 +48,83 @@ export class WardrobeScene extends Phaser.Scene {
   }
 
   private go(vsBot: boolean) {
-    session.savePrefs();
+    session.save();
     this.scene.start('Lobby', { vsBot });
   }
 
-  private refreshPreview() {
+  private refresh() {
     this.preview?.destroy();
-    this.preview = makeCharacter(this, session.outfit, 9).setPosition(300, 525);
-    this.tweens.add({ targets: this.preview, y: 519, yoyo: true, repeat: -1, duration: 900, ease: 'Sine.easeInOut' });
-  }
-
-  private drawSlots() {
-    for (const o of this.rows) o.destroy();
-    this.rows = [];
-    const x0 = 560;
-    OUTFIT_SLOTS.forEach((slot, i) => {
-      const y = 150 + i * 96;
-      const item = getItem(session.outfit[slot])!;
-      const panel = this.add.graphics();
-      panel.fillStyle(COLORS.outline).fillRoundedRect(x0 - 3, y - 3, 626, 86, 10);
-      panel.fillStyle(COLORS.panel).fillRoundedRect(x0, y, 620, 80, 8);
-      this.rows.push(panel);
-      this.rows.push(txt(this, x0 + 70, y + 22, SLOT_LABELS[slot], 15, COLORS.textDim));
-      this.rows.push(txt(this, x0 + 70, y + 50, item.name, 19, '#ffffff', { fontStyle: 'bold' }));
-      this.rows.push(makeButton(this, x0 + 175, y + 40, 40, 40, '<', () => this.cycle(slot, -1), COLORS.gold, 22));
-      this.rows.push(makeButton(this, x0 + 585, y + 40, 40, 40, '>', () => this.cycle(slot, 1), COLORS.gold, 22));
-      item.cards.forEach((cardId, k) => {
-        const cx = x0 + 250 + k * 165;
-        const icon = makeMiniIcon(this, cardId, 0.85).setPosition(cx, y + 40);
-        const name = txt(this, cx + 38, y + 40, getCard(cardId).name, 14, '#ffffff', {
-          wordWrap: { width: 100 },
-        }).setOrigin(0, 0.5);
-        const hit = this.add.zone(cx + 40, y + 40, 160, 80).setInteractive({ useHandCursor: true });
-        hit.on('pointerover', () => this.showTooltip(cardId, cx + 40, y));
-        hit.on('pointerout', () => this.hideTooltip());
-        this.rows.push(icon, name, hit);
-      });
-    });
-  }
-
-  private showTooltip(cardId: string, x: number, y: number) {
+    this.preview = makeCharacter(this, session.outfit, 5).setPosition(220, 540);
+    for (const o of this.dynamic) o.destroy();
+    this.dynamic = [];
     this.hideTooltip();
-    const card = makeCard(this, cardId).setDepth(100);
-    card.setPosition(Phaser.Math.Clamp(x, 100, 1180), y > 360 ? y - 130 : y + 200);
-    this.tooltip = card;
+
+    // Peças vestidas.
+    this.dynamic.push(txt(this, 460, 92, 'Vestindo', 20, '#ffffff', { fontStyle: 'bold' }).setOrigin(0, 0.5));
+    OUTFIT_SLOTS.forEach((slot, i) => this.drawEquipped(slot, 460, 120 + i * 112));
+
+    // Peças guardadas.
+    const stored = OUTFIT_ITEMS.filter((it) => session.outfit[it.slot] !== it.id);
+    this.dynamic.push(txt(this, 460, 360, 'Guardado no inventário', 20, '#ffffff', { fontStyle: 'bold' }).setOrigin(0, 0.5));
+    this.dynamic.push(txt(this, 1240, 360, 'Clique para vestir', 14, COLORS.textDim).setOrigin(1, 0.5));
+    stored.forEach((item, i) => {
+      const tile = makeItemTile(this, item.id, {
+        width: 150,
+        tag: SLOT_LABELS[item.slot],
+        onClick: () => this.equip(item.slot, item.id),
+        onHover: (cardId, x, y) => this.showTooltip(cardId, x, y),
+      }).setPosition(540 + (i % 5) * 160, 470);
+      this.dynamic.push(tile);
+    });
+
+    const deck = buildDeck(session.outfit);
+    this.deckLabel.setText(`Baralho: ${deck.length} cartas (8 básicas + ${deck.length - 8} das roupas)`);
+  }
+
+  private drawEquipped(slot: OutfitSlot, x: number, y: number) {
+    const item = getItem(session.outfit[slot]);
+    const w = 780;
+    const h = 100;
+    const g = this.add.graphics();
+    g.fillStyle(COLORS.outline).fillRoundedRect(x - 3, y - 3, w + 6, h + 6, 10);
+    g.fillStyle(COLORS.panel).fillRoundedRect(x, y, w, h, 8);
+    g.fillStyle(item ? 0x1f5bb8 : 0x2a2238).fillRoundedRect(x + 10, y + 10, 110, 80, 6);
+    this.dynamic.push(g);
+    this.dynamic.push(txt(this, x + 140, y + 26, SLOT_LABELS[slot], 14, COLORS.textDim).setOrigin(0, 0.5));
+    if (!item) {
+      this.dynamic.push(txt(this, x + 65, y + 50, 'vazio', 14, COLORS.textDim));
+      this.dynamic.push(txt(this, x + 140, y + 58, 'Nada vestido. Escolha uma peça guardada abaixo.', 16, COLORS.textDim).setOrigin(0, 0.5));
+      return;
+    }
+    this.dynamic.push(makeItemIcon(this, item.id, 100, 70).setPosition(x + 65, y + 50));
+    this.dynamic.push(txt(this, x + 140, y + 58, item.name, 20, '#ffffff', { fontStyle: 'bold' }).setOrigin(0, 0.5));
+    item.cards.forEach((cardId, i) => {
+      const cx = x + 420 + i * 70;
+      const icon = makeMiniIcon(this, cardId, 0.62).setPosition(cx, y + 50);
+      const zone = this.add.zone(cx, y + 50, 50, 56).setInteractive();
+      zone.on('pointerover', () => this.showTooltip(cardId, cx, y + 50));
+      zone.on('pointerout', () => this.hideTooltip());
+      this.dynamic.push(icon, zone);
+    });
+    this.dynamic.push(makeButton(this, x + w - 70, y + 50, 100, 40, 'Tirar', () => this.equip(slot, null), 0xb0a0c8, 16));
+  }
+
+  private equip(slot: OutfitSlot, id: string | null) {
+    session.outfit = { ...session.outfit, [slot]: id };
+    session.save();
+    this.refresh();
+  }
+
+  private showTooltip(cardId: string | null, x: number, y: number) {
+    this.hideTooltip();
+    if (!cardId) return;
+    this.tooltip = makeCard(this, cardId)
+      .setDepth(100)
+      .setPosition(Phaser.Math.Clamp(x, 100, 1180), y > 360 ? y - 150 : y + 140);
   }
 
   private hideTooltip() {
     this.tooltip?.destroy();
     this.tooltip = undefined;
-  }
-
-  private cycle(slot: OutfitSlot, dir: number) {
-    const items = itemsForSlot(slot);
-    const idx = items.findIndex((i) => i.id === session.outfit[slot]);
-    session.outfit = { ...session.outfit, [slot]: items[(idx + dir + items.length) % items.length].id };
-    session.savePrefs();
-    this.hideTooltip();
-    this.refreshPreview();
-    this.drawSlots();
-    this.updateDeckLabel();
-  }
-
-  private updateDeckLabel() {
-    const deck = buildDeck(session.outfit);
-    this.deckLabel?.setText(`Baralho: ${deck.length} cartas (8 básicas + 8 das roupas)`);
   }
 }

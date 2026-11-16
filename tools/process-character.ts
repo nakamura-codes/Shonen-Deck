@@ -1,0 +1,241 @@
+/**
+ * Prepara a arte do personagem e dos ícones de roupa.
+ *
+ *   npm run art:character
+ *
+ * Entrada (art/raw/character/):
+ *  - humanoide_cinza.png   boneco cinza sem roupa (folha com 4 quadros; usamos o primeiro)
+ *  - seis_visuais.png      3 peças de cabeça sozinhas + 3 peças de corpo sozinhas
+ *  - nove_combinacoes.png  3×3: linhas = cabeça, colunas = corpo
+ *  - icones_roupas.png     ícones do inventário (2 linhas × 3)
+ *
+ * Saída:
+ *  - client/public/assets/character/fig_<cabeça|none>_<corpo|none>.png  (as 16 combinações)
+ *  - client/public/assets/items/<id>.png
+ *
+ * Todas as figuras são reduzidas para a mesma escala (corpo com BODY_H pixels) e
+ * alinhadas pelos pés, para trocar de roupa sem o personagem "pular".
+ */
+import { mkdirSync } from 'node:fs';
+import { join } from 'node:path';
+import sharp from 'sharp';
+
+const ROOT = new URL('..', import.meta.url).pathname;
+const RAW = join(ROOT, 'art/raw/character');
+const OUT_FIG = join(ROOT, 'client/public/assets/character');
+const OUT_ITEMS = join(ROOT, 'client/public/assets/items');
+
+const HEADS = ['chapeu_palha', 'venda_olhos', 'bandana_ninja'] as const;
+const BODIES = ['gi_laranja', 'shihakusho', 'uniforme_jujutsu'] as const;
+
+/** Altura do corpo (sem chapéu) em pixels na arte final. */
+const BODY_H = 64;
+const CANVAS_W = 64;
+const CANVAS_H = 80;
+const FEET_Y = CANVAS_H - 2;
+
+interface Img {
+  w: number;
+  h: number;
+  data: Buffer; // RGBA
+}
+
+async function load(file: string): Promise<Img> {
+  const { data, info } = await sharp(join(RAW, file)).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+  return { w: info.width, h: info.height, data };
+}
+
+const opaque = (img: Img, x: number, y: number) => img.data[(y * img.w + x) * 4 + 3] > 100;
+
+/** Trechos contínuos onde a máscara é verdadeira (ignora trechos muito pequenos). */
+function runs(mask: boolean[], min = 20): [number, number][] {
+  const out: [number, number][] = [];
+  let s = -1;
+  mask.forEach((v, i) => {
+    if (v && s < 0) s = i;
+    if (!v && s >= 0) {
+      out.push([s, i]);
+      s = -1;
+    }
+  });
+  if (s >= 0) out.push([s, mask.length]);
+  return out.filter(([a, b]) => b - a >= min);
+}
+
+interface Box {
+  x0: number;
+  y0: number;
+  x1: number;
+  y1: number;
+}
+
+/** Acha as figuras: primeiro as linhas, depois as colunas de cada linha. */
+function findFigures(img: Img): Box[][] {
+  const rowMask = Array.from({ length: img.h }, (_, y) => {
+    for (let x = 0; x < img.w; x++) if (opaque(img, x, y)) return true;
+    return false;
+  });
+  return runs(rowMask).map(([y0, y1]) => {
+    const colMask = Array.from({ length: img.w }, (_, x) => {
+      for (let y = y0; y < y1; y++) if (opaque(img, x, y)) return true;
+      return false;
+    });
+    return runs(colMask).map(([x0, x1]) => {
+      let top = y1;
+      let bottom = y0;
+      for (let y = y0; y < y1; y++)
+        for (let x = x0; x < x1; x++)
+          if (opaque(img, x, y)) {
+            top = Math.min(top, y);
+            bottom = Math.max(bottom, y + 1);
+          }
+      return { x0, y0: top, x1, y1: bottom };
+    });
+  });
+}
+
+/** Recorta, reduz para a escala do jogo, limpa a paleta e alinha pelos pés. */
+async function normalize(img: Img, box: Box, scale: number): Promise<Buffer> {
+  const w = box.x1 - box.x0;
+  const h = box.y1 - box.y0;
+  const tw = Math.max(1, Math.round(w * scale));
+  const th = Math.max(1, Math.round(h * scale));
+  const crop = Buffer.alloc(w * h * 4);
+  for (let y = 0; y < h; y++) img.data.copy(crop, y * w * 4, ((box.y0 + y) * img.w + box.x0) * 4, ((box.y0 + y) * img.w + box.x1) * 4);
+
+  const small = await sharp(crop, { raw: { width: w, height: h, channels: 4 } })
+    .resize(tw, th, { kernel: 'lanczos3' })
+    .png({ palette: true, colors: 48, dither: 0 })
+    .toBuffer()
+    .then((b) => sharp(b).ensureAlpha().raw().toBuffer());
+
+  // Centro dos pés (últimas linhas) para alinhar todas as figuras no mesmo ponto.
+  let sum = 0;
+  let count = 0;
+  for (let y = th - Math.max(3, Math.round(th * 0.06)); y < th; y++)
+    for (let x = 0; x < tw; x++)
+      if (small[(y * tw + x) * 4 + 3] > 127) {
+        sum += x;
+        count++;
+      }
+  const feetX = count ? sum / count : tw / 2;
+
+  const out = Buffer.alloc(CANVAS_W * CANVAS_H * 4);
+  const ox = Math.round(CANVAS_W / 2 - feetX);
+  const oy = FEET_Y - th;
+  for (let y = 0; y < th; y++)
+    for (let x = 0; x < tw; x++) {
+      const i = (y * tw + x) * 4;
+      if (small[i + 3] <= 127) continue;
+      const cx = x + ox;
+      const cy = y + oy;
+      if (cx < 0 || cy < 0 || cx >= CANVAS_W || cy >= CANVAS_H) continue;
+      const o = (cy * CANVAS_W + cx) * 4;
+      out[o] = small[i];
+      out[o + 1] = small[i + 1];
+      out[o + 2] = small[i + 2];
+      out[o + 3] = 255;
+    }
+  return out;
+}
+
+async function save(buf: Buffer, w: number, h: number, file: string) {
+  await sharp(buf, { raw: { width: w, height: h, channels: 4 } }).png().toFile(file);
+}
+
+async function figures() {
+  mkdirSync(OUT_FIG, { recursive: true });
+  const write = async (img: Img, box: Box, bodyHeight: number, head: string, body: string) => {
+    const buf = await normalize(img, box, BODY_H / bodyHeight);
+    await save(buf, CANVAS_W, CANVAS_H, join(OUT_FIG, `fig_${head}_${body}.png`));
+    console.log(`  ✓ fig_${head}_${body}`);
+  };
+
+  // Boneco cinza: a figura inteira é corpo (sem chapéu).
+  const gray = await load('humanoide_cinza.png');
+  const grayBox = findFigures(gray)[0][0];
+  await write(gray, grayBox, grayBox.y1 - grayBox.y0, 'none', 'none');
+
+  // Seis visuais: as 3 roupas de corpo não têm nada na cabeça, então dão a altura do corpo.
+  const six = await load('seis_visuais.png');
+  const sixBoxes = findFigures(six)[0];
+  if (sixBoxes.length !== 6) throw new Error(`seis_visuais: esperava 6 figuras, achei ${sixBoxes.length}`);
+  const sixBody = Math.max(...sixBoxes.slice(3).map((b) => b.y1 - b.y0));
+  for (let i = 0; i < 3; i++) await write(six, sixBoxes[i], sixBody, HEADS[i], 'none');
+  for (let i = 0; i < 3; i++) await write(six, sixBoxes[3 + i], sixBody, 'none', BODIES[i]);
+
+  // Nove combinações: todas têm algo na cabeça. A bandana quase não aumenta a altura,
+  // então a linha da bandana (corrigida pela proporção vista nos seis visuais) dá a escala.
+  const nine = await load('nove_combinacoes.png');
+  const grid = findFigures(nine);
+  if (grid.length !== 3 || grid.some((r) => r.length !== 3)) throw new Error('nove_combinacoes: esperava uma grade 3×3');
+  const bandanaExtra = (sixBoxes[2].y1 - sixBoxes[2].y0) / sixBody;
+  const nineBody = Math.max(...grid[2].map((b) => b.y1 - b.y0)) / bandanaExtra;
+  for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) await write(nine, grid[r][c], nineBody, HEADS[r], BODIES[c]);
+}
+
+/** Ícones do inventário: 6 painéis azuis separados por linhas escuras. O azul vira transparente. */
+async function items() {
+  mkdirSync(OUT_ITEMS, { recursive: true });
+  const img = await load('icones_roupas.png');
+  const isDark = (x: number, y: number) => {
+    const i = (y * img.w + x) * 4;
+    return img.data[i] + img.data[i + 1] + img.data[i + 2] < 120;
+  };
+  const panelRows = runs(Array.from({ length: img.h }, (_, y) => !Array.from({ length: img.w }, (_, x) => x).every((x) => isDark(x, y))), 100);
+  const panelCols = runs(Array.from({ length: img.w }, (_, x) => !Array.from({ length: img.h }, (_, y) => y).every((y) => isDark(x, y))), 100);
+  const ids = [...HEADS, ...BODIES];
+  const inset = 14;
+  let k = 0;
+  for (const [y0, y1] of panelRows) {
+    for (const [x0, x1] of panelCols) {
+      const id = ids[k++];
+      if (!id) break;
+      const w = x1 - x0 - inset * 2;
+      const h = y1 - y0 - inset * 2;
+      const buf = Buffer.alloc(w * h * 4);
+      const bg = (() => {
+        const i = ((y0 + inset) * img.w + x0 + inset) * 4;
+        return [img.data[i], img.data[i + 1], img.data[i + 2]];
+      })();
+      for (let y = 0; y < h; y++)
+        for (let x = 0; x < w; x++) {
+          const i = ((y0 + inset + y) * img.w + x0 + inset + x) * 4;
+          const o = (y * w + x) * 4;
+          const d = Math.abs(img.data[i] - bg[0]) + Math.abs(img.data[i + 1] - bg[1]) + Math.abs(img.data[i + 2] - bg[2]);
+          if (d < 70) continue; // fundo azul
+          buf[o] = img.data[i];
+          buf[o + 1] = img.data[i + 1];
+          buf[o + 2] = img.data[i + 2];
+          buf[o + 3] = 255;
+        }
+      // Recorta o que sobrou e reduz para 56 px de largura.
+      const trimmed = await sharp(buf, { raw: { width: w, height: h, channels: 4 } }).trim({ threshold: 1 }).png().toBuffer();
+      const meta = await sharp(trimmed).metadata();
+      const tw = 56;
+      const th = Math.round(((meta.height ?? 1) / (meta.width ?? 1)) * tw);
+      await sharp(trimmed)
+        .resize(tw, th, { kernel: 'lanczos3' })
+        .png({ palette: true, colors: 32, dither: 0 })
+        .toBuffer()
+        .then((b) => sharp(b).ensureAlpha().raw().toBuffer({ resolveWithObject: true }))
+        .then(({ data, info }) => {
+          for (let i = 3; i < data.length; i += 4) data[i] = data[i] > 127 ? 255 : 0;
+          return sharp(data, { raw: { width: info.width, height: info.height, channels: 4 } }).png().toFile(join(OUT_ITEMS, `${id}.png`));
+        });
+      console.log(`  ✓ item ${id}`);
+    }
+  }
+}
+
+async function main() {
+  console.log('Figuras do personagem…');
+  await figures();
+  console.log('Ícones das roupas…');
+  await items();
+}
+
+main().catch((e) => {
+  console.error(e);
+  process.exit(1);
+});

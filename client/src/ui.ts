@@ -1,6 +1,5 @@
 import Phaser from 'phaser';
-import { getCard, type CardDef, type Outfit } from '@oficina/shared';
-import { LAYER_ORDER, SPRITE_H } from './sprites.ts';
+import { figureKey, getCard, getItem, type CardDef, type Outfit } from '@oficina/shared';
 
 export const FONT = '"Pixelify Sans", monospace';
 
@@ -199,25 +198,77 @@ export function makeMiniIcon(scene: Phaser.Scene, cardId: string, scale = 0.6) {
   return placeholderIcon(scene, getCard(cardId)).setScale(scale * 0.6);
 }
 
-/** Personagem montado em camadas (corpo + roupas). Origem nos pés. */
+/** Tamanho das figuras do personagem (assets/character) e linha dos pés. */
+export const FIG_W = 64;
+export const FIG_H = 80;
+const FIG_FEET = 78;
+
+/** Personagem com as roupas vestidas. Origem nos pés. */
 export function makeCharacter(scene: Phaser.Scene, outfit: Outfit, scale: number, flip = false) {
   const c = scene.add.container(0, 0);
-  const add = (key: string) => {
-    if (!scene.textures.exists(key)) return;
-    c.add(
-      scene.add
-        .image(0, 0, key)
-        .setOrigin(0.5, 1)
-        .setScale(scale)
-        .setFlipX(flip),
-    );
+  c.add(scene.add.ellipse(0, -scale, 34 * scale, 6 * scale, 0x000000, 0.35));
+  const key = scene.textures.exists(figureKey(outfit)) ? figureKey(outfit) : 'fig_none_none';
+  c.add(
+    scene.add
+      .image(0, 0, key)
+      .setOrigin(0.5, FIG_FEET / FIG_H)
+      .setScale(scale)
+      .setFlipX(flip),
+  );
+  c.setSize(FIG_W * scale, FIG_H * scale);
+  return c;
+}
+
+/** Ícone de uma peça de roupa, cabendo numa caixa de tamanho máximo. */
+export function makeItemIcon(scene: Phaser.Scene, itemId: string, maxW: number, maxH: number) {
+  const key = `item_${itemId}`;
+  if (!scene.textures.exists(key)) return txt(scene, 0, 0, getItem(itemId)?.name ?? '?', 12);
+  const img = scene.add.image(0, 0, key);
+  const scale = Math.max(1, Math.floor(Math.min(maxW / img.width, maxH / img.height)));
+  return img.setScale(scale);
+}
+
+/** Painel de uma peça: ícone, nome e os 3 poderes que ela dá. */
+export function makeItemTile(
+  scene: Phaser.Scene,
+  itemId: string,
+  opts: { width?: number; selected?: boolean; tag?: string; onClick?: () => void; onHover?: (cardId: string | null, x: number, y: number) => void } = {},
+) {
+  const item = getItem(itemId)!;
+  const w = opts.width ?? 190;
+  const h = 150;
+  const c = scene.add.container(0, 0);
+  const g = scene.add.graphics();
+  const draw = (hover: boolean) => {
+    g.clear();
+    g.fillStyle(opts.selected ? COLORS.gold : COLORS.outline).fillRoundedRect(-w / 2 - 3, -h / 2 - 3, w + 6, h + 6, 10);
+    g.fillStyle(hover ? COLORS.panelLight : 0x1f5bb8).fillRoundedRect(-w / 2, -h / 2, w, h, 8);
+    g.fillStyle(0x16121f, 0.55).fillRoundedRect(-w / 2, h / 2 - 66, w, 66, { tl: 0, tr: 0, bl: 8, br: 8 });
   };
-  // Sombra no chão.
-  const shadow = scene.add.ellipse(0, -2 * scale, 18 * scale, 4 * scale, 0x000000, 0.35);
-  c.add(shadow);
-  add('char_base');
-  for (const slot of LAYER_ORDER) add(`char_${outfit[slot]}`);
-  c.setSize(24 * scale, SPRITE_H * scale);
+  draw(false);
+  c.add(g);
+  c.add(makeItemIcon(scene, itemId, w - 16, 82).setPosition(0, -h / 2 + 42));
+  c.add(fitText(txt(scene, 0, h / 2 - 52, item.name, 16, '#ffffff', { fontStyle: 'bold' }), w - 12));
+  item.cards.forEach((cardId, i) => {
+    const x = (i - 1) * 46;
+    const icon = makeMiniIcon(scene, cardId, 0.48).setPosition(x, h / 2 - 22);
+    c.add(icon);
+    if (opts.onHover) {
+      const zone = scene.add.zone(x, h / 2 - 22, 40, 40).setInteractive();
+      zone.on('pointerover', () => opts.onHover!(cardId, c.x + x, c.y + h / 2 - 22));
+      zone.on('pointerout', () => opts.onHover!(null, 0, 0));
+      c.add(zone);
+    }
+  });
+  if (opts.tag) c.add(txt(scene, w / 2 - 8, -h / 2 + 12, opts.tag, 12, '#ffe28a', { fontStyle: 'bold', stroke: '#0d0a14', strokeThickness: 3 }).setOrigin(1, 0.5));
+  if (opts.onClick) {
+    const hit = scene.add.zone(0, -24, w, h - 50).setInteractive({ useHandCursor: true });
+    hit.on('pointerover', () => draw(true));
+    hit.on('pointerout', () => draw(false));
+    hit.on('pointerdown', () => opts.onClick!());
+    c.addAt(hit, 1);
+  }
+  c.setSize(w, h);
   return c;
 }
 

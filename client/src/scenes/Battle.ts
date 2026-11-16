@@ -29,7 +29,7 @@ type Side = 0 | 1; // 0 = eu (esquerda), 1 = oponente (direita)
 
 const CHAR_X: Record<Side, number> = { 0: 260, 1: 1020 };
 const FEET_Y = 420;
-const CHAR_SCALE = 6;
+const CHAR_SCALE = 3;
 const BODY_Y = FEET_Y - 100;
 
 const POWER_CARD: Record<PowerId, string> = { bankai: 'bankai', gearSecond: 'gear_second', domain: 'domain_expansion' };
@@ -173,7 +173,7 @@ export class BattleScene extends Phaser.Scene {
     const c = makeCharacter(this, f.outfit, CHAR_SCALE, side === 1).setPosition(CHAR_X[side], FEET_Y).setDepth(3);
     this.tweens.add({ targets: c, scaleY: 1.02, yoyo: true, repeat: -1, duration: 1100 + side * 150, ease: 'Sine.easeInOut' });
     this.chars[side] = c;
-    txt(this, CHAR_X[side], 196, f.name, 20, '#ffffff', { fontStyle: 'bold', stroke: '#0d0a14', strokeThickness: 5 }).setDepth(4);
+    txt(this, CHAR_X[side], 172, f.name, 20, '#ffffff', { fontStyle: 'bold', stroke: '#0d0a14', strokeThickness: 5 }).setDepth(4);
   }
 
   private drawHpBar(side: Side, hp: number, max: number) {
@@ -213,7 +213,7 @@ export class BattleScene extends Phaser.Scene {
     if (f.weak) chips.push([`Fraco ${f.weak}`, '#b0e070']);
     if (f.vulnerable) chips.push([`Vulnerável ${f.vulnerable}`, '#ff8080']);
     chips.forEach(([label, color], i) => {
-      this.hud.add(txt(this, x - (chips.length - 1) * 55 + i * 110, 166, label, 14, color, { stroke: '#0d0a14', strokeThickness: 4 }));
+      this.hud.add(txt(this, x - (chips.length - 1) * 55 + i * 110, 146, label, 14, color, { stroke: '#0d0a14', strokeThickness: 4 }));
     });
 
     // Poderes ativos.
@@ -224,8 +224,8 @@ export class BattleScene extends Phaser.Scene {
 
     // Golpes carregando (o oponente vê!).
     f.charges.forEach((ch, i) => {
-      const cx = x + (side === 0 ? 90 : -90);
-      const cy = 230 + i * 70;
+      const cx = x + (side === 0 ? 115 : -115);
+      const cy = 250 + i * 70;
       const icon = makeMiniIcon(this, ch.cardId, 0.6).setPosition(cx, cy);
       this.tweens.add({ targets: icon, scale: 0.66, yoyo: true, repeat: -1, duration: 400 });
       this.hud.add(icon);
@@ -233,7 +233,7 @@ export class BattleScene extends Phaser.Scene {
     });
 
     if (f.ready && this.view?.phase === 'planning') {
-      this.hud.add(txt(this, x, 136, 'Pronto!', 16, '#7fe0a0', { fontStyle: 'bold', stroke: '#0d0a14', strokeThickness: 4 }));
+      this.hud.add(txt(this, x, 120, 'Pronto!', 16, '#7fe0a0', { fontStyle: 'bold', stroke: '#0d0a14', strokeThickness: 4 }));
     }
   }
 

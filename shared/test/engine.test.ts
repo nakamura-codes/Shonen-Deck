@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   CARDS,
-  DEFAULT_OUTFIT,
+  EMPTY_OUTFIT,
+  figureKey,
   OUTFIT_ITEMS,
   RULES,
   buildDeck,
@@ -17,10 +18,12 @@ import {
   type PlayerIndex,
 } from '../src/index.ts';
 
+const FULL = { head: 'chapeu_palha', body: 'gi_laranja' };
+
 function newBattle(seed = 1): BattleState {
   return createBattle(seed, [
-    { name: 'A', outfit: DEFAULT_OUTFIT },
-    { name: 'B', outfit: DEFAULT_OUTFIT },
+    { name: 'A', outfit: FULL },
+    { name: 'B', outfit: FULL },
   ]);
 }
 
@@ -52,13 +55,26 @@ describe('dados', () => {
     for (const item of OUTFIT_ITEMS) for (const id of item.cards) expect(CARDS[id], id).toBeDefined();
   });
 
-  it('baralho inicial = 8 básicas + 8 das roupas', () => {
-    expect(buildDeck(DEFAULT_OUTFIT)).toHaveLength(16);
+  it('baralho inicial = 8 básicas + 3 por peça vestida', () => {
+    expect(buildDeck(FULL)).toHaveLength(14);
+    expect(buildDeck({ head: 'bandana_ninja', body: null })).toHaveLength(11);
+    expect(buildDeck(EMPTY_OUTFIT)).toHaveLength(8);
   });
 
-  it('roupa inválida volta para o padrão', () => {
-    expect(sanitizeOutfit({ head: 'gi_laranja', body: 'xxx' })).toEqual(DEFAULT_OUTFIT);
-    expect(sanitizeOutfit({ head: 'bandana_ninja' }).head).toBe('bandana_ninja');
+  it('toda carta aparece em alguma peça', () => {
+    const fromItems = new Set(OUTFIT_ITEMS.flatMap((i) => i.cards));
+    for (const id of Object.keys(CARDS)) if (!id.endsWith('_basico') && id !== 'defesa_basica') expect(fromItems.has(id), id).toBe(true);
+  });
+
+  it('peça inválida ou no espaço errado vira espaço vazio', () => {
+    expect(sanitizeOutfit({ head: 'gi_laranja', body: 'xxx' })).toEqual(EMPTY_OUTFIT);
+    expect(sanitizeOutfit({ head: 'bandana_ninja' })).toEqual({ head: 'bandana_ninja', body: null });
+    expect(sanitizeOutfit(null)).toEqual(EMPTY_OUTFIT);
+  });
+
+  it('nome da figura do personagem', () => {
+    expect(figureKey(EMPTY_OUTFIT)).toBe('fig_none_none');
+    expect(figureKey(FULL)).toBe('fig_chapeu_palha_gi_laranja');
   });
 });
 

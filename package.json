@@ -2,13 +2,18 @@
   "name": "oficina",
   "private": true,
   "type": "module",
-  "workspaces": ["shared", "server", "client"],
+  "workspaces": [
+    "shared",
+    "server",
+    "client"
+  ],
   "scripts": {
     "dev": "concurrently -k -n server,client -c magenta,cyan \"npm run dev -w server\" \"npm run dev -w client\"",
     "build": "npm run build -w client",
     "test": "vitest run",
     "typecheck": "tsc -p shared && tsc -p server && tsc -p client",
-    "art": "tsx tools/process-art.ts"
+    "art": "tsx tools/process-art.ts",
+    "art:character": "tsx tools/process-character.ts"
   },
   "devDependencies": {
     "concurrently": "^9.1.0",

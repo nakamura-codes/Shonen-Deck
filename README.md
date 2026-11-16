@@ -2,7 +2,9 @@
 
 Deckbuilder PvP em pixel art, no estilo Slay the Spire, com poderes de anime: Kamehameha, Getsuga Tenshou, Gomu Gomu no Gatling, Rasengan e outros.
 
-As roupas do personagem definem o baralho. Cada peça coloca 2 poderes nele.
+O personagem começa totalmente cinza. Na criação, o jogador escolhe a roupa inicial e as outras peças ficam no inventário para vestir depois. As peças vestidas (cabeça e corpo) definem o baralho: cada uma coloca 3 poderes nele.
+
+O personagem e o inventário ficam salvos no navegador, já que ainda não há contas.
 
 Projeto pessoal, ainda em protótipo.
 
@@ -27,6 +29,7 @@ Outros comandos:
 | `npm test` | Testes do motor de batalha |
 | `npm run typecheck` | Checa os tipos de todo o projeto |
 | `npm run art` | Processa a arte das cartas (veja abaixo) |
+| `npm run art:character` | Processa as figuras do personagem e os ícones das roupas |
 | `npm run build` | Gera a versão de produção do cliente em `client/dist` |
 
 ## Regras
@@ -82,6 +85,26 @@ O servidor é a fonte da verdade. O cliente só envia intenções ("jogar a cart
 
 Carta sem arte aparece com um ícone provisório.
 
-## Personagem
+## Personagem e roupas
 
-O personagem é desenhado em camadas de pixel art 24×32, em `client/src/sprites.ts`: um corpo base e uma camada por peça de roupa. Para trocar pela arte final, substitua as camadas por PNGs do mesmo tamanho.
+As imagens originais ficam em `art/raw/character/`:
+
+| Arquivo | Conteúdo |
+|---|---|
+| `humanoide_cinza.png` | Boneco cinza sem roupa |
+| `seis_visuais.png` | Cada peça de cabeça e de corpo sozinha |
+| `nove_combinacoes.png` | As 3×3 combinações de cabeça + corpo |
+| `icones_roupas.png` | Ícones do inventário |
+
+`npm run art:character` processa essas imagens:
+- recorta as 16 figuras (cada combinação, incluindo espaço vazio);
+- coloca todas na mesma escala;
+- alinha pelos pés;
+- grava em `client/public/assets/character/` e `client/public/assets/items/`.
+
+Quais cartas cada peça dá fica em `shared/src/outfits.ts`.
+
+**Para adicionar uma peça nova:**
+1. Gere a figura dela com cada peça do outro espaço.
+2. Gere o ícone.
+3. Atualize o script e o `outfits.ts`.
