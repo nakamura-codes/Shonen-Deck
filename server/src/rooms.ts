@@ -36,6 +36,8 @@ export function send(ws: WebSocket | null, msg: ServerMessage) {
   if (ws && ws.readyState === ws.OPEN) ws.send(JSON.stringify(msg));
 }
 
+const COIN_MS = 3500;
+
 /** Tempo extra para o cliente animar a revelação antes do relógio voltar a correr. */
 function animationBuffer(events: BattleEvent[]): number {
   return Math.min(8000, 1200 + events.length * 350);
@@ -56,7 +58,9 @@ export class Match {
   ) {
     const botName = 'Bot Treinador';
     const botOutfit: Outfit = { head: 'venda_olhos', body: 'shihakusho' };
-    this.state = createBattle(randomInt(2 ** 31), [
+    // SEED fixa o embaralhamento e a moeda (útil para testes).
+    const seed = process.env.SEED ? Number(process.env.SEED) : randomInt(2 ** 31);
+    this.state = createBattle(seed, [
       { name: a.name, outfit: a.outfit },
       b === 'bot' ? { name: botName, outfit: botOutfit } : { name: b.name, outfit: b.outfit },
     ]);
@@ -74,7 +78,8 @@ export class Match {
       const opp = this.seats[p === 0 ? 1 : 0];
       send(this.seats[p].ws, { t: 'match', you: p, opponentName: opp.name, token: this.seats[p].token });
     }
-    this.beginPlanning(800);
+    // Tempo para a animação da moeda antes do relógio do turno 1.
+    this.beginPlanning(COIN_MS);
     this.broadcastState();
   }
 

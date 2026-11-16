@@ -1,8 +1,39 @@
-import { getCard, playCard, type BattleState, type PlayerIndex } from '@oficina/shared';
+import { COMBOS, getCard, playCard, type BattleState, type PlayerIndex } from '@oficina/shared';
 
 /** IA simples: escolhe as cartas por pontuação até acabar o Ki. Serve para testar sozinho. */
 export function botPlays(state: BattleState, p: PlayerIndex): BattleState {
   let s = state;
+  const f0 = s.fighters[p];
+
+  // Turno travado pelo combo: só a carta criada.
+  if (f0.lockedTo) {
+    const card = f0.hand.find((c) => c.id === f0.lockedTo);
+    if (card) {
+      const r = playCard(s, p, card.uid);
+      if (r.ok) s = r.state;
+    }
+    return s;
+  }
+
+  // Combo na mão: faz se tiver Ki; senão guarda Ki (só cartas de custo 0).
+  const ids = f0.hand.map((c) => c.id);
+  const combo = COMBOS.find((c) => c.requires.every((id) => ids.includes(id)));
+  let saving = false;
+  if (combo) {
+    const cost = combo.requires.reduce((sum, id) => sum + getCard(id).cost, 0);
+    if (cost <= f0.ki) {
+      // Debuff/buff primeiro para reforçar o ataque.
+      const ordered = [...combo.requires].sort((a, b) => (getCard(a).type === 'attack' ? 1 : 0) - (getCard(b).type === 'attack' ? 1 : 0));
+      for (const id of ordered) {
+        const card = s.fighters[p].hand.find((c) => c.id === id);
+        const r = card && playCard(s, p, card.uid);
+        if (r && r.ok) s = r.state;
+      }
+      return s;
+    }
+    saving = true;
+  }
+
   for (let guard = 0; guard < 12; guard++) {
     const f = s.fighters[p];
     const opp = s.fighters[p === 0 ? 1 : 0];
@@ -10,6 +41,8 @@ export function botPlays(state: BattleState, p: PlayerIndex): BattleState {
     for (const c of f.hand) {
       const def = getCard(c.id);
       if (def.cost > f.ki) continue;
+      if (saving && def.cost > 0) continue;
+      if (combo?.requires.includes(def.id)) continue;
       const kiAfter = f.ki - def.cost;
       let score = 0;
       for (const e of def.effects) {

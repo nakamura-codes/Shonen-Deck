@@ -7,11 +7,11 @@ import type { Outfit, OutfitItem, OutfitSlot } from './types.ts';
  */
 export const OUTFIT_ITEMS: OutfitItem[] = [
   { id: 'chapeu_palha', slot: 'head', name: 'Chapéu de Palha', cards: ['pistol', 'gatling', 'gear_second'] },
-  { id: 'venda_olhos', slot: 'head', name: 'Cabelo e Venda', cards: ['domain_expansion', 'sharingan', 'kaioken'] },
+  { id: 'venda_olhos', slot: 'head', name: 'Cabelo e Venda', cards: ['domain_expansion', 'red', 'blue'] },
   { id: 'bandana_ninja', slot: 'head', name: 'Bandana Ninja', cards: ['rasengan', 'kage_bunshin', 'chidori'] },
   { id: 'gi_laranja', slot: 'body', name: 'Gi Laranja', cards: ['kamehameha', 'genki_dama', 'haki'] },
   { id: 'shihakusho', slot: 'body', name: 'Shihakusho Negro', cards: ['getsuga', 'bankai', 'shunpo'] },
-  { id: 'uniforme_jujutsu', slot: 'body', name: 'Uniforme Jujutsu', cards: ['haki', 'shunpo', 'sharingan'] },
+  { id: 'uniforme_jujutsu', slot: 'body', name: 'Uniforme Jujutsu', cards: ['haki', 'sharingan', 'kaioken'] },
 ];
 
 export const OUTFIT_SLOTS: OutfitSlot[] = ['head', 'body'];

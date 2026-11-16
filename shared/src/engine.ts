@@ -1,6 +1,6 @@
-import { BASE_DECK, cardPhase, getCard } from './cards.ts';
+import { BASE_DECK, comboFor, getCard, isArmor } from './cards.ts';
 import { outfitCards } from './outfits.ts';
-import { shuffle } from './rng.ts';
+import { nextRandom, shuffle } from './rng.ts';
 import type {
   BattleEvent,
   BattleState,
@@ -16,6 +16,8 @@ import type {
 export const RULES = {
   maxHp: 60,
   kiPerTurn: 3,
+  /** Ki que sobra passa para o próximo turno, até este limite. */
+  maxKi: 5,
   drawPerTurn: 5,
   maxHandSize: 10,
   turnLimit: 40,
@@ -61,6 +63,8 @@ function newFighter(setup: PlayerSetup, cards: CardInstance[]): Fighter {
     damageTakenThisTurn: 0,
     decayWeak: false,
     decayVulnerable: false,
+    pendingCombo: null,
+    lockedTo: null,
   };
 }
 
@@ -79,9 +83,14 @@ export function createBattle(seed: number, players: [PlayerSetup, PlayerSetup]):
     return newFighter(setup, shuffled);
   }) as [Fighter, Fighter];
 
+  // Moeda: quem começa o turno 1. Depois alterna.
+  const [coin, afterCoin] = nextRandom(rng);
+  rng = afterCoin;
+
   const state: BattleState = {
     seed,
     rngState: rng,
+    firstPlayer: coin < 0.5 ? 0 : 1,
     turn: 0,
     phase: 'planning',
     fighters,
@@ -112,7 +121,7 @@ function startTurn(state: BattleState, events: BattleEvent[]) {
   for (const p of [0, 1] as PlayerIndex[]) {
     const f = state.fighters[p];
     f.block = 0;
-    f.ki = RULES.kiPerTurn;
+    f.ki = Math.min(RULES.maxKi, f.ki + RULES.kiPerTurn);
     f.queue = [];
     f.ready = false;
     f.revealing = false;
@@ -124,7 +133,7 @@ function startTurn(state: BattleState, events: BattleEvent[]) {
     const f = state.fighters[p];
     for (const power of f.powers) {
       if (power === 'gearSecond') {
-        f.ki += 1;
+        f.ki = Math.min(RULES.maxKi, f.ki + 1);
         loseHp(f, p, 2, 'Gear Second', events);
       } else if (power === 'domain') {
         state.fighters[other(p)].weak += 1;
@@ -137,6 +146,12 @@ function startTurn(state: BattleState, events: BattleEvent[]) {
     f.decayVulnerable = f.vulnerable > 0;
     draw(state, f, RULES.drawPerTurn + f.bonusDraw);
     f.bonusDraw = 0;
+    // Carta criada por combo no turno anterior: chega agora e trava o turno nela.
+    if (f.pendingCombo) {
+      f.hand.push({ uid: `t${state.uidCounter++}`, id: f.pendingCombo });
+      f.lockedTo = f.pendingCombo;
+      f.pendingCombo = null;
+    }
   }
   checkGameOver(state, events);
 }
@@ -144,6 +159,21 @@ function startTurn(state: BattleState, events: BattleEvent[]) {
 function loseHp(f: Fighter, p: PlayerIndex, amount: number, reason: string, events: BattleEvent[]) {
   f.hp = Math.max(0, f.hp - amount);
   events.push({ type: 'hpLoss', player: p, amount, reason });
+}
+
+/** Quem resolve primeiro neste turno: a moeda escolhe o turno 1, depois alterna. */
+export function turnStarter(state: BattleState): PlayerIndex {
+  return state.turn % 2 === 1 ? state.firstPlayer : other(state.firstPlayer);
+}
+
+/** Custo efetivo: no turno travado pelo combo, a carta criada é de graça. */
+function effectiveCost(f: Fighter, cardId: string): number {
+  return f.lockedTo === cardId ? 0 : getCard(cardId).cost;
+}
+
+/** Red + Blue (ou outro combo) já está na fila: o turno fecha. */
+export function hasComboLock(f: Fighter): boolean {
+  return comboFor(f.queue.map((q) => q.card.id)) !== undefined;
 }
 
 /** Recalcula as marcas que dependem da fila (clone pendente e Sharingan). */
@@ -168,12 +198,17 @@ export function playCard(state: BattleState, player: PlayerIndex, cardUid: strin
   const idx = f.hand.findIndex((c) => c.uid === cardUid);
   if (idx < 0) return { ok: false, error: 'Essa carta não está na sua mão.' };
   const def = getCard(f.hand[idx].id);
-  if (def.cost > f.ki) return { ok: false, error: 'Ki insuficiente.' };
+  if (f.lockedTo && def.id !== f.lockedTo) {
+    return { ok: false, error: `Neste turno você só pode jogar ${getCard(f.lockedTo).name}.` };
+  }
+  if (hasComboLock(f)) return { ok: false, error: 'Combo feito: nenhuma outra carta neste turno.' };
+  const cost = effectiveCost(f, def.id);
+  if (cost > f.ki) return { ok: false, error: 'Ki insuficiente.' };
 
   const next = clone(state);
   const nf = next.fighters[player];
   const [card] = nf.hand.splice(idx, 1);
-  nf.ki -= def.cost;
+  nf.ki -= cost;
   const isClone = def.effects.some((e) => e.kind === 'clone');
   nf.queue.push({ card, doubled: nf.cloneNext && !isClone });
   recomputeQueueFlags(nf);
@@ -189,7 +224,7 @@ export function undoLastCard(state: BattleState, player: PlayerIndex): ActionRes
   const next = clone(state);
   const nf = next.fighters[player];
   const q = nf.queue.pop()!;
-  nf.ki += getCard(q.card.id).cost;
+  nf.ki += effectiveCost(nf, q.card.id);
   nf.hand.push(q.card);
   recomputeQueueFlags(nf);
   return { ok: true, state: next };
@@ -206,13 +241,14 @@ export function bothReady(state: BattleState): boolean {
   return state.fighters[0].ready && state.fighters[1].ready;
 }
 
-function attackDamage(state: BattleState, source: PlayerIndex, target: PlayerIndex, base: number): number {
+function attackDamage(state: BattleState, source: PlayerIndex, target: PlayerIndex, base: number, fixed = false): number {
+  if (fixed) return base;
   const a = state.fighters[source];
   const t = state.fighters[target];
   const bankai = a.powers.filter((p) => p === 'bankai').length * RULES.bankaiBonus;
   let dmg = base + a.strength + a.tempStrength + bankai;
   if (a.weak > 0) dmg = Math.floor(dmg * 0.75);
-  if (t.vulnerable > 0) dmg = Math.floor(dmg * 1.5);
+  if (t.vulnerable > 0) dmg = Math.floor(dmg * 1.25);
   return Math.max(0, dmg);
 }
 
@@ -224,9 +260,10 @@ function dealDamage(
   pierce: boolean,
   cardId: string,
   events: BattleEvent[],
+  fixed = false,
 ) {
   const t = state.fighters[target];
-  const dmg = attackDamage(state, source, target, base);
+  const dmg = attackDamage(state, source, target, base, fixed);
   const blocked = pierce ? 0 : Math.min(t.block, dmg);
   t.block -= blocked;
   const hpDamage = dmg - blocked;
@@ -244,7 +281,7 @@ function resolveCard(state: BattleState, player: PlayerIndex, q: QueuedCard, eve
     for (const e of def.effects) {
       switch (e.kind) {
         case 'damage':
-          for (let i = 0; i < (e.times ?? 1); i++) dealDamage(state, player, opp, e.amount, !!e.pierce, def.id, events);
+          for (let i = 0; i < (e.times ?? 1); i++) dealDamage(state, player, opp, e.amount, !!e.pierce, def.id, events, !!e.fixed);
           break;
         case 'block':
           f.block += e.amount;
@@ -253,12 +290,12 @@ function resolveCard(state: BattleState, player: PlayerIndex, q: QueuedCard, eve
         case 'strength':
           if (e.temporary) f.tempStrength += e.amount;
           else f.strength += e.amount;
-          events.push({ type: 'status', player, status: 'strength', amount: e.amount });
+          events.push({ type: 'status', player, status: 'strength', amount: e.amount, cardId: def.id });
           break;
         case 'weak':
         case 'vulnerable':
           state.fighters[opp][e.kind] += e.amount;
-          events.push({ type: 'status', player: opp, status: e.kind, amount: e.amount });
+          events.push({ type: 'status', player: opp, status: e.kind, amount: e.amount, cardId: def.id });
           break;
         case 'loseHp':
           loseHp(f, player, e.amount, def.name, events);
@@ -322,36 +359,48 @@ function checkGameOver(state: BattleState, events: BattleEvent[]): boolean {
   return true;
 }
 
+/** Alterna as cartas dos dois jogadores: 1ª de quem começa, 1ª do outro, 2ª de quem começa… */
+function interleave(order: PlayerIndex[], lists: QueuedCard[][]): [PlayerIndex, QueuedCard][] {
+  const out: [PlayerIndex, QueuedCard][] = [];
+  const len = Math.max(lists[0].length, lists[1].length);
+  for (let i = 0; i < len; i++) {
+    for (let k = 0; k < 2; k++) {
+      const q = lists[k][i];
+      if (q) out.push([order[k], q]);
+    }
+  }
+  return out;
+}
+
 /**
  * Revela e resolve as cartas dos dois jogadores.
- * Ordem: bloqueio → buffs/debuffs/poderes → golpes carregados → ataques.
- * Dentro de cada fase as cartas se alternam; quem começa alterna a cada turno.
+ * 1. Armadura (cartas com Bloqueio e sem dano), para a defesa sempre funcionar.
+ * 2. Golpes carregados que disparam neste turno.
+ * 3. O resto, na ordem em que cada jogador jogou (buff/debuff só vale para o que vem depois).
+ * As cartas dos dois se alternam; a moeda escolhe quem começa o turno 1 e depois alterna.
+ * A partida acaba na hora em que alguém chega a 0 HP.
  */
 export function resolveTurn(state: BattleState): { state: BattleState; events: BattleEvent[] } {
   const next = clone(state);
   const events: BattleEvent[] = [];
   if (next.phase !== 'planning') return { state: next, events };
 
-  const first: PlayerIndex = next.turn % 2 === 1 ? 0 : 1;
+  const first = turnStarter(next);
   const order: PlayerIndex[] = [first, other(first)];
+  const queues = order.map((p) => next.fighters[p].queue);
+  const armor = interleave(order, queues.map((q) => q.filter((c) => isArmor(getCard(c.card.id)))));
+  const rest = interleave(order, queues.map((q) => q.filter((c) => !isArmor(getCard(c.card.id)))));
 
-  for (const p of order) {
-    for (const q of next.fighters[p].queue) events.push({ type: 'play', player: p, cardId: q.card.id, doubled: q.doubled });
+  for (const [p, q] of [...armor, ...rest]) events.push({ type: 'play', player: p, cardId: q.card.id, doubled: q.doubled });
+
+  for (const [p, q] of armor) {
+    resolveCard(next, p, q, events);
+    if (checkGameOver(next, events)) return { state: next, events };
   }
-
-  for (const phase of [0, 1, 2] as const) {
-    if (phase === 2) {
-      tickCharges(next, order, events);
-      if (checkGameOver(next, events)) return { state: next, events };
-    }
-    const lists = order.map((p) => next.fighters[p].queue.filter((q) => cardPhase(getCard(q.card.id)) === phase));
-    const len = Math.max(lists[0].length, lists[1].length);
-    for (let i = 0; i < len; i++) {
-      for (let k = 0; k < 2; k++) {
-        const q = lists[k][i];
-        if (q) resolveCard(next, order[k], q, events);
-      }
-    }
+  tickCharges(next, order, events);
+  if (checkGameOver(next, events)) return { state: next, events };
+  for (const [p, q] of rest) {
+    resolveCard(next, p, q, events);
     if (checkGameOver(next, events)) return { state: next, events };
   }
 
@@ -367,14 +416,29 @@ export function resolveTurn(state: BattleState): { state: BattleState; events: B
     });
   }
 
+  // Combos (ex.: Red + Blue → Hollow Purple no próximo turno).
+  for (const p of order) {
+    const f = next.fighters[p];
+    const combo = comboFor(f.queue.map((q) => q.card.id));
+    if (combo) {
+      f.pendingCombo = combo.creates;
+      events.push({ type: 'combo', player: p, cardId: combo.creates });
+    }
+  }
+
   // Fim do turno.
   for (const f of next.fighters) {
-    f.discard.push(...f.hand);
+    for (const c of f.hand) (getCard(c.id).ethereal ? f.exhausted : f.discard).push(c);
     f.hand = [];
     f.queue = [];
     if (f.decayWeak) f.weak = Math.max(0, f.weak - 1);
     if (f.decayVulnerable) f.vulnerable = Math.max(0, f.vulnerable - 1);
     f.tempStrength = 0;
+    // Turno travado pelo combo: o Ki recebido não acumula.
+    if (f.lockedTo) {
+      f.ki = 0;
+      f.lockedTo = null;
+    }
   }
 
   startTurn(next, events);
@@ -400,6 +464,8 @@ function publicView(f: Fighter): FighterPublicView {
     discardCount: f.discard.length,
     queueCount: f.queue.length,
     ready: f.ready,
+    maxKi: RULES.maxKi,
+    lockedTo: f.lockedTo,
   };
 }
 
@@ -412,7 +478,16 @@ export function viewFor(state: BattleState, player: PlayerIndex): BattleView {
     turn: state.turn,
     phase: state.phase,
     winner: state.winner,
-    me: { ...publicView(me), hand: me.hand, queue: me.queue, cloneNext: me.cloneNext, revealing: me.revealing },
+    firstPlayer: state.firstPlayer,
+    turnStarter: turnStarter(state),
+    me: {
+      ...publicView(me),
+      hand: me.hand,
+      queue: me.queue,
+      cloneNext: me.cloneNext,
+      revealing: me.revealing,
+      comboLock: hasComboLock(me),
+    },
     opponent: { ...publicView(opp), queue: me.revealing ? opp.queue : null },
   };
 }

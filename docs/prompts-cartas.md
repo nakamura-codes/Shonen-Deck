@@ -25,6 +25,9 @@ Gere todos os ícones na mesma conversa do ChatGPT e anexe uma imagem de referê
 | `shunpo.png` | Blurred afterimages of a fast step with dust lines, green background |
 | `golpe_basico.png` | A simple fist punching forward, red background |
 | `defesa_basica.png` | Two crossed forearms in a guard stance, green background |
+| `red.png` | A glowing crimson-red energy orb with white core repelling shockwaves outward, red background |
+| `blue.png` | A swirling dark-blue energy orb pulling debris and light inward like a vortex, blue background |
+| `hollow_purple.png` | A red orb and a blue orb colliding and merging into a huge glowing purple sphere erasing everything, dark purple background |
 
 **Para criar uma carta nova:**
 1. Adicione a carta em `shared/src/cards.ts`.

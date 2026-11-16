@@ -20,11 +20,14 @@ import {
 
 const FULL = { head: 'chapeu_palha', body: 'gi_laranja' };
 
+/** Batalha de teste: o jogador 0 começa o turno 1 (a moeda é fixada). */
 function newBattle(seed = 1): BattleState {
-  return createBattle(seed, [
+  const s = createBattle(seed, [
     { name: 'A', outfit: FULL },
     { name: 'B', outfit: FULL },
   ]);
+  s.firstPlayer = 0;
+  return s;
 }
 
 /** Troca a mão de um jogador por cartas específicas (só para os testes). */
@@ -63,7 +66,7 @@ describe('dados', () => {
 
   it('toda carta aparece em alguma peça', () => {
     const fromItems = new Set(OUTFIT_ITEMS.flatMap((i) => i.cards));
-    for (const id of Object.keys(CARDS)) if (!id.endsWith('_basico') && id !== 'defesa_basica') expect(fromItems.has(id), id).toBe(true);
+    for (const id of Object.keys(CARDS)) if (!CARDS[id].token && !id.endsWith('_basico') && id !== 'defesa_basica') expect(fromItems.has(id), id).toBe(true);
   });
 
   it('peça inválida ou no espaço errado vira espaço vazio', () => {
@@ -188,7 +191,7 @@ describe('resolução', () => {
     expect(state.fighters[0].tempStrength).toBe(0); // Força temporária some
   });
 
-  it('Rasengan aplica Vulnerável e o próximo golpe causa 50% a mais', () => {
+  it('Rasengan aplica Vulnerável e o próximo golpe causa 25% a mais', () => {
     let s = newBattle();
     giveHand(s, 0, ['rasengan']);
     s = play(s, 0, 'rasengan');
@@ -198,7 +201,7 @@ describe('resolução', () => {
     giveHand(s, 0, ['golpe_basico']);
     s = play(s, 0, 'golpe_basico');
     r = readyAndResolve(s);
-    expect(r.state.fighters[1].hp).toBe(48 - 9);
+    expect(r.state.fighters[1].hp).toBe(48 - 7);
     expect(r.state.fighters[1].vulnerable).toBe(0);
   });
 
@@ -299,7 +302,8 @@ describe('poderes', () => {
     giveHand(s, 0, ['gear_second']);
     s = play(s, 0, 'gear_second');
     const r = readyAndResolve(s);
-    expect(r.state.fighters[0].ki).toBe(4);
+    // Sobrou 2 + 3 do turno + 1 do Gear Second = 6, limitado a 5.
+    expect(r.state.fighters[0].ki).toBe(5);
     expect(r.state.fighters[0].hp).toBe(58);
   });
 
@@ -324,7 +328,7 @@ describe('fim de jogo', () => {
     expect(events.at(-1)).toEqual({ type: 'gameOver', winner: 0 });
   });
 
-  it('empate se os dois caem no mesmo turno', () => {
+  it('quem resolve primeiro derruba e as cartas restantes não acontecem', () => {
     let s = newBattle();
     s.fighters[0].hp = 5;
     s.fighters[1].hp = 5;
@@ -332,9 +336,10 @@ describe('fim de jogo', () => {
     giveHand(s, 1, ['golpe_basico']);
     s = play(s, 0, 'golpe_basico');
     s = play(s, 1, 'golpe_basico');
-    const { state } = readyAndResolve(s);
-    // Os ataques da mesma fase são simultâneos: os dois caem.
-    expect(state.winner).toBe('draw');
+    const { state, events } = readyAndResolve(s);
+    expect(state.winner).toBe(0);
+    expect(state.fighters[0].hp).toBe(5);
+    expect(events.filter((e) => e.type === 'damage')).toHaveLength(1);
   });
 
   it('uma partida inteira entre dois bots termina', () => {
@@ -349,5 +354,151 @@ describe('fim de jogo', () => {
       s = readyAndResolve(s).state;
     }
     expect(s.phase).toBe('over');
+  });
+});
+
+describe('ordem de resolução e moeda', () => {
+  it('a moeda é determinística pela seed e quem começa alterna', () => {
+    const a = createBattle(99, [{ name: 'A', outfit: FULL }, { name: 'B', outfit: FULL }]);
+    const b = createBattle(99, [{ name: 'A', outfit: FULL }, { name: 'B', outfit: FULL }]);
+    expect(a.firstPlayer).toBe(b.firstPlayer);
+    const seen = new Set([0, 1, 2, 3, 4, 5, 6, 7].map((seed) => createBattle(seed, [{ name: 'A', outfit: FULL }, { name: 'B', outfit: FULL }]).firstPlayer));
+    expect(seen.size).toBe(2);
+    expect(viewFor(a, 0).turnStarter).toBe(a.firstPlayer);
+    const r = readyAndResolve(a);
+    expect(viewFor(r.state, 0).turnStarter).toBe(a.firstPlayer === 0 ? 1 : 0);
+  });
+
+  it('armadura protege mesmo jogada depois do ataque de quem começa', () => {
+    let s = newBattle();
+    giveHand(s, 0, ['getsuga']);
+    giveHand(s, 1, ['golpe_basico', 'defesa_basica']);
+    s = play(s, 0, 'getsuga');
+    s = play(s, 1, 'golpe_basico');
+    s = play(s, 1, 'defesa_basica');
+    const { state } = readyAndResolve(s);
+    expect(state.fighters[1].hp).toBe(60 - 9);
+  });
+
+  it('as cartas se alternam: o ataque de quem começa vem antes do buff do outro', () => {
+    let s = newBattle();
+    giveHand(s, 0, ['golpe_basico']);
+    giveHand(s, 1, ['kaioken', 'golpe_basico']);
+    s = play(s, 0, 'golpe_basico');
+    s = play(s, 1, 'kaioken');
+    s = play(s, 1, 'golpe_basico');
+    const { events } = readyAndResolve(s);
+    const order = events.filter((e) => e.type === 'play').map((e) => (e as { cardId: string }).cardId);
+    expect(order).toEqual(['golpe_basico', 'kaioken', 'golpe_basico']);
+  });
+
+  it('Blue antes do Red reforça o Red; Red antes do Blue não', () => {
+    let s = newBattle();
+    giveHand(s, 0, ['blue', 'red']);
+    s.fighters[0].ki = 5;
+    s = play(s, 0, 'blue');
+    s = play(s, 0, 'red');
+    expect(readyAndResolve(s).state.fighters[1].hp).toBe(60 - 17);
+
+    s = newBattle();
+    giveHand(s, 0, ['blue', 'red']);
+    s.fighters[0].ki = 5;
+    s = play(s, 0, 'red');
+    s = play(s, 0, 'blue');
+    expect(readyAndResolve(s).state.fighters[1].hp).toBe(60 - 14);
+  });
+});
+
+describe('Ki acumulável', () => {
+  it('o Ki que sobra passa para o próximo turno, até 5', () => {
+    let s = newBattle();
+    let r = readyAndResolve(s);
+    expect(r.state.fighters[0].ki).toBe(5);
+    s = r.state;
+    giveHand(s, 0, ['getsuga']);
+    s = play(s, 0, 'getsuga');
+    r = readyAndResolve(s);
+    expect(r.state.fighters[0].ki).toBe(5); // 3 + 3 = 6 → 5
+  });
+});
+
+describe('combo Red + Blue → Hollow Purple', () => {
+  function comboTurn(order: ['red', 'blue'] | ['blue', 'red'] = ['blue', 'red']) {
+    let s = newBattle();
+    s.fighters[0].ki = 5;
+    giveHand(s, 0, ['blue', 'red', 'golpe_basico', 'shunpo']);
+    s = play(s, 0, order[0]);
+    s = play(s, 0, order[1]);
+    return s;
+  }
+
+  it('depois de Red + Blue nenhuma outra carta pode ser jogada; desfazer libera', () => {
+    let s = comboTurn();
+    expect(viewFor(s, 0).me.comboLock).toBe(true);
+    const shunpo = s.fighters[0].hand.find((c) => c.id === 'shunpo')!;
+    expect(playCard(s, 0, shunpo.uid).ok).toBe(false);
+    const u = undoLastCard(s, 0);
+    if (!u.ok) throw new Error(u.error);
+    expect(viewFor(u.state, 0).me.comboLock).toBe(false);
+    expect(playCard(u.state, 0, shunpo.uid).ok).toBe(true);
+  });
+
+  it('funciona em qualquer ordem e cria o Hollow Purple no turno seguinte', () => {
+    for (const order of [['blue', 'red'], ['red', 'blue']] as const) {
+      const { state, events } = readyAndResolve(comboTurn([...order]));
+      expect(events.some((e) => e.type === 'combo' && e.player === 0)).toBe(true);
+      const hand = state.fighters[0].hand.map((c) => c.id);
+      expect(hand).toContain('hollow_purple');
+      expect(hand).toHaveLength(RULES.drawPerTurn + 1);
+      expect(state.fighters[0].lockedTo).toBe('hollow_purple');
+    }
+  });
+
+  it('no turno travado só o Hollow Purple pode ser jogado, de graça, e causa exatamente 30', () => {
+    let s = readyAndResolve(comboTurn()).state;
+    const other = s.fighters[0].hand.find((c) => c.id !== 'hollow_purple')!;
+    expect(playCard(s, 0, other.uid).ok).toBe(false);
+    s.fighters[1].block = 0;
+    const hp = s.fighters[1].hp;
+    giveHand(s, 1, ['haki']);
+    s = play(s, 1, 'haki');
+    const kiBefore = s.fighters[0].ki;
+    s = play(s, 0, 'hollow_purple');
+    expect(s.fighters[0].ki).toBe(kiBefore);
+    const { state } = readyAndResolve(s);
+    // Ignora o Bloqueio do Haki e o Vulnerável do Blue.
+    expect(state.fighters[1].hp).toBe(hp - 30);
+    expect(state.fighters[0].exhausted.map((c) => c.id)).toContain('hollow_purple');
+    // O Ki do turno travado não acumula.
+    expect(state.fighters[0].ki).toBe(RULES.kiPerTurn);
+    expect(state.fighters[0].lockedTo).toBeNull();
+  });
+
+  it('Hollow Purple não jogado some no fim do turno', () => {
+    const s = readyAndResolve(comboTurn()).state;
+    const { state } = readyAndResolve(s);
+    const all = [...state.fighters[0].hand, ...state.fighters[0].drawPile, ...state.fighters[0].discard];
+    expect(all.some((c) => c.id === 'hollow_purple')).toBe(false);
+    expect(state.fighters[0].exhausted.map((c) => c.id)).toContain('hollow_purple');
+  });
+
+  it('Kage Bunshin no meio gera só 1 Hollow Purple', () => {
+    let s = newBattle();
+    s.fighters[0].ki = 5;
+    giveHand(s, 0, ['kage_bunshin', 'blue', 'red']);
+    s.fighters[0].ki = 6; // forçado só para caber as 3 cartas no teste
+    s = play(s, 0, 'kage_bunshin');
+    s = play(s, 0, 'blue');
+    s = play(s, 0, 'red');
+    const { state } = readyAndResolve(s);
+    expect(state.fighters[0].hand.filter((c) => c.id === 'hollow_purple')).toHaveLength(1);
+  });
+
+  it('sem combo se a partida acabou no turno', () => {
+    let s = comboTurn();
+    s.fighters[1].hp = 5;
+    const { state, events } = readyAndResolve(s);
+    expect(state.phase).toBe('over');
+    expect(events.some((e) => e.type === 'combo')).toBe(false);
   });
 });

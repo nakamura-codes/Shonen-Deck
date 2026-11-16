@@ -147,7 +147,7 @@ export function makeCard(scene: Phaser.Scene, cardId: string, opts: { cost?: num
   if (body.height > panelH - 4) body.setFontSize(11);
   c.add(body);
 
-  c.add(txt(scene, 0, h / 2 - 12, TYPE_LABEL[def.type], 12, '#f4ecd8'));
+  c.add(txt(scene, 0, h / 2 - 12, def.ethereal ? `${TYPE_LABEL[def.type]} · Etérea` : TYPE_LABEL[def.type], 12, def.ethereal ? '#e9b8ff' : '#f4ecd8'));
 
   // Custo de Ki.
   const cost = opts.cost ?? def.cost;
