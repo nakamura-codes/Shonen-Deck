@@ -12,13 +12,16 @@ import {
 } from '@oficina/shared';
 import { session } from '../session.ts';
 import { attackSound, isMuted, sfx, toggleMute } from '../sfx.ts';
+import { HUD } from '../hud.generated.ts';
 import {
   CARD_H,
+  CARD_W,
   COLORS,
   floatText,
   makeButton,
   makeCard,
   makeCharacter,
+  makeArtButton,
   makeMiniIcon,
   NUM_FONT,
   playFx,
@@ -54,6 +57,7 @@ export class BattleScene extends Phaser.Scene {
   private readyBtn!: Button;
   private undoBtn!: Button;
   private starterText!: Phaser.GameObjects.Text;
+  private hasHudArt = false;
   private arenaImage?: Phaser.GameObjects.Image;
 
   constructor() {
@@ -70,9 +74,10 @@ export class BattleScene extends Phaser.Scene {
     this.arenaImage = undefined;
     // Faixa de baixo (mão e botões); a arena entra em cima quando chega o primeiro estado.
     const panel = this.add.graphics().setDepth(-9);
-    panel.fillGradientStyle(0x231c33, 0x231c33, 0x120f1c, 0x120f1c).fillRect(0, 427, 1280, 293);
-    panel.fillStyle(COLORS.outline).fillRect(0, 424, 1280, 5);
-    panel.fillStyle(COLORS.gold, 0.6).fillRect(0, 429, 1280, 2);
+    panel.fillGradientStyle(0x232a36, 0x232a36, 0x141820, 0x141820).fillRect(0, 427, 1280, 293);
+    // HUD com arte (assets/ui/hud.png): as áreas vazadas recebem barras de HP, Ki, contadores e botões.
+    this.hasHudArt = this.textures.exists('hud');
+    if (this.hasHudArt) this.add.image(HUD.panel.x, HUD.panel.y, 'hud').setOrigin(0).setDepth(-8);
     this.hud = this.add.container(0, 0).setDepth(5);
     this.hand = this.add.container(0, 0).setDepth(20);
 
@@ -87,15 +92,30 @@ export class BattleScene extends Phaser.Scene {
     muteBtn.on('pointerdown', () => muteBtn.setText(toggleMute() ? '🔇' : '🔊'));
     this.banner = txt(this, 640, 82, '', 18, '#ffb0b0', { stroke: '#0d0a14', strokeThickness: 4 }).setDepth(30);
 
-    this.readyBtn = makeButton(this, 1165, 560, 190, 60, 'Confirmar', () => this.sendReady(), COLORS.gold, 22).setDepth(25);
-    this.undoBtn = makeButton(this, 1165, 636, 190, 46, 'Desfazer', () => this.sendUndo(), 0xb0a0c8, 18).setDepth(25);
+    if (this.hasHudArt) {
+      this.readyBtn = makeArtButton(this, HUD.readyBtn, 'Confirmar', () => this.sendReady(), 0x2f6fb0, 22).setDepth(25);
+      this.undoBtn = makeArtButton(this, HUD.undoBtn, 'Desfazer', () => this.sendUndo(), 0x3a4558, 19).setDepth(25);
+    } else {
+      this.readyBtn = makeButton(this, 1165, 560, 190, 60, 'Confirmar', () => this.sendReady(), COLORS.gold, 22).setDepth(25);
+      this.undoBtn = makeButton(this, 1165, 636, 190, 46, 'Desfazer', () => this.sendUndo(), 0xb0a0c8, 18).setDepth(25);
+    }
 
     // Ki
-    const ki = this.add.graphics().setDepth(4);
-    ki.fillStyle(COLORS.outline).fillCircle(90, 590, 52);
-    ki.fillStyle(0x1f4f8a).fillCircle(90, 590, 47);
-    ki.fillStyle(COLORS.ki).fillCircle(90, 590, 42);
-    ki.fillStyle(0x8fd0ff, 0.8).fillCircle(70, 570, 7);
+    if (this.hasHudArt) {
+      // Bola de Ki por baixo da HUD: o anel é da própria arte.
+      const k = HUD.ki;
+      const kr = Math.max(k.w, k.h) / 2 + 3;
+      const ki = this.add.graphics().setDepth(-8.5);
+      ki.fillStyle(0x1f4f8a).fillCircle(k.x + k.w / 2, k.y + k.h / 2, kr);
+      ki.fillStyle(COLORS.ki).fillCircle(k.x + k.w / 2, k.y + k.h / 2, kr - 6);
+      ki.fillStyle(0x8fd0ff, 0.8).fillCircle(k.x + k.w * 0.3, k.y + k.h * 0.28, 7);
+    } else {
+      const ki = this.add.graphics().setDepth(4);
+      ki.fillStyle(COLORS.outline).fillCircle(90, 590, 52);
+      ki.fillStyle(0x1f4f8a).fillCircle(90, 590, 47);
+      ki.fillStyle(COLORS.ki).fillCircle(90, 590, 42);
+      ki.fillStyle(0x8fd0ff, 0.8).fillCircle(70, 570, 7);
+    }
 
     const off = session.net.on((msg) => this.onMessage(msg));
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, off);
@@ -184,8 +204,23 @@ export class BattleScene extends Phaser.Scene {
     this.drawHand(view);
 
     // Só o Ki que o jogador tem agora, no centro da bola.
-    this.hud.add(centerInk(txt(this, 0, 0, String(view.me.ki), 44, '#ffffff', { fontFamily: NUM_FONT, stroke: '#0d0a14', strokeThickness: 5 }), 90, 590));
-    this.hud.add(txt(this, 90, 670, `Compra ${view.me.drawCount}  ·  Descarte ${view.me.discardCount}`, 13, COLORS.textDim));
+    const kc = this.hasHudArt ? { x: HUD.ki.x + HUD.ki.w / 2, y: HUD.ki.y + HUD.ki.h / 2 } : { x: 90, y: 590 };
+    this.hud.add(centerInk(txt(this, 0, 0, String(view.me.ki), this.hasHudArt ? 56 : 44, '#ffffff', { fontFamily: NUM_FONT, stroke: '#0d0a14', strokeThickness: 5 }), kc.x, kc.y));
+    if (this.hasHudArt) {
+      // Contadores: monte de compra e descarte nas duas caixinhas abaixo do Ki.
+      for (const [r, n, label] of [[HUD.drawPile, view.me.drawCount, 'Compra'], [HUD.discardPile, view.me.discardCount, 'Descarte']] as const) {
+        // Mini carta (compra = verso, descarte = carta virada) + número.
+        const g = this.add.graphics();
+        const ix = r.x + 12, iy = r.y + r.h / 2;
+        g.fillStyle(0x0d0a14).fillRect(ix - 7, iy - 9, 14, 18);
+        g.fillStyle(label === 'Compra' ? 0x3a2a5a : 0xd8d2c8).fillRect(ix - 6, iy - 8, 12, 16);
+        g.fillStyle(label === 'Compra' ? 0xf0a830 : 0x8a8f9a).fillRect(ix - 3, iy - 4, 6, 8);
+        this.hud.add(g);
+        this.hud.add(centerInk(txt(this, 0, 0, String(n), 22, '#ffffff', { fontFamily: NUM_FONT, stroke: '#0d0a14', strokeThickness: 3 }), r.x + r.w / 2 + 8, r.y + r.h / 2));
+      }
+    } else {
+      this.hud.add(txt(this, 90, 670, `Compra ${view.me.drawCount}  ·  Descarte ${view.me.discardCount}`, 13, COLORS.textDim));
+    }
 
     const canAct = view.phase === 'planning' && !view.me.ready && !this.animating;
     this.readyBtn.setEnabled(canAct).setLabel(view.me.ready ? 'Pronto ✓' : 'Confirmar');
@@ -209,16 +244,25 @@ export class BattleScene extends Phaser.Scene {
       this.hpBars[side] = bar;
     }
     bar.max = max;
-    const x = CHAR_X[side] - 100;
+    const slot = this.hasHudArt ? (side === 0 ? HUD.hpLeft : HUD.hpRight) : null;
+    const x = slot ? slot.x : CHAR_X[side] - 100;
     const w = 200;
     const ratio = Phaser.Math.Clamp(hp / max, 0, 1);
     bar.g.clear();
-    bar.g.fillStyle(COLORS.outline).fillRect(x - 3, 437, w + 6, 24);
-    bar.g.fillStyle(0x3a1a22).fillRect(x, 440, w, 18);
-    bar.g.fillStyle(COLORS.hp).fillRect(x, 440, Math.round(w * ratio), 18);
-    bar.g.fillStyle(0xff8a8a).fillRect(x, 440, Math.round(w * ratio), 4);
+    if (slot) {
+      // Barra dentro da abertura da HUD (a moldura é da própria arte).
+      bar.g.fillStyle(0x3a1a22).fillRect(slot.x - 1, slot.y - 1, slot.w + 2, slot.h + 2);
+      bar.g.fillStyle(COLORS.hp).fillRect(slot.x - 1, slot.y - 1, Math.round((slot.w + 2) * ratio), slot.h + 2);
+      bar.g.fillStyle(0xff8a8a).fillRect(slot.x - 1, slot.y - 1, Math.round((slot.w + 2) * ratio), 4);
+    } else {
+      bar.g.fillStyle(COLORS.outline).fillRect(x - 3, 437, w + 6, 24);
+      bar.g.fillStyle(0x3a1a22).fillRect(x, 440, w, 18);
+      bar.g.fillStyle(COLORS.hp).fillRect(x, 440, Math.round(w * ratio), 18);
+      bar.g.fillStyle(0xff8a8a).fillRect(x, 440, Math.round(w * ratio), 4);
+    }
     bar.t.setText(`${Math.max(0, hp)}/${max}`);
-    centerInk(bar.t, CHAR_X[side], 449);
+    if (slot) centerInk(bar.t, slot.x + slot.w / 2, slot.y + slot.h / 2);
+    else centerInk(bar.t, CHAR_X[side], 449);
   }
 
   private drawSide(side: Side, f: FighterPublicView) {
@@ -227,11 +271,13 @@ export class BattleScene extends Phaser.Scene {
 
     if (f.block > 0) {
       const g = this.add.graphics();
-      const bx = x - 122;
-      g.fillStyle(COLORS.outline).fillCircle(bx, 449, 19);
-      g.fillStyle(COLORS.block).fillCircle(bx, 449, 16);
+      const slot = this.hasHudArt ? (side === 0 ? HUD.hpLeft : HUD.hpRight) : null;
+      const bx = slot ? slot.x - 2 : x - 122;
+      const by = slot ? slot.y + slot.h / 2 : 449;
+      g.fillStyle(COLORS.outline).fillCircle(bx, by, 19);
+      g.fillStyle(COLORS.block).fillCircle(bx, by, 16);
       this.hud.add(g);
-      this.hud.add(centerInk(txt(this, 0, 0, String(f.block), 20, '#ffffff', { fontFamily: NUM_FONT, stroke: '#0d0a14', strokeThickness: 3 }), bx, 449));
+      this.hud.add(centerInk(txt(this, 0, 0, String(f.block), 20, '#ffffff', { fontFamily: NUM_FONT, stroke: '#0d0a14', strokeThickness: 3 }), bx, by));
     }
 
     const chips: [string, string][] = [];
@@ -248,7 +294,9 @@ export class BattleScene extends Phaser.Scene {
 
     // Poderes ativos.
     f.powers.forEach((p, i) => {
-      const icon = makeMiniIcon(this, POWER_CARD[p], 0.42).setPosition(x + 128 + i * 34, 449);
+      const slot = this.hasHudArt ? (side === 0 ? HUD.hpLeft : HUD.hpRight) : null;
+      const px = slot ? (side === 0 ? slot.x + slot.w + 22 + i * 34 : slot.x - 22 - i * 34) : x + 128 + i * 34;
+      const icon = makeMiniIcon(this, POWER_CARD[p], 0.42).setPosition(px, slot ? slot.y + slot.h / 2 : 449);
       this.hud.add(icon);
     });
 
@@ -308,13 +356,17 @@ export class BattleScene extends Phaser.Scene {
   private drawHand(view: BattleView) {
     const cards = view.me.hand;
     const n = cards.length;
-    const spacing = Math.min(166, 860 / Math.max(1, n));
-    const y = 720 - CARD_H / 2 - 8;
+    // Com a HUD, as cartas ficam a 70% dentro da área escura do meio e ampliam ao passar o mouse.
+    const handScale = this.hasHudArt ? 0.7 : 1;
+    const area = this.hasHudArt ? { x0: HUD.ki.x + HUD.ki.w + 30, x1: HUD.readyBtn.x - 14 } : { x0: 190, x1: 1050 };
+    const spacing = Math.min(166 * handScale + 8, (area.x1 - area.x0 - CARD_W * handScale) / Math.max(1, n - 1));
+    const y = this.hasHudArt ? HUD.panel.y + 162 : 720 - CARD_H / 2 - 8;
+    const midX = (area.x0 + area.x1) / 2;
     const canAct = view.phase === 'planning' && !view.me.ready && !this.animating;
     cards.forEach((c, i) => {
       const def = getCard(c.id);
-      const x = 620 - ((n - 1) * spacing) / 2 + i * spacing;
-      const card = makeCard(this, c.id, { preview: previewCardDamage(view, c.id) }).setPosition(x, y);
+      const x = midX - ((n - 1) * spacing) / 2 + i * spacing;
+      const card = makeCard(this, c.id, { preview: previewCardDamage(view, c.id) }).setPosition(x, y).setScale(handScale);
       const locked = view.me.lockedTo !== null && c.id !== view.me.lockedTo;
       const cost = view.me.lockedTo === c.id ? 0 : def.cost;
       const blockedReason = view.me.stunned
@@ -338,7 +390,7 @@ export class BattleScene extends Phaser.Scene {
         // Amplia para ler, sem sair da tela.
         this.tweens.add({ targets: card, y: 720 - (CARD_H * 1.5) / 2 - 4, scale: 1.5, duration: 120 });
       });
-      card.on('pointerout', () => this.tweens.add({ targets: card, y, scale: 1, duration: 120 }));
+      card.on('pointerout', () => this.tweens.add({ targets: card, y, scale: handScale, duration: 120 }));
       card.on('pointerdown', () => {
         if (!playable) {
           if (canAct && blockedReason) this.toast(blockedReason);

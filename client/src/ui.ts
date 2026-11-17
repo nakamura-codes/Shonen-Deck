@@ -479,3 +479,51 @@ export function playFx(
     sprite.play({ key: `fx_${name}`, timeScale: opts.speed ?? 1 });
   });
 }
+
+/**
+ * Botão com a arte da HUD (assets/ui/btn_*.png), esticada para a área `r`.
+ * O meio da arte é vazado: por baixo vai a cor do botão, por cima o texto.
+ */
+export function makeArtButton(
+  scene: Phaser.Scene,
+  r: { x: number; y: number; w: number; h: number },
+  label: string,
+  onClick: () => void,
+  fill = 0x2f6fb0,
+  size = 20,
+): Button {
+  const c = scene.add.container(r.x + r.w / 2, r.y + r.h / 2) as Button;
+  const bg = scene.add.graphics();
+  const art = scene.add.image(0, 0, 'btn_normal').setDisplaySize(r.w, r.h);
+  const t = txt(scene, 0, -1, label, size, '#ffffff', { fontStyle: 'bold', stroke: '#0d0a14', strokeThickness: 4 });
+  let enabled = true;
+  let hover = false;
+  const draw = () => {
+    bg.clear();
+    const base = !enabled ? 0x2a2f38 : hover ? Phaser.Display.Color.ValueToColor(fill).lighten(15).color : fill;
+    bg.fillStyle(base).fillRect(-r.w / 2 + 6, -r.h / 2 + 6, r.w - 12, r.h - 12);
+    art.setTexture(!enabled ? 'btn_disabled' : hover ? 'btn_hover' : 'btn_normal').setDisplaySize(r.w, r.h);
+    t.setColor(enabled ? '#ffffff' : '#8a8f9a');
+  };
+  c.add([bg, art, t]);
+  c.setSize(r.w, r.h);
+  c.setInteractive({ useHandCursor: true });
+  c.on('pointerover', () => ((hover = true), draw()));
+  c.on('pointerout', () => ((hover = false), draw()));
+  c.on('pointerdown', () => {
+    if (!enabled) return;
+    sfx('click');
+    onClick();
+  });
+  c.setEnabled = (v: boolean) => {
+    enabled = v;
+    draw();
+    return c;
+  };
+  c.setLabel = (s: string) => {
+    t.setText(s);
+    return c;
+  };
+  draw();
+  return c;
+}
