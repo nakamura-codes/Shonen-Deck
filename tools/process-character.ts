@@ -461,7 +461,10 @@ export async function scouterOutfits() {
       const i = y * W + x;
       if (bg[i]) continue;
       const s = sum(i);
-      if (s < 60 ? distToBg(x, y, 4) : s <= 450 && distToBg(x, y, 9)) continue;
+      // A borda clara é cinza neutro; tons escuros coloridos (ex.: o roxo do uniforme) ficam.
+      const r = data[i * 3], g = data[i * 3 + 1], b = data[i * 3 + 2];
+      const neutral = Math.max(r, g, b) - Math.min(r, g, b) < 24;
+      if (s < 60 ? distToBg(x, y, 4) : s <= 450 && neutral && distToBg(x, y, 9)) continue;
       rgba[i * 4] = data[i * 3];
       rgba[i * 4 + 1] = data[i * 3 + 1];
       rgba[i * 4 + 2] = data[i * 3 + 2];
