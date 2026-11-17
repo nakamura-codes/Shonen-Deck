@@ -19,7 +19,7 @@ export const OUTFIT_ITEMS: OutfitItem[] = [
 ];
 
 /** Cartas que existem mas estão fora das roupas por enquanto. */
-export const RETIRED_CARDS = ['domain_expansion', 'final_flash'];
+export const RETIRED_CARDS = ['domain_expansion'];
 
 export const OUTFIT_SLOTS: OutfitSlot[] = ['head', 'body'];
 

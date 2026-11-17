@@ -10,9 +10,9 @@ export const FRAME_LAYOUT = {
       "h": 39
     },
     "art": {
-      "x": 48,
+      "x": 29,
       "y": 18,
-      "w": 78,
+      "w": 97,
       "h": 104
     },
     "name": {
@@ -42,9 +42,9 @@ export const FRAME_LAYOUT = {
       "h": 39
     },
     "art": {
-      "x": 46,
+      "x": 25,
       "y": 15,
-      "w": 85,
+      "w": 107,
       "h": 106
     },
     "name": {
@@ -74,9 +74,9 @@ export const FRAME_LAYOUT = {
       "h": 39
     },
     "art": {
-      "x": 46,
+      "x": 29,
       "y": 15,
-      "w": 80,
+      "w": 98,
       "h": 102
     },
     "name": {

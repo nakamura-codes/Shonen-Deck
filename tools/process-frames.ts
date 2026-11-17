@@ -89,11 +89,12 @@ function splitTop(data: Buffer, W: number, top: Rect): { cost: Rect; art: Rect }
       if (mag(x, y)) {
         cx0 = Math.min(cx0, x); cy0 = Math.min(cy0, y); cx1 = Math.max(cx1, x); cy1 = Math.max(cy1, y);
       }
-  // Janela: maior largura de magenta à direita do círculo.
+  // Janela: todo o magenta da faixa de cima, menos o canto do círculo do custo.
   let ax0 = W, ay0 = 1e9, ax1 = 0, ay1 = 0;
+  const circleCorner = (x: number, y: number) => x <= cx1 + 2 && y <= cy1 + 2;
   for (let y = top.y; y < top.y + top.h; y++)
-    for (let x = cx1 + 4; x < top.x + top.w; x++)
-      if (mag(x, y)) {
+    for (let x = top.x; x < top.x + top.w; x++)
+      if (mag(x, y) && !circleCorner(x, y)) {
         ax0 = Math.min(ax0, x); ay0 = Math.min(ay0, y); ax1 = Math.max(ax1, x); ay1 = Math.max(ay1, y);
       }
   return {

@@ -707,13 +707,6 @@ describe('Scouter', () => {
     expect(readyAndResolve(r.state).state.fighters[1].hp).toBe(60 - 26);
   });
 
-  it('Final Flash carrega 1 turno e causa 28', () => {
-    let s = newBattle();
-    giveHand(s, 0, ['final_flash']);
-    s = play(s, 0, 'final_flash');
-    const r = readyAndResolve(readyAndResolve(s).state);
-    expect(r.state.fighters[1].hp).toBe(32);
-  });
 });
 
 describe('Kunai e Saquê', () => {

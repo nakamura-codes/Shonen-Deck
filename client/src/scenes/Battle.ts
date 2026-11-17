@@ -331,7 +331,8 @@ export class BattleScene extends Phaser.Scene {
       card.setInteractive({ useHandCursor: playable });
       card.on('pointerover', () => {
         this.hand.bringToTop(card);
-        this.tweens.add({ targets: card, y: y - 40, scale: 1.08, duration: 120 });
+        // Amplia para ler, sem sair da tela.
+        this.tweens.add({ targets: card, y: 720 - (CARD_H * 1.5) / 2 - 4, scale: 1.5, duration: 120 });
       });
       card.on('pointerout', () => this.tweens.add({ targets: card, y, scale: 1, duration: 120 }));
       card.on('pointerdown', () => {

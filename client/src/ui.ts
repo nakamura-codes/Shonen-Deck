@@ -171,12 +171,13 @@ function makeFramedCard(scene: Phaser.Scene, cardId: string, opts: CardOpts) {
   c.add(scene.add.image(0, 0, `frame_${def.type}`));
 
   c.add(fitText(txt(scene, cx(L.name), cy(L.name), def.name, 14, '#ffffff', { fontStyle: 'bold' }), L.name.w - 8));
-  const body = txt(scene, cx(L.text), cy(L.text), def.text, 12, '#2a2030', {
+  // Descrição centralizada na caixa, com a maior fonte que couber.
+  const body = txt(scene, cx(L.text), cy(L.text), def.text, 14, '#1c1424', {
     align: 'center',
-    wordWrap: { width: L.text.w - 10 },
-    lineSpacing: -3,
+    wordWrap: { width: L.text.w - 8 },
+    lineSpacing: -4,
   });
-  if (body.height > L.text.h - 2) body.setFontSize(10);
+  for (let size = 14; size > 9 && body.height > L.text.h - 2; size--) body.setFontSize(size);
   c.add(body);
   const typeLabel = def.ethereal ? `${TYPE_LABEL[def.type]} · Etérea` : TYPE_LABEL[def.type];
   c.add(fitText(txt(scene, cx(L.type), cy(L.type), typeLabel, 10, def.ethereal ? '#e9b8ff' : '#f4ecd8'), L.type.w - 6));

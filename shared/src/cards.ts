@@ -88,12 +88,12 @@ export const CARDS: Record<string, CardDef> = {
   },
   red: {
     id: 'red', name: 'Red', cost: 3, type: 'attack', rarity: 'rare',
-    text: 'Causa 14 de dano. Com Blue no mesmo turno: Hollow Purple.',
+    text: 'Causa 14 de dano. Com Blue no turno: Hollow Purple.',
     effects: [{ kind: 'damage', amount: 14 }],
   },
   blue: {
     id: 'blue', name: 'Blue', cost: 2, type: 'skill', rarity: 'rare',
-    text: 'Aplica 1 de Fraco e 1 de Vulnerável. Com Red no mesmo turno: Hollow Purple.',
+    text: '1 de Fraco e 1 de Vulnerável. Com Red no turno: Hollow Purple.',
     effects: [{ kind: 'weak', amount: 1 }, { kind: 'vulnerable', amount: 1 }],
   },
   hollow_purple: {
@@ -106,17 +106,17 @@ export const CARDS: Record<string, CardDef> = {
   },
   infinity: {
     id: 'infinity', name: 'Infinity', cost: 2, type: 'skill', rarity: 'rare',
-    text: 'Desvia da próxima habilidade de dano do oponente neste turno.',
+    text: 'Desvia do próximo golpe do oponente neste turno.',
     effects: [{ kind: 'evade' }],
   },
   black_flash: {
     id: 'black_flash', name: 'Black Flash', cost: 2, type: 'attack', rarity: 'rare',
-    text: 'Causa 8 de dano. Se for a 1ª carta que você joga no turno, causa 20.',
+    text: 'Causa 8 de dano. Se for sua 1ª carta do turno, causa 20.',
     effects: [{ kind: 'damage', amount: 8, firstCardAmount: 20 }],
   },
   boogie_woogie: {
     id: 'boogie_woogie', name: 'Boogie Woogie', cost: 2, type: 'skill', rarity: 'rare',
-    text: 'Troca de lugar: a próxima habilidade de dano do oponente neste turno acerta ele mesmo.',
+    text: 'O próximo golpe do oponente neste turno acerta ele mesmo.',
     effects: [{ kind: 'reflect' }],
   },
   tecnica_reversa: {
@@ -132,7 +132,7 @@ export const CARDS: Record<string, CardDef> = {
   },
   haki_do_rei: {
     id: 'haki_do_rei', name: 'Haki do Rei', cost: 3, type: 'skill', rarity: 'rare',
-    text: 'Atordoa o oponente no próximo turno (não joga cartas). Ki máximo dele -2 por 2 turnos. Exaurir.',
+    text: 'Atordoa o oponente por 1 turno. Ki máximo dele -2 por 2 turnos. Exaurir.',
     effects: [{ kind: 'stun', turns: 1, kiPenalty: 2, kiPenaltyTurns: 2 }],
     exhaust: true,
   },
@@ -153,7 +153,7 @@ export const CARDS: Record<string, CardDef> = {
   },
   leitura_de_poder: {
     id: 'leitura_de_poder', name: 'Leitura de Poder', cost: 1, type: 'skill', rarity: 'common',
-    text: 'Vê as cartas do oponente neste turno. Você escolhe qual das suas cartas resolve primeiro.',
+    text: 'Vê as cartas do oponente. Você escolhe qual carta sua resolve primeiro.',
     effects: [{ kind: 'reveal' }, { kind: 'reorder' }],
   },
   galick_gun: {
@@ -164,16 +164,11 @@ export const CARDS: Record<string, CardDef> = {
   },
   big_bang_attack: {
     id: 'big_bang_attack', name: 'Big Bang Attack', cost: 5, type: 'attack', rarity: 'power',
-    text: 'Causa 30 de dano. Ignora Bloqueio e modificadores. Fica na mão até ser usada. Depois, o Galick Gun volta ao baralho.',
+    text: 'Causa 30 de dano. Ignora Bloqueio e modificadores. Fica na mão até ser usada.',
     effects: [{ kind: 'damage', amount: 30, pierce: true, fixed: true }, { kind: 'returnCard', cardId: 'galick_gun' }],
     exhaust: true,
     token: true,
     retain: true,
-  },
-  final_flash: {
-    id: 'final_flash', name: 'Final Flash', cost: 3, type: 'attack', rarity: 'rare',
-    text: 'Carrega 1 turno. Depois causa 28 de dano.',
-    effects: [{ kind: 'charge', turns: 1, damage: 28 }],
   },
   kunai: {
     id: 'kunai', name: 'Kunai', cost: 0, type: 'attack', rarity: 'common',
