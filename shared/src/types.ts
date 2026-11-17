@@ -3,7 +3,7 @@ export type PlayerIndex = 0 | 1;
 export type CardType = 'attack' | 'skill' | 'power';
 export type Rarity = 'common' | 'rare' | 'power';
 
-export type PowerId = 'bankai' | 'gearSecond' | 'domain';
+export type PowerId = 'bankai' | 'gearSecond' | 'domain' | 'hollow';
 
 /** Efeitos que uma carta pode ter. Os números ficam nos dados (cards.ts). */
 export type Effect =
@@ -22,6 +22,8 @@ export type Effect =
   | { kind: 'evade' }
   /** A próxima habilidade de dano do oponente neste turno volta nele. */
   | { kind: 'reflect' }
+  /** O próximo ataque deste turno causa +amount (por golpe). */
+  | { kind: 'nextAttackBonus'; amount: number }
   | { kind: 'heal'; amount: number }
   /** Oponente não joga cartas no próximo turno e tem Ki máximo reduzido por alguns turnos. */
   | { kind: 'stun'; turns: number; kiPenalty: number; kiPenaltyTurns: number };
@@ -120,6 +122,8 @@ export interface Fighter {
   kiPenaltyTurns: number;
   /** Ki máximo neste turno (5, ou menos com a penalidade do Haki do Rei). */
   kiCap: number;
+  /** Sonído: bônus para o próximo ataque deste turno. */
+  nextAttackBonus: number;
 }
 
 export interface BattleState {

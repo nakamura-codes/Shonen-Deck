@@ -73,6 +73,7 @@ function newFighter(setup: PlayerSetup, cards: CardInstance[]): Fighter {
     kiPenalty: 0,
     kiPenaltyTurns: 0,
     kiCap: RULES.maxKi,
+    nextAttackBonus: 0,
   };
 }
 
@@ -132,6 +133,7 @@ function startTurn(state: BattleState, events: BattleEvent[]) {
     const f = state.fighters[p];
     f.block = 0;
     f.evade = 0;
+    f.nextAttackBonus = 0;
     f.reflect = 0;
     // Haki do Rei: atordoamento e Ki máximo reduzido valem a partir deste turno.
     f.stunnedNow = f.stunned > 0;
@@ -152,6 +154,8 @@ function startTurn(state: BattleState, events: BattleEvent[]) {
       if (power === 'gearSecond') {
         f.ki = Math.min(f.kiCap, f.ki + 1);
         loseHp(f, p, 2, 'Gear Second', events);
+      } else if (power === 'hollow') {
+        loseHp(f, p, 2, 'Hollowficação', events);
       } else if (power === 'domain') {
         state.fighters[other(p)].weak += 1;
         events.push({ type: 'status', player: other(p), status: 'weak', amount: 1 });
@@ -317,6 +321,7 @@ function resolveCard(state: BattleState, player: PlayerIndex, q: QueuedCard, eve
   const repeats = q.doubled ? 2 : 1;
   const isFirstCard = f.queue[0]?.card.uid === q.card.uid;
   let caught: 'evade' | 'reflect' | null | undefined;
+  let bonus = 0;
   for (let r = 0; r < repeats; r++) {
     for (const e of def.effects) {
       switch (e.kind) {
@@ -324,10 +329,19 @@ function resolveCard(state: BattleState, player: PlayerIndex, q: QueuedCard, eve
           if (caught === undefined) caught = intercept(state, player, def.id, events);
           if (caught === 'evade') break;
           const target = caught === 'reflect' ? player : opp;
-          const amount = isFirstCard && e.firstCardAmount !== undefined ? e.firstCardAmount : e.amount;
+          let amount = isFirstCard && e.firstCardAmount !== undefined ? e.firstCardAmount : e.amount;
+          // Sonído: o bônus vale para todos os golpes do próximo ataque e é gasto nele.
+          if (r === 0 && f.nextAttackBonus > 0 && !e.fixed) {
+            bonus = f.nextAttackBonus;
+            f.nextAttackBonus = 0;
+          }
+          amount += bonus;
           for (let i = 0; i < (e.times ?? 1); i++) dealDamage(state, player, target, amount, !!e.pierce, def.id, events, !!e.fixed);
           break;
         }
+        case 'nextAttackBonus':
+          f.nextAttackBonus += e.amount;
+          break;
         case 'evade':
           f.evade += 1;
           break;

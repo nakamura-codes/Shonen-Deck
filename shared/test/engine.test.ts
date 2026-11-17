@@ -609,3 +609,45 @@ describe('novas habilidades', () => {
     expect(viewFor(s, 1).me.maxKi).toBe(5);
   });
 });
+
+describe('Máscara Hollow', () => {
+  it('Cero carrega 1 turno e causa 16', () => {
+    let s = newBattle();
+    giveHand(s, 0, ['cero']);
+    s = play(s, 0, 'cero');
+    let r = readyAndResolve(s);
+    expect(r.state.fighters[1].hp).toBe(60);
+    r = readyAndResolve(r.state);
+    expect(r.state.fighters[1].hp).toBe(44);
+  });
+
+  it('Hollowficação dá +2 de Força e custa 2 HP por turno', () => {
+    let s = newBattle();
+    giveHand(s, 0, ['hollowficacao']);
+    s = play(s, 0, 'hollowficacao');
+    let r = readyAndResolve(s);
+    expect(r.state.fighters[0].strength).toBe(2);
+    expect(r.state.fighters[0].hp).toBe(58);
+    s = r.state;
+    giveHand(s, 0, ['golpe_basico']);
+    s = play(s, 0, 'golpe_basico');
+    r = readyAndResolve(s);
+    expect(r.state.fighters[1].hp).toBe(60 - 8);
+    expect(r.state.fighters[0].hp).toBe(56);
+  });
+
+  it('Sonído dá 4 de Bloqueio e +3 só no próximo ataque, em todos os golpes dele', () => {
+    let s = newBattle();
+    giveHand(s, 0, ['sonido', 'ki_blast', 'golpe_basico']);
+    s = play(s, 0, 'sonido');
+    s = play(s, 0, 'ki_blast');
+    s = play(s, 0, 'golpe_basico');
+    giveHand(s, 1, ['golpe_basico']);
+    s = play(s, 1, 'golpe_basico');
+    const { state } = readyAndResolve(s);
+    // Ki Blast: (3+3)×2 = 12; Golpe Básico: 6 sem bônus.
+    expect(state.fighters[1].hp).toBe(60 - 12 - 6);
+    // Bloqueio de 4 absorve parte do golpe de 6.
+    expect(state.fighters[0].hp).toBe(58);
+  });
+});

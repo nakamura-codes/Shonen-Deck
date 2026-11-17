@@ -136,6 +136,21 @@ export const CARDS: Record<string, CardDef> = {
     effects: [{ kind: 'stun', turns: 1, kiPenalty: 2, kiPenaltyTurns: 2 }],
     exhaust: true,
   },
+  cero: {
+    id: 'cero', name: 'Cero', cost: 2, type: 'attack', rarity: 'rare',
+    text: 'Carrega 1 turno. Depois causa 16 de dano.',
+    effects: [{ kind: 'charge', turns: 1, damage: 16 }],
+  },
+  hollowficacao: {
+    id: 'hollowficacao', name: 'Hollowficação', cost: 2, type: 'power', rarity: 'power',
+    text: 'Poder: +2 de Força. No início de cada turno, perde 2 HP.',
+    effects: [{ kind: 'strength', amount: 2 }, { kind: 'power', power: 'hollow' }],
+  },
+  sonido: {
+    id: 'sonido', name: 'Sonído', cost: 0, type: 'skill', rarity: 'common',
+    text: 'Ganha 4 de Bloqueio. Seu próximo ataque neste turno causa +3.',
+    effects: [{ kind: 'block', amount: 4 }, { kind: 'nextAttackBonus', amount: 3 }],
+  },
   shunpo: {
     id: 'shunpo', name: 'Shunpo', cost: 0, type: 'skill', rarity: 'common',
     text: 'Ganha 5 de Bloqueio. +1 carta no próximo turno.',

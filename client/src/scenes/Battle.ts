@@ -30,7 +30,7 @@ const FEET_Y = 416;
 const CHAR_SCALE = 3;
 const BODY_Y = FEET_Y - 100;
 
-const POWER_CARD: Record<PowerId, string> = { bankai: 'bankai', gearSecond: 'gear_second', domain: 'domain_expansion' };
+const POWER_CARD: Record<PowerId, string> = { bankai: 'bankai', gearSecond: 'gear_second', domain: 'domain_expansion', hollow: 'hollowficacao' };
 
 export class BattleScene extends Phaser.Scene {
   private view: BattleView | null = null;
@@ -601,6 +601,18 @@ export class BattleScene extends Phaser.Scene {
     const depth = 30;
 
     switch (cardId) {
+      case 'cero': {
+        // Rajada vermelha (efeito genérico de energia).
+        const orb = this.add.circle(sx, y, 16, 0xffd0d0).setDepth(depth);
+        const beam = this.add.rectangle(sx, y, 0, 30, 0xe0203a).setOrigin(from === 0 ? 0 : 1, 0.5).setDepth(depth);
+        const core = this.add.rectangle(sx, y, 0, 10, 0xffffff).setOrigin(from === 0 ? 0 : 1, 0.5).setDepth(depth);
+        await tweenPromise(this, { targets: orb, scale: 1.8, duration: 180 });
+        await tweenPromise(this, { targets: [beam, core], width: dist, duration: 200, ease: 'Cubic.easeOut' });
+        this.cameras.main.shake(200, 0.01);
+        await tweenPromise(this, { targets: [beam, core, orb], alpha: 0, scaleY: 0.2, duration: 240 });
+        [orb, beam, core].forEach((o) => o.destroy());
+        return;
+      }
       case 'kamehameha': {
         const orb = this.add.circle(sx, y, 18, 0xbfefff).setDepth(depth);
         const beam = this.add.rectangle(sx, y, 0, 34, 0x4fb8ff).setOrigin(from === 0 ? 0 : 1, 0.5).setDepth(depth);

@@ -61,6 +61,9 @@ Para testar com embaralhamento e moeda fixos: `SEED=13 npm run dev`.
 - **Técnica Reversa** (2 Ki): recupera 10 HP. Exaurir.
 - **Black Flash** (2 Ki): 8 de dano, ou 20 se for a primeira carta que você joga no turno.
 - **Ki Blast** (1 Ki): 3 de dano duas vezes.
+- **Cero** (2 Ki): carrega 1 turno e depois causa 16 de dano.
+- **Hollowficação** (2 Ki, Poder): +2 de Força até o fim da partida; perde 2 HP no início de cada turno.
+- **Sonído** (0 Ki): 4 de Bloqueio, e o próximo ataque do turno causa +3 em cada golpe.
 - **Haki do Rei** (3 Ki):
   - o oponente fica atordoado no turno seguinte e não pode jogar cartas;
   - o Ki máximo dele cai 2 por 2 turnos;
