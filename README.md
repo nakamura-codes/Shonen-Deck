@@ -179,3 +179,19 @@ O botão 🔊 no topo da batalha liga e desliga o som, e a escolha fica salva no
 
 ### Efeitos visuais
 Os efeitos (impactos, cortes, raios, escudo, cura, auras, atordoamento, explosões) ficam em `art/raw/fx/`; `npm run art:fx` gera as tiras de quadros em `client/public/assets/fx/` e a lista `client/src/fx.generated.ts`. Qual efeito toca em cada golpe fica em `impactFx()` em `client/src/scenes/Battle.ts`. Licenças em `art/raw/fx/LICENCAS.md`.
+
+## Publicação (Cloudflare, plano grátis)
+
+O jogo inteiro roda num Worker chamado **shonendeck** (`wrangler.jsonc`):
+- o **site** (`client/dist`) é servido como Static Assets;
+- o **servidor das partidas** roda num Durable Object (`worker/index.ts`), com a mesma lógica do servidor Node (`server/src/hub.ts`).
+
+O Worker está ligado ao GitHub (Workers Builds). Cada push na branch de produção roda `npm install`, `npm run build` (via `build.command`) e `wrangler deploy`.
+
+Para testar localmente como na Cloudflare:
+
+```bash
+npx wrangler dev
+```
+
+Depois abra http://localhost:8787.

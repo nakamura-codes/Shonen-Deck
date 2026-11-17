@@ -1,5 +1,21 @@
-import { randomBytes, randomInt } from 'node:crypto';
-import type { WebSocket } from 'ws';
+/** Conexão de um jogador: só o que a lógica usa (serve para o 'ws' do Node e para a Cloudflare). */
+export interface Sock {
+  send(data: string): void;
+  readonly readyState: number;
+  readonly OPEN: number;
+}
+
+/** Aleatórios sem depender do Node (funciona no Node e no Cloudflare Workers). */
+function randomInt(max: number): number {
+  const a = new Uint32Array(1);
+  crypto.getRandomValues(a);
+  return a[0] % max;
+}
+function randomHex(bytes: number): string {
+  const a = new Uint8Array(bytes);
+  crypto.getRandomValues(a);
+  return [...a].map((b) => b.toString(16).padStart(2, '0')).join('');
+}
 import {
   RECONNECT_SECONDS,
   TURN_SECONDS,
@@ -20,20 +36,20 @@ import {
 import { botPlays } from './bot.ts';
 
 export interface Lobbyist {
-  ws: WebSocket;
+  ws: Sock;
   name: string;
   outfit: Outfit;
 }
 
 interface Seat {
-  ws: WebSocket | null;
+  ws: Sock | null;
   name: string;
   token: string;
   isBot: boolean;
-  reconnectTimer: NodeJS.Timeout | null;
+  reconnectTimer: ReturnType<typeof setTimeout> | null;
 }
 
-export function send(ws: WebSocket | null, msg: ServerMessage) {
+export function send(ws: Sock | null, msg: ServerMessage) {
   if (ws && ws.readyState === ws.OPEN) ws.send(JSON.stringify(msg));
 }
 
@@ -45,11 +61,13 @@ function animationBuffer(events: BattleEvent[]): number {
 }
 
 export class Match {
+  /** Seed fixa para testes (o servidor Node lê de SEED). */
+  static seed: number | undefined;
   state: BattleState;
   seats: [Seat, Seat];
   deadline = 0;
-  private turnTimer: NodeJS.Timeout | null = null;
-  private botTimer: NodeJS.Timeout | null = null;
+  private turnTimer: ReturnType<typeof setTimeout> | null = null;
+  private botTimer: ReturnType<typeof setTimeout> | null = null;
   finished = false;
 
   constructor(
@@ -60,12 +78,12 @@ export class Match {
     const botName = 'Bot Treinador';
     const botOutfit: Outfit = { head: 'venda_olhos', body: 'shihakusho' };
     // SEED fixa o embaralhamento e a moeda (útil para testes).
-    const seed = process.env.SEED ? Number(process.env.SEED) : randomInt(2 ** 31);
+    const seed = Match.seed !== undefined ? Match.seed : randomInt(2 ** 31);
     this.state = createBattle(seed, [
       { name: a.name, outfit: a.outfit },
       b === 'bot' ? { name: botName, outfit: botOutfit } : { name: b.name, outfit: b.outfit },
     ]);
-    const token = () => randomBytes(16).toString('hex');
+    const token = () => randomHex(16);
     this.seats = [
       { ws: a.ws, name: a.name, token: token(), isBot: false, reconnectTimer: null },
       b === 'bot'
@@ -88,7 +106,7 @@ export class Match {
     return this.deadline ? Math.max(0, this.deadline - Date.now()) : 0;
   }
 
-  seatOf(ws: WebSocket): PlayerIndex | null {
+  seatOf(ws: Sock): PlayerIndex | null {
     if (this.seats[0].ws === ws) return 0;
     if (this.seats[1].ws === ws) return 1;
     return null;
@@ -179,7 +197,7 @@ export class Match {
     seat.reconnectTimer = setTimeout(() => this.forfeit(p), RECONNECT_SECONDS * 1000);
   }
 
-  rejoin(p: PlayerIndex, ws: WebSocket) {
+  rejoin(p: PlayerIndex, ws: Sock) {
     const seat = this.seats[p];
     if (seat.reconnectTimer) clearTimeout(seat.reconnectTimer);
     seat.reconnectTimer = null;
@@ -225,7 +243,7 @@ export class Match {
 /** Fila de pareamento: os dois primeiros que entram jogam entre si. */
 export class Matchmaker {
   private waiting: Lobbyist | null = null;
-  private byWs = new Map<WebSocket, Match>();
+  private byWs = new Map<Sock, Match>();
   private byToken = new Map<string, { match: Match; seat: PlayerIndex }>();
 
   join(l: Lobbyist, vsBot: boolean) {
@@ -241,7 +259,7 @@ export class Matchmaker {
     }
   }
 
-  leaveQueue(ws: WebSocket) {
+  leaveQueue(ws: Sock) {
     if (this.waiting?.ws === ws) this.waiting = null;
   }
 
@@ -253,14 +271,14 @@ export class Matchmaker {
     m.start();
   }
 
-  matchOf(ws: WebSocket) {
+  matchOf(ws: Sock) {
     const m = this.byWs.get(ws);
     if (!m) return null;
     const seat = m.seatOf(ws);
     return seat === null ? null : { match: m, seat };
   }
 
-  rejoin(token: string, ws: WebSocket): boolean {
+  rejoin(token: string, ws: Sock): boolean {
     const entry = this.byToken.get(token);
     if (!entry || entry.match.finished) return false;
     const old = entry.match.seats[entry.seat].ws;
@@ -270,7 +288,7 @@ export class Matchmaker {
     return true;
   }
 
-  disconnect(ws: WebSocket) {
+  disconnect(ws: Sock) {
     this.leaveQueue(ws);
     const found = this.matchOf(ws);
     if (!found) return;

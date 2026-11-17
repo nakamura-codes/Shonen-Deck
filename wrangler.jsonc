@@ -1,0 +1,21 @@
+{
+  // Worker "shonendeck" (Workers ligado ao GitHub). Um push publica tudo.
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "shonendeck",
+  "main": "worker/index.ts",
+  "compatibility_date": "2025-09-01",
+  // Gera o site antes de publicar (client/dist).
+  "build": { "command": "npm run build" },
+  "assets": {
+    "directory": "client/dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/ws"]
+  },
+  "durable_objects": {
+    "bindings": [{ "name": "GAME", "class_name": "GameServer" }]
+  },
+  // Plano grátis: Durable Objects precisam usar o armazenamento SQLite.
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["GameServer"] }],
+  "observability": { "enabled": true }
+}
