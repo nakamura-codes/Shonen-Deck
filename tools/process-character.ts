@@ -307,6 +307,7 @@ async function main() {
   await scouterLayer();
   await scouterOutfits();
   await scouterFromReady();
+  await soloIcons();
 }
 
 main().catch((e) => {
@@ -604,4 +605,32 @@ export async function scouterFromReady() {
   }
   // Ícone do inventário: cabeça com o Scouter, recortada da arte pronta.
   await iconFromFigure(await cutoutOnBlack('scouter_roupas.png'), 'head', 'scouter');
+}
+
+/**
+ * Ícones avulsos de roupa (art/raw/character/icones/<id>.png, fundo de cor lisa): o fundo vira
+ * transparente e o ícone é reduzido para 56 px de largura. Substituem os ícones recortados.
+ */
+export async function soloIcons() {
+  const dir = join(RAW, 'icones');
+  const { readdirSync, existsSync } = await import('node:fs');
+  if (!existsSync(dir)) return;
+  for (const f of readdirSync(dir).filter((n) => n.endsWith('.png'))) {
+    const id = f.replace(/\.png$/, '');
+    const { data, info } = await sharp(join(dir, f)).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+    const bg = [data[0], data[1], data[2]];
+    for (let i = 0; i < info.width * info.height; i++) {
+      const d = Math.abs(data[i * 4] - bg[0]) + Math.abs(data[i * 4 + 1] - bg[1]) + Math.abs(data[i * 4 + 2] - bg[2]);
+      if (d < 70) data[i * 4 + 3] = 0;
+    }
+    const trimmed = await sharp(data, { raw: { width: info.width, height: info.height, channels: 4 } }).trim({ threshold: 1 }).png().toBuffer();
+    const meta = await sharp(trimmed).metadata();
+    const tw = 56;
+    const th = Math.round(((meta.height ?? 1) / (meta.width ?? 1)) * tw);
+    const out = await sharp(trimmed).resize(tw, th, { kernel: 'lanczos3' }).png({ palette: true, colors: 32, dither: 0 }).toBuffer();
+    const r = await sharp(out).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+    for (let i = 3; i < r.data.length; i += 4) r.data[i] = r.data[i] > 127 ? 255 : 0;
+    await sharp(r.data, { raw: { width: r.info.width, height: r.info.height, channels: 4 } }).png().toFile(join(OUT_ITEMS, `${id}.png`));
+    console.log(`  ✓ item ${id} (ícone avulso)`);
+  }
 }
