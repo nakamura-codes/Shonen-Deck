@@ -67,10 +67,11 @@ Para testar com embaralhamento e moeda fixos: `SEED=13 npm run dev`.
 - **Sonído** (0 Ki): 4 de Bloqueio, e o próximo ataque do turno causa +3 em cada golpe.
 - **Leitura de Poder** (1 Ki, Scouter): vê as cartas do oponente neste turno, e você pode clicar numa carta da sua jogada para ela resolver primeiro.
 - **Ki Blast** também vem do Scouter.
-- **Final Flash** (3 Ki, Scouter): carrega 1 turno e depois causa 28 de dano.
+- **Galick Gun** (5 Ki, Scouter): carrega. No próximo turno vira **Big Bang Attack** na sua mão.
+- **Big Bang Attack** (5 Ki): 30 de dano, ignora Bloqueio e modificadores. Fica na mão de um turno para o outro até ser usado. Depois de usado, some e o Galick Gun volta ao baralho.
 - **Kunai** (0 Ki, Uniforme Ninja): 4 de dano.
 - **Modo Sábio** (2 Ki, Uniforme Ninja): nos 2 turnos seguintes, +1 de Força e +1 carta comprada em cada turno.
-- **Saquê** (1 Ki, Colete do Pirata): recupera 6 HP. Exaurir.
+- **Sake** (1 Ki, Colete do Pirata): recupera 6 HP. Exaurir.
 - **Haki do Rei** (3 Ki):
   - o oponente fica atordoado no turno seguinte e não pode jogar cartas;
   - o Ki máximo dele cai 2 por 2 turnos;

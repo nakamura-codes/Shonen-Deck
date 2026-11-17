@@ -156,10 +156,19 @@ export const CARDS: Record<string, CardDef> = {
     text: 'Vê as cartas do oponente neste turno. Você escolhe qual das suas cartas resolve primeiro.',
     effects: [{ kind: 'reveal' }, { kind: 'reorder' }],
   },
+  galick_gun: {
+    id: 'galick_gun', name: 'Galick Gun', cost: 5, type: 'attack', rarity: 'rare',
+    text: 'Carrega: no próximo turno vira Big Bang Attack na sua mão.',
+    effects: [{ kind: 'evolve', into: 'big_bang_attack' }],
+    exhaust: true,
+  },
   big_bang_attack: {
-    id: 'big_bang_attack', name: 'Big Bang Attack', cost: 2, type: 'attack', rarity: 'rare',
-    text: 'Causa 12 de dano. +6 se o oponente estiver com Bloqueio.',
-    effects: [{ kind: 'damage', amount: 12, bonusVsBlock: 6 }],
+    id: 'big_bang_attack', name: 'Big Bang Attack', cost: 5, type: 'attack', rarity: 'power',
+    text: 'Causa 30 de dano. Ignora Bloqueio e modificadores. Fica na mão até ser usada. Depois, o Galick Gun volta ao baralho.',
+    effects: [{ kind: 'damage', amount: 30, pierce: true, fixed: true }, { kind: 'returnCard', cardId: 'galick_gun' }],
+    exhaust: true,
+    token: true,
+    retain: true,
   },
   final_flash: {
     id: 'final_flash', name: 'Final Flash', cost: 3, type: 'attack', rarity: 'rare',
@@ -171,8 +180,8 @@ export const CARDS: Record<string, CardDef> = {
     text: 'Causa 4 de dano.',
     effects: [{ kind: 'damage', amount: 4 }],
   },
-  saque: {
-    id: 'saque', name: 'Saquê', cost: 1, type: 'skill', rarity: 'common',
+  sake: {
+    id: 'sake', name: 'Sake', cost: 1, type: 'skill', rarity: 'common',
     text: 'Recupera 6 HP. Exaurir.',
     effects: [{ kind: 'heal', amount: 6 }],
     exhaust: true,

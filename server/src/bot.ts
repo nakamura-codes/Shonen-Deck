@@ -60,6 +60,7 @@ export function botPlays(state: BattleState, p: PlayerIndex): BattleState {
         if (e.kind === 'reflect') score += opp.charges.length > 0 ? 16 : 6;
         if (e.kind === 'heal') score += f.hp <= f.maxHp - e.amount ? e.amount : 0;
         if (e.kind === 'stun') score += 15;
+        if (e.kind === 'evolve') score += 25;
       }
       score = score / Math.max(1, def.cost) + Math.random() * 2;
       if (!best || score > best.score) best = { uid: c.uid, score };

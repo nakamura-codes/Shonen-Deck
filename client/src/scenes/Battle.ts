@@ -650,6 +650,7 @@ export class BattleScene extends Phaser.Scene {
         [orb, beam, core].forEach((o) => o.destroy());
         return;
       }
+      case 'big_bang_attack':
       case 'kamehameha': {
         const orb = this.add.circle(sx, y, 18, 0xbfefff).setDepth(depth);
         const beam = this.add.rectangle(sx, y, 0, 34, 0x4fb8ff).setOrigin(from === 0 ? 0 : 1, 0.5).setDepth(depth);

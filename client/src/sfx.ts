@@ -205,6 +205,7 @@ export function attackSound(cardId: string): SoundName {
       return 'beam';
     case 'genki_dama':
     case 'hollow_purple':
+    case 'big_bang_attack':
       return 'explosion';
     case 'getsuga':
     case 'kunai':

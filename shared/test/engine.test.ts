@@ -707,16 +707,6 @@ describe('Scouter', () => {
     expect(readyAndResolve(r.state).state.fighters[1].hp).toBe(60 - 26);
   });
 
-  it('Big Bang Attack ganha +6 contra Bloqueio', () => {
-    let s = newBattle();
-    giveHand(s, 0, ['big_bang_attack']);
-    giveHand(s, 1, ['defesa_basica']);
-    s = play(s, 0, 'big_bang_attack');
-    s = play(s, 1, 'defesa_basica');
-    // 12 + 6 = 18, 5 bloqueados.
-    expect(readyAndResolve(s).state.fighters[1].hp).toBe(60 - 13);
-  });
-
   it('Final Flash carrega 1 turno e causa 28', () => {
     let s = newBattle();
     giveHand(s, 0, ['final_flash']);
@@ -730,14 +720,14 @@ describe('Kunai e Saquê', () => {
   it('Kunai custa 0 e causa 4; Saquê cura 6 e é exaurido', () => {
     let s = newBattle();
     s.fighters[0].hp = 50;
-    giveHand(s, 0, ['kunai', 'saque']);
+    giveHand(s, 0, ['kunai', 'sake']);
     s = play(s, 0, 'kunai');
     expect(s.fighters[0].ki).toBe(3);
-    s = play(s, 0, 'saque');
+    s = play(s, 0, 'sake');
     const { state } = readyAndResolve(s);
     expect(state.fighters[1].hp).toBe(56);
     expect(state.fighters[0].hp).toBe(56);
-    expect(state.fighters[0].exhausted.map((c) => c.id)).toContain('saque');
+    expect(state.fighters[0].exhausted.map((c) => c.id)).toContain('sake');
   });
 });
 
@@ -760,5 +750,34 @@ describe('Modo Sábio', () => {
     // Turno 4: acabou
     expect(s.fighters[0].tempStrength).toBe(0);
     expect(s.fighters[0].hand).toHaveLength(RULES.drawPerTurn);
+  });
+});
+
+describe('Galick Gun → Big Bang Attack', () => {
+  it('Galick Gun custa 5, vira Big Bang Attack no próximo turno, que fica na mão até ser usado', () => {
+    let s = newBattle();
+    s.fighters[0].ki = 5;
+    giveHand(s, 0, ['galick_gun']);
+    s = play(s, 0, 'galick_gun');
+    expect(s.fighters[0].ki).toBe(0);
+    let r = readyAndResolve(s);
+    expect(r.state.fighters[1].hp).toBe(60); // só carregou
+    s = r.state;
+    const bba = () => s.fighters[0].hand.filter((c) => c.id === 'big_bang_attack');
+    expect(bba()).toHaveLength(1);
+    // Turno 2: com 3 de Ki não dá para usar; ele fica na mão para o turno 3.
+    s = readyAndResolve(s).state;
+    expect(bba()).toHaveLength(1);
+    expect(s.fighters[0].ki).toBe(5);
+    // Turno 3: usa com 5 de Ki → 30 de dano ignorando Bloqueio.
+    giveHand(s, 1, ['defesa_basica']);
+    s = play(s, 1, 'defesa_basica');
+    s = play(s, 0, 'big_bang_attack');
+    r = readyAndResolve(s);
+    expect(r.state.fighters[1].hp).toBe(30);
+    // Some, e o Galick Gun volta ao baralho de compra.
+    const f = r.state.fighters[0];
+    expect([...f.hand, ...f.drawPile, ...f.discard].some((c) => c.id === 'big_bang_attack')).toBe(false);
+    expect(f.drawPile.some((c) => c.id === 'galick_gun') || f.hand.some((c) => c.id === 'galick_gun')).toBe(true);
   });
 });

@@ -14,12 +14,12 @@ export const OUTFIT_ITEMS: OutfitItem[] = [
   { id: 'shihakusho', slot: 'body', name: 'Shihakusho Negro', cards: ['bankai', 'getsuga', 'shunpo'] },
   { id: 'uniforme_jujutsu', slot: 'body', name: 'Uniforme Jujutsu', cards: ['black_flash', 'boogie_woogie', 'tecnica_reversa'] },
   { id: 'uniforme_naruto', slot: 'body', name: 'Uniforme Ninja', cards: ['kage_bunshin', 'kunai', 'modo_sabio'] },
-  { id: 'roupa_luffy', slot: 'body', name: 'Colete do Pirata', cards: ['gear_second', 'haki', 'saque'] },
-  { id: 'scouter', slot: 'head', name: 'Scouter', cards: ['leitura_de_poder', 'ki_blast', 'final_flash'] },
+  { id: 'roupa_luffy', slot: 'body', name: 'Colete do Pirata', cards: ['gear_second', 'haki', 'sake'] },
+  { id: 'scouter', slot: 'head', name: 'Scouter', cards: ['leitura_de_poder', 'ki_blast', 'galick_gun'] },
 ];
 
 /** Cartas que existem mas estão fora das roupas por enquanto. */
-export const RETIRED_CARDS = ['domain_expansion', 'big_bang_attack'];
+export const RETIRED_CARDS = ['domain_expansion', 'final_flash'];
 
 export const OUTFIT_SLOTS: OutfitSlot[] = ['head', 'body'];
 

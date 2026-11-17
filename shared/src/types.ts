@@ -24,6 +24,10 @@ export type Effect =
   | { kind: 'reflect' }
   /** Permite mudar a ordem da própria jogada (escolher qual carta resolve primeiro). */
   | { kind: 'reorder' }
+  /** No próximo turno, esta carta vira outra na sua mão (ex.: Galick Gun → Big Bang Attack). */
+  | { kind: 'evolve'; into: string }
+  /** Depois de usada, coloca esta carta de volta no baralho de compra. */
+  | { kind: 'returnCard'; cardId: string }
   /** Por alguns turnos: +Força e +cartas compradas no início de cada turno. */
   | { kind: 'sage'; turns: number; strength: number; draw: number }
   /** O próximo ataque deste turno causa +amount (por golpe). */
@@ -46,6 +50,8 @@ export interface CardDef {
   token?: boolean;
   /** Se ainda estiver na mão no fim do turno, some. */
   ethereal?: boolean;
+  /** Fica na mão de um turno para o outro, até ser usada. */
+  retain?: boolean;
 }
 
 export interface ComboDef {
@@ -132,6 +138,8 @@ export interface Fighter {
   sageTurns: number;
   sageStrength: number;
   sageDraw: number;
+  /** Cartas que chegam na mão no próximo turno (evolução). */
+  pendingCards: string[];
 }
 
 export interface BattleState {

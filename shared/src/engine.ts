@@ -77,6 +77,7 @@ function newFighter(setup: PlayerSetup, cards: CardInstance[]): Fighter {
     sageTurns: 0,
     sageStrength: 0,
     sageDraw: 0,
+    pendingCards: [],
   };
 }
 
@@ -176,6 +177,9 @@ function startTurn(state: BattleState, events: BattleEvent[]) {
     f.decayVulnerable = f.vulnerable > 0;
     draw(state, f, RULES.drawPerTurn + f.bonusDraw);
     f.bonusDraw = 0;
+    // Evolução (ex.: Galick Gun → Big Bang Attack): chega na mão agora.
+    for (const id of f.pendingCards) f.hand.push({ uid: `t${state.uidCounter++}`, id });
+    f.pendingCards = [];
     // Carta criada por combo no turno anterior: chega agora e trava o turno nela.
     if (f.pendingCombo) {
       f.hand.push({ uid: `t${state.uidCounter++}`, id: f.pendingCombo });
@@ -374,6 +378,18 @@ function resolveCard(state: BattleState, player: PlayerIndex, q: QueuedCard, eve
           f.sageDraw = e.draw;
           events.push({ type: 'status', player, status: 'strength', amount: e.strength, cardId: def.id });
           break;
+        case 'evolve':
+          f.pendingCards.push(e.into);
+          events.push({ type: 'chargeStart', player, cardId: def.id, turns: 1 });
+          break;
+        case 'returnCard': {
+          // Volta para uma posição aleatória do baralho de compra.
+          const [r, nextRng] = nextRandom(state.rngState);
+          state.rngState = nextRng;
+          const at = Math.floor(r * (f.drawPile.length + 1));
+          f.drawPile.splice(at, 0, { uid: `t${state.uidCounter++}`, id: e.cardId });
+          break;
+        }
         case 'nextAttackBonus':
           f.nextAttackBonus += e.amount;
           break;
@@ -544,8 +560,14 @@ export function resolveTurn(state: BattleState): { state: BattleState; events: B
 
   // Fim do turno.
   for (const f of next.fighters) {
-    for (const c of f.hand) (getCard(c.id).ethereal ? f.exhausted : f.discard).push(c);
-    f.hand = [];
+    // Cartas retidas (Big Bang Attack) ficam na mão; etéreas somem; o resto vai para o descarte.
+    const kept: CardInstance[] = [];
+    for (const c of f.hand) {
+      const d = getCard(c.id);
+      if (d.retain) kept.push(c);
+      else (d.ethereal ? f.exhausted : f.discard).push(c);
+    }
+    f.hand = kept;
     f.queue = [];
     if (f.decayWeak) f.weak = Math.max(0, f.weak - 1);
     if (f.decayVulnerable) f.vulnerable = Math.max(0, f.vulnerable - 1);
