@@ -196,16 +196,16 @@ function makeFramedCard(scene: Phaser.Scene, cardId: string, opts: CardOpts) {
     c.add(placeholderIcon(scene, def).setPosition(cx(L.art), cy(L.art)).setScale(0.9));
   }
 
-  // Custo de Ki (por cima da arte, dentro do círculo da moldura).
-  const orb = scene.add.graphics();
-  // Cobre todo o círculo da moldura (inclusive a borda) com o azul do Ki.
-  const r = Math.max(L.cost.w, L.cost.h) / 2 + 3;
-  orb.fillStyle(0x1f4f8a).fillCircle(cx(L.cost), cy(L.cost), r);
-  orb.fillStyle(COLORS.ki).fillCircle(cx(L.cost), cy(L.cost), r - 2);
-  orb.fillStyle(0x8fd0ff, 0.9).fillCircle(cx(L.cost) - r * 0.4, cy(L.cost) - r * 0.45, 2.5);
-  c.add(orb);
-
   c.add(scene.add.image(0, 0, `frame_${def.type}`));
+
+  // Custo de Ki: desenhado POR CIMA da moldura, um pouco maior que o buraco, para cobrir a borda
+  // que sobra da redução da imagem. O contorno escuro fino encosta no anel da moldura.
+  const orb = scene.add.graphics();
+  const r = Math.max(L.cost.w, L.cost.h) / 2 + 1.5;
+  orb.fillStyle(COLORS.outline).fillCircle(cx(L.cost), cy(L.cost), r + 1);
+  orb.fillStyle(COLORS.ki).fillCircle(cx(L.cost), cy(L.cost), r);
+  orb.fillStyle(0x8fd0ff, 0.9).fillCircle(cx(L.cost) - r * 0.45, cy(L.cost) - r * 0.45, 2.5);
+  c.add(orb);
 
   c.add(fitText(txt(scene, cx(L.name), cy(L.name), def.name, 14, '#ffffff', { fontStyle: 'bold' }), L.name.w - 8));
   // Descrição centralizada na caixa, com a maior fonte que couber.
