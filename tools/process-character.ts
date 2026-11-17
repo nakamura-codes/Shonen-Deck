@@ -307,6 +307,7 @@ async function main() {
   await scouterLayer();
   await scouterOutfits();
   await scouterFromReady();
+  await scouterSheet();
   await soloIcons();
 }
 
@@ -632,5 +633,58 @@ export async function soloIcons() {
     for (let i = 3; i < r.data.length; i += 4) r.data[i] = r.data[i] > 127 ? 255 : 0;
     await sharp(r.data, { raw: { width: r.info.width, height: r.info.height, channels: 4 } }).png().toFile(join(OUT_ITEMS, `${id}.png`));
     console.log(`  ✓ item ${id} (ícone avulso)`);
+  }
+}
+
+/**
+ * Scouter novo (art/raw/character/scouter_novo.png): as 6 figuras prontas em fundo verde,
+ * na ordem sem corpo, Gi, Shihakusho, Uniforme Jujutsu, Uniforme Ninja, Colete do Pirata.
+ * O verde é removido só a partir das bordas (as lentes do aparelho também são verdes, mas ficam
+ * fechadas pelo contorno). Substitui as figuras do Scouter montadas antes.
+ */
+export async function scouterSheet() {
+  const file = join(RAW, 'scouter_novo.png');
+  const { existsSync } = await import('node:fs');
+  if (!existsSync(file)) return;
+  const { data, info } = await sharp(file).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+  const W = info.width, H = info.height;
+  const bg = [data[0], data[1], data[2]];
+  const near = (i: number, t: number) => Math.abs(data[i * 4] - bg[0]) + Math.abs(data[i * 4 + 1] - bg[1]) + Math.abs(data[i * 4 + 2] - bg[2]) < t;
+  const greenish = (i: number) => data[i * 4 + 1] > 140 && data[i * 4 + 1] > data[i * 4] + 50 && data[i * 4 + 1] > data[i * 4 + 2] + 50;
+  const seen = new Uint8Array(W * H);
+  const st: number[] = [];
+  for (let x = 0; x < W; x++) st.push(x, (H - 1) * W + x);
+  for (let y = 0; y < H; y++) st.push(y * W, y * W + W - 1);
+  while (st.length) {
+    const i = st.pop()!;
+    if (seen[i] || !near(i, 150)) continue;
+    seen[i] = 1;
+    data[i * 4 + 3] = 0;
+    const x = i % W, y = (i - x) / W;
+    if (x > 0) st.push(i - 1);
+    if (x < W - 1) st.push(i + 1);
+    if (y > 0) st.push(i - W);
+    if (y < H - 1) st.push(i + W);
+  }
+  // Borda esverdeada que sobra encostada no fundo.
+  for (let pass = 0; pass < 3; pass++) {
+    const kill: number[] = [];
+    for (let i = 0; i < W * H; i++) {
+      if (!data[i * 4 + 3] || !greenish(i)) continue;
+      const x = i % W;
+      if ([x > 0 ? i - 1 : i, x < W - 1 ? i + 1 : i, i - W, i + W].some((j) => j >= 0 && j < W * H && data[j * 4 + 3] === 0)) kill.push(i);
+    }
+    for (const i of kill) data[i * 4 + 3] = 0;
+  }
+  const img: Img = { w: W, h: H, data };
+  const figs = findFigures(img).flat().sort((a, b) => a.x0 - b.x0);
+  if (figs.length !== 6) throw new Error(`scouter_novo: esperava 6 figuras, achei ${figs.length}`);
+  const bodies = ['none', ...BODIES, NARUTO, LUFFY];
+  // O aparelho não passa do topo da cabeça: a figura sem corpo dá a altura de referência.
+  const ref = figs[0].y1 - figs[0].y0;
+  for (let k = 0; k < 6; k++) {
+    const buf = await normalize(img, figs[k], BODY_H / ref);
+    await save(buf, CANVAS_W, CANVAS_H, join(OUT_FIG, `fig_scouter_${bodies[k]}.png`));
+    console.log(`  ✓ fig_scouter_${bodies[k]} (scouter novo)`);
   }
 }
