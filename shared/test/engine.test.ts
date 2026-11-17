@@ -725,3 +725,18 @@ describe('Scouter', () => {
     expect(r.state.fighters[1].hp).toBe(32);
   });
 });
+
+describe('Kunai e Saquê', () => {
+  it('Kunai custa 0 e causa 4; Saquê cura 6 e é exaurido', () => {
+    let s = newBattle();
+    s.fighters[0].hp = 50;
+    giveHand(s, 0, ['kunai', 'saque']);
+    s = play(s, 0, 'kunai');
+    expect(s.fighters[0].ki).toBe(3);
+    s = play(s, 0, 'saque');
+    const { state } = readyAndResolve(s);
+    expect(state.fighters[1].hp).toBe(56);
+    expect(state.fighters[0].hp).toBe(56);
+    expect(state.fighters[0].exhausted.map((c) => c.id)).toContain('saque');
+  });
+});

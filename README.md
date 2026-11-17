@@ -68,6 +68,8 @@ Para testar com embaralhamento e moeda fixos: `SEED=13 npm run dev`.
 - **Leitura de Poder** (1 Ki, Scouter): vê as cartas do oponente neste turno, e você pode clicar numa carta da sua jogada para ela resolver primeiro.
 - **Ki Blast** também vem do Scouter.
 - **Final Flash** (3 Ki, Scouter): carrega 1 turno e depois causa 28 de dano.
+- **Kunai** (0 Ki, Uniforme Ninja): 4 de dano.
+- **Saquê** (1 Ki, Colete do Pirata): recupera 6 HP. Exaurir.
 - **Haki do Rei** (3 Ki):
   - o oponente fica atordoado no turno seguinte e não pode jogar cartas;
   - o Ki máximo dele cai 2 por 2 turnos;

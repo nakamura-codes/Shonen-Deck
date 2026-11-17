@@ -166,6 +166,17 @@ export const CARDS: Record<string, CardDef> = {
     text: 'Carrega 1 turno. Depois causa 28 de dano.',
     effects: [{ kind: 'charge', turns: 1, damage: 28 }],
   },
+  kunai: {
+    id: 'kunai', name: 'Kunai', cost: 0, type: 'attack', rarity: 'common',
+    text: 'Causa 4 de dano.',
+    effects: [{ kind: 'damage', amount: 4 }],
+  },
+  saque: {
+    id: 'saque', name: 'Saquê', cost: 1, type: 'skill', rarity: 'common',
+    text: 'Recupera 6 HP. Exaurir.',
+    effects: [{ kind: 'heal', amount: 6 }],
+    exhaust: true,
+  },
   shunpo: {
     id: 'shunpo', name: 'Shunpo', cost: 0, type: 'skill', rarity: 'common',
     text: 'Ganha 5 de Bloqueio. +1 carta no próximo turno.',

@@ -711,6 +711,15 @@ export class BattleScene extends Phaser.Scene {
         if (c) await tweenPromise(this, { targets: c, x: CHAR_X[from], duration: 160 });
         return;
       }
+      case 'kunai': {
+        // Lâmina arremessada girando.
+        const blade = this.add.triangle(sx, y, 0, 0, 26, 5, 0, 10, 0xb8c0d0).setDepth(depth).setStrokeStyle(2, 0x1a1420);
+        blade.setScale(dir, 1);
+        this.tweens.add({ targets: blade, angle: 720 * dir, duration: 260 });
+        await tweenPromise(this, { targets: blade, x: tx, duration: 260, ease: 'Quad.easeIn' });
+        blade.destroy();
+        return;
+      }
       case 'ki_blast': {
         const orb = this.add.circle(sx, y + Phaser.Math.Between(-20, 20), 10, 0x8fe0ff).setDepth(depth).setStrokeStyle(3, 0xffffff);
         await tweenPromise(this, { targets: orb, x: tx, duration: fast ? 140 : 220, ease: 'Quad.easeIn' });
