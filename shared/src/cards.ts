@@ -177,6 +177,11 @@ export const CARDS: Record<string, CardDef> = {
     effects: [{ kind: 'heal', amount: 6 }],
     exhaust: true,
   },
+  modo_sabio: {
+    id: 'modo_sabio', name: 'Modo Sábio', cost: 2, type: 'skill', rarity: 'rare',
+    text: 'Nos próximos 2 turnos: +1 de Força e +1 carta comprada.',
+    effects: [{ kind: 'sage', turns: 2, strength: 1, draw: 1 }],
+  },
   shunpo: {
     id: 'shunpo', name: 'Shunpo', cost: 0, type: 'skill', rarity: 'common',
     text: 'Ganha 5 de Bloqueio. +1 carta no próximo turno.',

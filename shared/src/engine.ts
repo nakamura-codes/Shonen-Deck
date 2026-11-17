@@ -74,6 +74,9 @@ function newFighter(setup: PlayerSetup, cards: CardInstance[]): Fighter {
     kiPenaltyTurns: 0,
     kiCap: RULES.maxKi,
     nextAttackBonus: 0,
+    sageTurns: 0,
+    sageStrength: 0,
+    sageDraw: 0,
   };
 }
 
@@ -163,6 +166,12 @@ function startTurn(state: BattleState, events: BattleEvent[]) {
     }
   }
   for (const f of state.fighters) {
+    // Modo Sábio: bônus no início de cada turno enquanto durar (Força dura só o turno).
+    if (f.sageTurns > 0) {
+      f.tempStrength += f.sageStrength;
+      f.bonusDraw += f.sageDraw;
+      f.sageTurns -= 1;
+    }
     f.decayWeak = f.weak > 0;
     f.decayVulnerable = f.vulnerable > 0;
     draw(state, f, RULES.drawPerTurn + f.bonusDraw);
@@ -359,6 +368,12 @@ function resolveCard(state: BattleState, player: PlayerIndex, q: QueuedCard, eve
           for (let i = 0; i < (e.times ?? 1); i++) dealDamage(state, player, target, amount, !!e.pierce, def.id, events, !!e.fixed);
           break;
         }
+        case 'sage':
+          f.sageTurns = e.turns;
+          f.sageStrength = e.strength;
+          f.sageDraw = e.draw;
+          events.push({ type: 'status', player, status: 'strength', amount: e.strength, cardId: def.id });
+          break;
         case 'nextAttackBonus':
           f.nextAttackBonus += e.amount;
           break;
@@ -568,6 +583,7 @@ function publicView(f: Fighter): FighterPublicView {
     maxKi: f.kiCap,
     lockedTo: f.lockedTo,
     stunned: f.stunnedNow,
+    sageTurns: f.sageTurns,
     evade: f.evade,
     reflect: f.reflect,
   };

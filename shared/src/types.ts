@@ -24,6 +24,8 @@ export type Effect =
   | { kind: 'reflect' }
   /** Permite mudar a ordem da própria jogada (escolher qual carta resolve primeiro). */
   | { kind: 'reorder' }
+  /** Por alguns turnos: +Força e +cartas compradas no início de cada turno. */
+  | { kind: 'sage'; turns: number; strength: number; draw: number }
   /** O próximo ataque deste turno causa +amount (por golpe). */
   | { kind: 'nextAttackBonus'; amount: number }
   | { kind: 'heal'; amount: number }
@@ -126,6 +128,10 @@ export interface Fighter {
   kiCap: number;
   /** Sonído: bônus para o próximo ataque deste turno. */
   nextAttackBonus: number;
+  /** Modo Sábio: turnos restantes e o bônus por turno. */
+  sageTurns: number;
+  sageStrength: number;
+  sageDraw: number;
 }
 
 export interface BattleState {
@@ -181,6 +187,7 @@ export interface FighterPublicView {
   maxKi: number;
   lockedTo: string | null;
   stunned: boolean;
+  sageTurns: number;
   evade: number;
   reflect: number;
 }

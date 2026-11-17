@@ -228,6 +228,7 @@ export class BattleScene extends Phaser.Scene {
     if (f.weak) chips.push([`Fraco ${f.weak}`, '#b0e070']);
     if (f.vulnerable) chips.push([`Vulnerável ${f.vulnerable}`, '#ff8080']);
     if (f.stunned) chips.push(['Atordoado', '#ffd060']);
+    if (f.sageTurns > 0) chips.push([`Modo Sábio ${f.sageTurns}`, '#ffb040']);
     if (f.maxKi < 5) chips.push([`Ki máx ${f.maxKi}`, '#8fd0ff']);
     chips.forEach(([label, color], i) => {
       this.hud.add(txt(this, x - (chips.length - 1) * 55 + i * 110, 146, label, 14, color, { stroke: '#0d0a14', strokeThickness: 4 }));

@@ -740,3 +740,25 @@ describe('Kunai e Saquê', () => {
     expect(state.fighters[0].exhausted.map((c) => c.id)).toContain('saque');
   });
 });
+
+describe('Modo Sábio', () => {
+  it('dá +1 de Força e +1 carta nos 2 turnos seguintes e depois acaba', () => {
+    let s = newBattle();
+    giveHand(s, 0, ['modo_sabio']);
+    s = play(s, 0, 'modo_sabio');
+    s = readyAndResolve(s).state;
+    // Turno 2
+    expect(s.fighters[0].tempStrength).toBe(1);
+    expect(s.fighters[0].hand).toHaveLength(RULES.drawPerTurn + 1);
+    giveHand(s, 0, ['golpe_basico']);
+    s = play(s, 0, 'golpe_basico');
+    s = readyAndResolve(s).state;
+    expect(s.fighters[1].hp).toBe(60 - 7);
+    // Turno 3: ainda ativo
+    expect(s.fighters[0].tempStrength).toBe(1);
+    s = readyAndResolve(s).state;
+    // Turno 4: acabou
+    expect(s.fighters[0].tempStrength).toBe(0);
+    expect(s.fighters[0].hand).toHaveLength(RULES.drawPerTurn);
+  });
+});
