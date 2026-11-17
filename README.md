@@ -177,6 +177,8 @@ Os efeitos sonoros são gerados na hora pelo navegador (Web Audio), no estilo re
 
 O botão 🔊 no topo da batalha liga e desliga o som, e a escolha fica salva no navegador.
 
+Golpes, impactos, explosões, cargas, desvio e troca usam amostras do pacote Anime SFX (CC BY 4.0) em `client/public/assets/sfx/` (créditos em `CREDITOS.md`); os sons de interface continuam sintetizados.
+
 ### Efeitos visuais
 Os efeitos (impactos, cortes, raios, escudo, cura, auras, atordoamento, explosões) ficam em `art/raw/fx/`; `npm run art:fx` gera as tiras de quadros em `client/public/assets/fx/` e a lista `client/src/fx.generated.ts`. Qual efeito toca em cada golpe fica em `impactFx()` em `client/src/scenes/Battle.ts`. Licenças em `art/raw/fx/LICENCAS.md`.
 

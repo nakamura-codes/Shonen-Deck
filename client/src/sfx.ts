@@ -47,6 +47,63 @@ export function unlockAudio() {
     for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
   }
   if (ctx.state === 'suspended') void ctx.resume();
+  void loadSamples();
+}
+
+// ───────────────────────── amostras (pacote Anime SFX, CC BY 4.0) ─────────────────────────
+// Cada som do jogo pode ter uma ou mais amostras (uma é sorteada). Sem amostra, usa a receita sintetizada.
+const SAMPLES: Partial<Record<string, string[]>> = {
+  hit: ['hit', 'hit2'],
+  hitHeavy: ['hitHeavy'],
+  block: ['block'],
+  whoosh: ['whoosh'],
+  slash: ['slash'],
+  zap: ['zap'],
+  explosion: ['explosion'],
+  explosionBig: ['explosionBig'],
+  charge: ['charge'],
+  chargeBig: ['chargeBig'],
+  powerUp: ['powerUp'],
+  beam: ['beam'],
+  beamBig: ['beamBig'],
+  swap: ['swap'],
+  dodge: ['dodge'],
+  throw: ['throw'],
+  combo: ['ready'],
+  stun: ['fall'],
+};
+const buffers = new Map<string, AudioBuffer>();
+let samplesLoading = false;
+
+async function loadSamples() {
+  if (samplesLoading || !ctx) return;
+  samplesLoading = true;
+  const files = [...new Set(Object.values(SAMPLES).flat())] as string[];
+  await Promise.all(
+    files.map(async (f) => {
+      try {
+        const res = await fetch(`assets/sfx/${f}.mp3`);
+        if (!res.ok) return;
+        buffers.set(f, await ctx!.decodeAudioData(await res.arrayBuffer()));
+      } catch {
+        /* sem a amostra: fica o som sintetizado */
+      }
+    }),
+  );
+}
+
+function playSample(name: string): boolean {
+  const list = SAMPLES[name];
+  if (!ctx || !master || !list) return false;
+  const ready = list.filter((f) => buffers.has(f));
+  if (!ready.length) return false;
+  const src = ctx.createBufferSource();
+  src.buffer = buffers.get(ready[Math.floor(Math.random() * ready.length)])!;
+  const g = ctx.createGain();
+  g.gain.value = 0.8;
+  src.connect(g).connect(master);
+  src.start();
+  return true;
 }
 
 export function isMuted() {
@@ -183,12 +240,13 @@ const SOUNDS = {
   defeat: () => notes([392, 330, 262, 196], 0.18, 'triangle', 0.35, 0.18),
 } as const;
 
-export type SoundName = keyof typeof SOUNDS;
+export type SoundName = keyof typeof SOUNDS | 'explosionBig' | 'chargeBig' | 'beamBig' | 'dodge' | 'throw';
 
 export function sfx(name: SoundName) {
   if (!ctx || prefs.muted) return;
   try {
-    SOUNDS[name]();
+    if (playSample(name)) return;
+    if (name in SOUNDS) SOUNDS[name as keyof typeof SOUNDS]();
   } catch {
     /* som nunca derruba o jogo */
   }
@@ -206,9 +264,10 @@ export function attackSound(cardId: string): SoundName {
     case 'genki_dama':
     case 'hollow_purple':
     case 'big_bang_attack':
-      return 'explosion';
-    case 'getsuga':
+      return 'beamBig';
     case 'kunai':
+      return 'throw';
+    case 'getsuga':
     case 'gatling':
       return 'slash';
     case 'chidori':

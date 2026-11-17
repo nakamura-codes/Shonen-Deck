@@ -436,7 +436,7 @@ export class BattleScene extends Phaser.Scene {
           const t = this.side(ev.target);
           hp[t] -= ev.amount;
           this.drawHpBar(t, hp[t], max[t]);
-          sfx(ev.amount >= 15 ? 'hitHeavy' : ev.amount > 0 ? 'hit' : 'block');
+          sfx(ev.amount >= 25 ? 'explosionBig' : ev.amount >= 15 ? 'hitHeavy' : ev.amount > 0 ? 'hit' : 'block');
           if (ev.blocked > 0 && ev.amount > 0) sfx('block');
           this.impactFx(t, ev.cardId, ev.amount, ev.blocked);
           this.hitAnim(t, ev.amount, ev.blocked);
@@ -483,7 +483,7 @@ export class BattleScene extends Phaser.Scene {
           await wait(this, 600);
           break;
         case 'chargeFire':
-          sfx('charge');
+          sfx('chargeBig');
           await this.bigShout(this.side(ev.player), getCard(ev.cardId).name.toUpperCase() + '!', 0x6fd0ff);
           lastCard = '';
           break;
@@ -493,7 +493,7 @@ export class BattleScene extends Phaser.Scene {
           await wait(this, 700);
           break;
         case 'evade': {
-          sfx('whoosh');
+          sfx('dodge');
           playFx(this, 'fumaca', CHAR_X[this.side(ev.player)], BODY_Y, { scale: 3, tint: 0xd8c8ff });
           playFx(this, 'blink-dash', CHAR_X[this.side(ev.player)], BODY_Y, { scale: 2, flipX: this.side(ev.player) === 1 });
           const s2 = this.side(ev.player);
