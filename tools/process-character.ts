@@ -306,6 +306,7 @@ async function main() {
   console.log('Scouter…');
   await scouterLayer();
   await scouterOutfits();
+  await scouterFromReady();
 }
 
 main().catch((e) => {
@@ -538,4 +539,67 @@ export async function luffyOutfit() {
   for (let i = 0; i < 4; i++) await write(heads, figs[i], headsBody, order[i]);
 
   await iconFromFigure(solo, 'body', LUFFY);
+}
+
+/**
+ * Scouter nas figuras que não vieram prontas (sem corpo, Uniforme Ninja, Colete do Pirata):
+ * o aparelho é extraído da figura pronta com Gi (diferença com a figura sem Scouter, na região
+ * do rosto) e colado em cada figura, alinhado pela cabeça.
+ */
+export async function scouterFromReady() {
+  const read = async (n: string) => sharp(join(OUT_FIG, `${n}.png`)).ensureAlpha().raw().toBuffer();
+  const ready = await read('fig_scouter_gi_laranja');
+  const plain = await read('fig_none_gi_laranja');
+  const px = (b: Buffer, x: number, y: number) => {
+    if (x < 0 || y < 0 || x >= CANVAS_W || y >= CANVAS_H) return [0, 0, 0, 0];
+    const i = (y * CANVAS_W + x) * 4;
+    return [b[i], b[i + 1], b[i + 2], b[i + 3]];
+  };
+  const diffAt = (a: Buffer, b: Buffer, dx: number, dy: number, x0: number, x1: number, y0: number, y1: number) => {
+    let d = 0;
+    for (let y = y0; y < y1; y++)
+      for (let x = x0; x < x1; x++) {
+        const p = px(a, x, y), q = px(b, x - dx, y - dy);
+        d += Math.abs(p[0] - q[0]) + Math.abs(p[1] - q[1]) + Math.abs(p[2] - q[2]) + Math.abs(p[3] - q[3]);
+      }
+    return d;
+  };
+  /** Deslocamento que alinha a cabeça de `b` com a de `a` (parte esquerda/alta, sem o aparelho). */
+  const align = (a: Buffer, b: Buffer) => {
+    let best = { d: Infinity, dx: 0, dy: 0 };
+    for (let dy = -3; dy <= 3; dy++)
+      for (let dx = -3; dx <= 3; dx++) {
+        const d = diffAt(a, b, dx, dy, 15, 34, 10, 24);
+        if (d < best.d) best = { d, dx, dy };
+      }
+    return best;
+  };
+  // Camada do aparelho: o que difere entre a figura pronta e a sem Scouter, na região do rosto.
+  const a0 = align(ready, plain);
+  const layer = Buffer.alloc(CANVAS_W * CANVAS_H * 4);
+  for (let y = 18; y < 37; y++)
+    for (let x = 30; x < 56; x++) {
+      const p = px(ready, x, y), q = px(plain, x - a0.dx, y - a0.dy);
+      if (p[3] === 0) continue;
+      if (Math.abs(p[0] - q[0]) + Math.abs(p[1] - q[1]) + Math.abs(p[2] - q[2]) + Math.abs(p[3] - q[3]) <= 60) continue;
+      layer.set(p, (y * CANVAS_W + x) * 4);
+    }
+  for (const body of ['none', NARUTO, LUFFY]) {
+    const target = await read(`fig_none_${body}`);
+    const { dx, dy } = align(plain, target); // cabeça do alvo em relação à figura de referência
+    const out = Buffer.from(target);
+    for (let y = 0; y < CANVAS_H; y++)
+      for (let x = 0; x < CANVAS_W; x++) {
+        const i = (y * CANVAS_W + x) * 4;
+        if (!layer[i + 3]) continue;
+        // posição na figura de referência sem Scouter → na figura alvo
+        const tx = x - a0.dx - dx, ty = y - a0.dy - dy;
+        if (tx < 0 || ty < 0 || tx >= CANVAS_W || ty >= CANVAS_H) continue;
+        out.set(layer.subarray(i, i + 4), (ty * CANVAS_W + tx) * 4);
+      }
+    await save(out, CANVAS_W, CANVAS_H, join(OUT_FIG, `fig_scouter_${body}.png`));
+    console.log(`  ✓ fig_scouter_${body} (aparelho da figura pronta)`);
+  }
+  // Ícone do inventário: cabeça com o Scouter, recortada da arte pronta.
+  await iconFromFigure(await cutoutOnBlack('scouter_roupas.png'), 'head', 'scouter');
 }

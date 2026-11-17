@@ -37,8 +37,8 @@ export class WardrobeScene extends Phaser.Scene {
     });
 
     this.deckLabel = txt(this, 220, 590, '', 16, COLORS.textDim);
-    makeButton(this, 760, 650, 260, 60, 'Procurar oponente', () => this.go(false), COLORS.gold, 22);
-    makeButton(this, 1040, 650, 240, 60, 'Treinar com bot', () => this.go(true), 0x7fc8a9, 22);
+    makeButton(this, 760, 672, 260, 52, 'Procurar oponente', () => this.go(false), COLORS.gold, 22);
+    makeButton(this, 1040, 672, 240, 52, 'Treinar com bot', () => this.go(true), 0x7fc8a9, 22);
 
     this.refresh();
 
@@ -81,9 +81,8 @@ export class WardrobeScene extends Phaser.Scene {
         onClick: () => this.equip(item.slot, item.id),
         onHover: (cardId, x, y) => this.showTooltip(cardId, x, y),
       })
-        // Até 8 por linha, a 80%, para as duas linhas caberem acima dos botões.
-        .setScale(0.8)
-        .setPosition(505 + (i % 8) * 94, 376 + Math.floor(i / 8) * 128);
+        // Tamanho normal, até 7 por linha; duas linhas terminam acima dos botões.
+        .setPosition(514 + (i % 7) * 112, 381 + Math.floor(i / 7) * 156);
       this.dynamic.push(tile);
     });
 
