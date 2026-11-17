@@ -21,7 +21,7 @@ import {
   type PlayerIndex,
 } from '../src/index.ts';
 
-const FULL = { head: 'chapeu_palha', body: 'gi_laranja', accessory: null };
+const FULL = { head: 'chapeu_palha', body: 'gi_laranja' };
 
 /** Batalha de teste: o jogador 0 começa o turno 1 (a moeda é fixada). */
 function newBattle(seed = 1): BattleState {
@@ -63,7 +63,7 @@ describe('dados', () => {
 
   it('baralho inicial = 8 básicas + 3 por peça vestida', () => {
     expect(buildDeck(FULL)).toHaveLength(14);
-    expect(buildDeck({ head: 'bandana_ninja', body: null, accessory: null })).toHaveLength(11);
+    expect(buildDeck({ head: 'bandana_ninja', body: null })).toHaveLength(11);
     expect(buildDeck(EMPTY_OUTFIT)).toHaveLength(8);
   });
 
@@ -74,7 +74,7 @@ describe('dados', () => {
 
   it('peça inválida ou no espaço errado vira espaço vazio', () => {
     expect(sanitizeOutfit({ head: 'gi_laranja', body: 'xxx' })).toEqual(EMPTY_OUTFIT);
-    expect(sanitizeOutfit({ head: 'bandana_ninja' })).toEqual({ head: 'bandana_ninja', body: null, accessory: null });
+    expect(sanitizeOutfit({ head: 'bandana_ninja' })).toEqual({ head: 'bandana_ninja', body: null });
     expect(sanitizeOutfit(null)).toEqual(EMPTY_OUTFIT);
   });
 

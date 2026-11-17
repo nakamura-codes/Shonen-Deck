@@ -2,7 +2,7 @@
 
 Deckbuilder PvP em pixel art, no estilo Slay the Spire, com poderes de anime: Kamehameha, Getsuga Tenshou, Gomu Gomu no Gatling, Rasengan e outros.
 
-O personagem começa totalmente cinza. Na criação, o jogador escolhe a roupa inicial e as outras peças ficam no inventário para vestir depois. As peças vestidas (cabeça, corpo e acessório) definem o baralho: cada uma coloca 3 poderes nele.
+O personagem começa totalmente cinza. Na criação, o jogador escolhe a roupa inicial e as outras peças ficam no inventário para vestir depois. As peças vestidas (cabeça e corpo) definem o baralho: cada uma coloca 3 poderes nele.
 
 O personagem e o inventário ficam salvos no navegador, já que ainda não há contas.
 
@@ -148,8 +148,8 @@ Quais cartas cada peça dá fica em `shared/src/outfits.ts`.
 2. Gere o ícone.
 3. Atualize o script e o `outfits.ts`.
 
-### Acessórios
-O acessório é uma camada desenhada por cima da figura (`client/public/assets/character/acc_<id>.png`, 64×80). O Scouter vem de `art/raw/character/scouter.jpg`, que é o boneco cinza usando o aparelho. O `npm run art:character` recorta só o aparelho e o coloca na posição da cabeça.
+### Scouter
+O Scouter é uma peça de cabeça e não combina com outra. A arte vem de `art/raw/character/scouter.jpg`, que é o boneco cinza usando o aparelho. O `npm run art:character` recorta só o aparelho e o aplica sobre o boneco sem nada na cabeça, para cada corpo (`fig_scouter_<corpo>.png`).
 
 ### Molduras das cartas
 As imagens ficam em `art/raw/cards_frames/`, com as áreas de conteúdo pintadas de magenta (#FF00FF). O `npm run art:frames`:

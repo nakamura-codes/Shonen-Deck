@@ -18,7 +18,6 @@ export class BootScene extends Phaser.Scene {
     this.load.image('card_back', 'assets/cards/frames/back.png');
     for (const a of ARENAS) this.load.image(`arena_${a.id}`, `assets/arenas/${a.id}.png`);
     for (const item of OUTFIT_ITEMS) this.load.image(`item_${item.id}`, `assets/items/${item.id}.png`);
-    for (const item of itemsForSlot('accessory')) this.load.image(`acc_${item.id}`, `assets/character/acc_${item.id}.png`);
     const heads = ['none', ...itemsForSlot('head').map((i) => i.id)];
     const bodies = ['none', ...itemsForSlot('body').map((i) => i.id)];
     for (const h of heads) for (const b of bodies) this.load.image(`fig_${h}_${b}`, `assets/character/fig_${h}_${b}.png`);

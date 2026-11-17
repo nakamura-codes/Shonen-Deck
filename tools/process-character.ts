@@ -300,7 +300,7 @@ async function main() {
   await items();
   await iconFromFigure('mascara_hollow.png', 'head', MASK);
   await iconFromFigure('uniforme_naruto.png', 'body', NARUTO);
-  console.log('Acessórios…');
+  console.log('Scouter…');
   await scouterLayer();
 }
 
@@ -381,8 +381,13 @@ export async function scouterLayer() {
     out[i * 4 + 2] = sum[i * 3 + 2] / hit[i];
     out[i * 4 + 3] = 255;
   }
-  await save(out, CANVAS_W, CANVAS_H, join(OUT_FIG, 'acc_scouter.png'));
-  console.log('  ✓ acc_scouter (camada)');
+  // O Scouter é uma peça de cabeça: a figura é o boneco sem nada na cabeça + o aparelho.
+  for (const body of ['none', ...BODIES, NARUTO]) {
+    const base = await sharp(join(OUT_FIG, `fig_none_${body}.png`)).ensureAlpha().raw().toBuffer();
+    for (let i = 0; i < CANVAS_W * CANVAS_H; i++) if (out[i * 4 + 3]) out.copy(base, i * 4, i * 4, i * 4 + 4);
+    await save(base, CANVAS_W, CANVAS_H, join(OUT_FIG, `fig_scouter_${body}.png`));
+    console.log(`  ✓ fig_scouter_${body}`);
+  }
 
   // Ícone do inventário: o aparelho recortado, ampliado sem suavizar.
   const iw = sx1 - sx0, ih = sy1 - sy0;

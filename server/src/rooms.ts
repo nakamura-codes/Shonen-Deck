@@ -58,7 +58,7 @@ export class Match {
     private onFinish: (m: Match) => void,
   ) {
     const botName = 'Bot Treinador';
-    const botOutfit: Outfit = { head: 'venda_olhos', body: 'shihakusho', accessory: 'scouter' };
+    const botOutfit: Outfit = { head: 'venda_olhos', body: 'shihakusho' };
     // SEED fixa o embaralhamento e a moeda (útil para testes).
     const seed = process.env.SEED ? Number(process.env.SEED) : randomInt(2 ** 31);
     this.state = createBattle(seed, [

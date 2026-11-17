@@ -22,7 +22,7 @@ export class CreateScene extends Phaser.Scene {
   create() {
     drawArena(this);
     this.add.rectangle(640, 360, 1280, 720, 0x0d0a14, 0.5);
-    session.outfit = { head: null, body: null, accessory: null };
+    session.outfit = { head: null, body: null };
 
     txt(this, 640, 44, 'Crie seu personagem', 40, '#ffe28a', { fontStyle: 'bold', stroke: '#0d0a14', strokeThickness: 6 });
     txt(this, 640, 84, 'Escolha a roupa inicial. As outras peças ficam no seu inventário.', 18, COLORS.textDim);
@@ -56,7 +56,7 @@ export class CreateScene extends Phaser.Scene {
     for (const o of this.tiles) o.destroy();
     this.tiles = [];
     OUTFIT_SLOTS.forEach((slot, row) => {
-      const y = 182 + row * 150;
+      const y = 200 + row * 175;
       this.tiles.push(txt(this, 520, y - 72, SLOT_LABELS[slot], 18, '#ffffff', { fontStyle: 'bold' }).setOrigin(0, 0.5));
       itemsForSlot(slot).forEach((item, col) => {
         const selected = session.outfit[slot] === item.id;
@@ -68,7 +68,7 @@ export class CreateScene extends Phaser.Scene {
           onHover: (cardId, x, yy) => this.showTooltip(cardId, x, yy),
         })
           .setScale(0.82)
-          .setPosition(590 + col * 148, y);
+          .setPosition(585 + col * 145, y);
         this.tiles.push(tile);
       });
     });

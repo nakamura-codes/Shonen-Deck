@@ -65,15 +65,15 @@ export class WardrobeScene extends Phaser.Scene {
 
     // Peças guardadas.
     const stored = OUTFIT_ITEMS.filter((it) => session.outfit[it.slot] !== it.id);
-    this.dynamic.push(txt(this, 460, 382, 'Guardado no inventário', 20, '#ffffff', { fontStyle: 'bold' }).setOrigin(0, 0.5));
-    this.dynamic.push(txt(this, 1240, 382, 'Clique para vestir', 14, COLORS.textDim).setOrigin(1, 0.5));
+    this.dynamic.push(txt(this, 460, 300, 'Guardado no inventário', 20, '#ffffff', { fontStyle: 'bold' }).setOrigin(0, 0.5));
+    this.dynamic.push(txt(this, 1240, 300, 'Clique para vestir', 14, COLORS.textDim).setOrigin(1, 0.5));
     stored.forEach((item, i) => {
       const tile = makeItemTile(this, item.id, {
         width: 108,
         tag: SLOT_LABELS[item.slot],
         onClick: () => this.equip(item.slot, item.id),
         onHover: (cardId, x, y) => this.showTooltip(cardId, x, y),
-      }).setPosition(513 + i * 112, 482);
+      }).setPosition(513 + (i % 6) * 112, 388 + Math.floor(i / 6) * 156);
       this.dynamic.push(tile);
     });
 

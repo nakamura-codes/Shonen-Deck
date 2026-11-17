@@ -56,7 +56,7 @@ export interface CardInstance {
   id: string;
 }
 
-export type OutfitSlot = 'head' | 'body' | 'accessory';
+export type OutfitSlot = 'head' | 'body';
 
 export interface OutfitItem {
   id: string;

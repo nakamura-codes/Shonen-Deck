@@ -303,8 +303,6 @@ export function makeCharacter(scene: Phaser.Scene, outfit: Outfit, scale: number
         .setFlipX(flip),
     );
   layer(key);
-  // Acessório: camada por cima da figura, no mesmo tamanho (64×80).
-  if (outfit.accessory && scene.textures.exists(`acc_${outfit.accessory}`)) layer(`acc_${outfit.accessory}`);
   c.setSize(FIG_W * scale, FIG_H * scale);
   return c;
 }
