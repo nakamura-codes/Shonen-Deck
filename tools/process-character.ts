@@ -584,7 +584,8 @@ export async function scouterFromReady() {
       if (Math.abs(p[0] - q[0]) + Math.abs(p[1] - q[1]) + Math.abs(p[2] - q[2]) + Math.abs(p[3] - q[3]) <= 60) continue;
       layer.set(p, (y * CANVAS_W + x) * 4);
     }
-  for (const body of ['none', NARUTO, LUFFY]) {
+  // O Uniforme Jujutsu também: a figura pronta veio com o pé direito falhado no recorte.
+  for (const body of ['none', NARUTO, LUFFY, 'uniforme_jujutsu']) {
     const target = await read(`fig_none_${body}`);
     const { dx, dy } = align(plain, target); // cabeça do alvo em relação à figura de referência
     const out = Buffer.from(target);
