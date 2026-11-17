@@ -66,7 +66,7 @@ Para testar com embaralhamento e moeda fixos: `SEED=13 npm run dev`.
 - **Hollowficação** (2 Ki, Poder): +2 de Força até o fim da partida; perde 2 HP no início de cada turno.
 - **Sonído** (0 Ki): 4 de Bloqueio, e o próximo ataque do turno causa +3 em cada golpe.
 - **Leitura de Poder** (1 Ki, Scouter): vê as cartas do oponente neste turno, e você pode clicar numa carta da sua jogada para ela resolver primeiro.
-- **Big Bang Attack** (2 Ki, Scouter): 12 de dano; +6 se o oponente estiver com Bloqueio.
+- **Ki Blast** também vem do Scouter.
 - **Final Flash** (3 Ki, Scouter): carrega 1 turno e depois causa 28 de dano.
 - **Haki do Rei** (3 Ki):
   - o oponente fica atordoado no turno seguinte e não pode jogar cartas;

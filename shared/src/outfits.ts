@@ -10,15 +10,15 @@ export const OUTFIT_ITEMS: OutfitItem[] = [
   { id: 'venda_olhos', slot: 'head', name: 'Cabelo e Venda', cards: ['red', 'blue', 'infinity'] },
   { id: 'bandana_ninja', slot: 'head', name: 'Bandana Ninja', cards: ['rasengan', 'chidori', 'sharingan'] },
   { id: 'mascara_hollow', slot: 'head', name: 'Máscara Hollow', cards: ['hollowficacao', 'cero', 'sonido'] },
-  { id: 'gi_laranja', slot: 'body', name: 'Gi Laranja', cards: ['kamehameha', 'genki_dama', 'ki_blast'] },
+  { id: 'gi_laranja', slot: 'body', name: 'Gi Laranja', cards: ['kamehameha', 'genki_dama', 'kaioken'] },
   { id: 'shihakusho', slot: 'body', name: 'Shihakusho Negro', cards: ['bankai', 'getsuga', 'shunpo'] },
   { id: 'uniforme_jujutsu', slot: 'body', name: 'Uniforme Jujutsu', cards: ['black_flash', 'boogie_woogie', 'tecnica_reversa'] },
   { id: 'uniforme_naruto', slot: 'body', name: 'Uniforme Ninja', cards: ['kage_bunshin', 'rasengan', 'gear_second'] },
-  { id: 'scouter', slot: 'head', name: 'Scouter', cards: ['leitura_de_poder', 'big_bang_attack', 'final_flash'] },
+  { id: 'scouter', slot: 'head', name: 'Scouter', cards: ['leitura_de_poder', 'ki_blast', 'final_flash'] },
 ];
 
 /** Cartas que existem mas estão fora das roupas por enquanto. */
-export const RETIRED_CARDS = ['domain_expansion', 'kaioken', 'haki'];
+export const RETIRED_CARDS = ['domain_expansion', 'haki', 'big_bang_attack'];
 
 export const OUTFIT_SLOTS: OutfitSlot[] = ['head', 'body'];
 
