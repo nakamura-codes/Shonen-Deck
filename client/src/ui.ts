@@ -47,7 +47,8 @@ export function txt(
   style: Phaser.Types.GameObjects.Text.TextStyle = {},
 ) {
   return scene.add
-    .text(x, y, s, { fontFamily: FONT, fontSize: `${size}px`, color, ...style })
+    // resolution 2: o texto é desenhado com o dobro de pixels, para ficar nítido (o jogo roda em 2x).
+    .text(x, y, s, { fontFamily: FONT, fontSize: `${size}px`, color, resolution: 2, ...style })
     .setOrigin(0.5);
 }
 
@@ -425,7 +426,8 @@ export function floatText(scene: Phaser.Scene, x: number, y: number, s: string, 
 
 /** Fundo pixelado de arena. */
 export function drawArena(scene: Phaser.Scene) {
-  const { width: W, height: H } = scene.scale;
+  const W = 1280;
+  const H = 720;
   const g = scene.add.graphics().setDepth(-10);
   g.fillGradientStyle(0x1d2340, 0x1d2340, 0x2a1d3a, 0x2a1d3a).fillRect(0, 0, W, H);
   // Pilares.

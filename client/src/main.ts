@@ -27,16 +27,23 @@ async function start() {
     /* ignora */
   }
 
-  new Phaser.Game({
+  const game = new Phaser.Game({
     type: Phaser.AUTO,
     parent: 'game',
-    width: 1280,
-    height: 720,
+    // O jogo é pensado em 1280×720, mas desenhado em 2560×1440 (zoom 2 nas câmeras) para o texto
+    // e as cartas ficarem nítidos, principalmente quando ampliados ou reduzidos.
+    width: 2560,
+    height: 1440,
     backgroundColor: '#16121f',
     pixelArt: true,
     dom: { createContainer: true },
     scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
     scene: [BootScene, CreateScene, WardrobeScene, LobbyScene, BattleScene, GalleryScene],
+  });
+  game.events.once(Phaser.Core.Events.READY, () => {
+    for (const scene of game.scene.scenes) {
+      scene.sys.events.on(Phaser.Scenes.Events.START, () => scene.cameras.main.setZoom(2).centerOn(640, 360));
+    }
   });
 }
 

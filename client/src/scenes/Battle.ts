@@ -357,10 +357,10 @@ export class BattleScene extends Phaser.Scene {
     const cards = view.me.hand;
     const n = cards.length;
     // Com a HUD, as cartas ficam a 70% dentro da área escura do meio e ampliam ao passar o mouse.
-    const handScale = this.hasHudArt ? 0.7 : 1;
+    const handScale = this.hasHudArt ? 0.8 : 1;
     const area = this.hasHudArt ? { x0: HUD.ki.x + HUD.ki.w + 30, x1: HUD.readyBtn.x - 14 } : { x0: 190, x1: 1050 };
     const spacing = Math.min(166 * handScale + 8, (area.x1 - area.x0 - CARD_W * handScale) / Math.max(1, n - 1));
-    const y = this.hasHudArt ? HUD.panel.y + 162 : 720 - CARD_H / 2 - 8;
+    const y = this.hasHudArt ? HUD.panel.y + 177 : 720 - CARD_H / 2 - 8;
     const midX = (area.x0 + area.x1) / 2;
     const canAct = view.phase === 'planning' && !view.me.ready && !this.animating;
     cards.forEach((c, i) => {
