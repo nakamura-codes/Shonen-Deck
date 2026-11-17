@@ -61,11 +61,12 @@ export class CreateScene extends Phaser.Scene {
       itemsForSlot(slot).forEach((item, col) => {
         const selected = session.outfit[slot] === item.id;
         const tile = makeItemTile(this, item.id, {
+          width: 160,
           selected,
           tag: selected ? 'Vestindo' : undefined,
           onClick: () => this.toggle(slot, item.id),
           onHover: (cardId, x, yy) => this.showTooltip(cardId, x, yy),
-        }).setPosition(620 + col * 220, y);
+        }).setPosition(600 + col * 172, y);
         this.tiles.push(tile);
       });
     });

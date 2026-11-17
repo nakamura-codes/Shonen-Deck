@@ -13,7 +13,8 @@
     "test": "vitest run",
     "typecheck": "tsc -p shared && tsc -p server && tsc -p client",
     "art": "tsx tools/process-art.ts",
-    "art:character": "tsx tools/process-character.ts"
+    "art:character": "tsx tools/process-character.ts",
+    "art:arenas": "tsx tools/process-arenas.ts"
   },
   "devDependencies": {
     "concurrently": "^9.1.0",

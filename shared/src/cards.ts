@@ -104,6 +104,38 @@ export const CARDS: Record<string, CardDef> = {
     token: true,
     ethereal: true,
   },
+  infinity: {
+    id: 'infinity', name: 'Infinity', cost: 2, type: 'skill', rarity: 'rare',
+    text: 'Desvia da próxima habilidade de dano do oponente neste turno.',
+    effects: [{ kind: 'evade' }],
+  },
+  black_flash: {
+    id: 'black_flash', name: 'Black Flash', cost: 2, type: 'attack', rarity: 'rare',
+    text: 'Causa 8 de dano. Se for a 1ª carta que você joga no turno, causa 20.',
+    effects: [{ kind: 'damage', amount: 8, firstCardAmount: 20 }],
+  },
+  boogie_woogie: {
+    id: 'boogie_woogie', name: 'Boogie Woogie', cost: 2, type: 'skill', rarity: 'rare',
+    text: 'Troca de lugar: a próxima habilidade de dano do oponente neste turno acerta ele mesmo.',
+    effects: [{ kind: 'reflect' }],
+  },
+  tecnica_reversa: {
+    id: 'tecnica_reversa', name: 'Técnica Reversa', cost: 2, type: 'skill', rarity: 'rare',
+    text: 'Recupera 10 HP. Exaurir.',
+    effects: [{ kind: 'heal', amount: 10 }],
+    exhaust: true,
+  },
+  ki_blast: {
+    id: 'ki_blast', name: 'Ki Blast', cost: 1, type: 'attack', rarity: 'common',
+    text: 'Causa 3 de dano 2 vezes.',
+    effects: [{ kind: 'damage', amount: 3, times: 2 }],
+  },
+  haki_do_rei: {
+    id: 'haki_do_rei', name: 'Haki do Rei', cost: 3, type: 'skill', rarity: 'rare',
+    text: 'Atordoa o oponente no próximo turno (não joga cartas). Ki máximo dele -2 por 2 turnos. Exaurir.',
+    effects: [{ kind: 'stun', turns: 1, kiPenalty: 2, kiPenaltyTurns: 2 }],
+    exhaust: true,
+  },
   shunpo: {
     id: 'shunpo', name: 'Shunpo', cost: 0, type: 'skill', rarity: 'common',
     text: 'Ganha 5 de Bloqueio. +1 carta no próximo turno.',
@@ -122,7 +154,8 @@ export function getCard(id: string): CardDef {
  * O resto resolve na ordem em que cada jogador jogou.
  */
 export function isArmor(card: CardDef): boolean {
-  return card.effects.some((e) => e.kind === 'block') && !card.effects.some((e) => e.kind === 'damage' || e.kind === 'charge');
+  const defensive = card.effects.some((e) => e.kind === 'block' || e.kind === 'evade' || e.kind === 'reflect');
+  return defensive && !card.effects.some((e) => e.kind === 'damage' || e.kind === 'charge');
 }
 
 /** Combos: jogar todas as cartas de `requires` no mesmo turno cria `creates` no turno seguinte. */

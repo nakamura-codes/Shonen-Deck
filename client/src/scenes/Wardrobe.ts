@@ -69,11 +69,11 @@ export class WardrobeScene extends Phaser.Scene {
     this.dynamic.push(txt(this, 1240, 360, 'Clique para vestir', 14, COLORS.textDim).setOrigin(1, 0.5));
     stored.forEach((item, i) => {
       const tile = makeItemTile(this, item.id, {
-        width: 150,
+        width: 108,
         tag: SLOT_LABELS[item.slot],
         onClick: () => this.equip(item.slot, item.id),
         onHover: (cardId, x, y) => this.showTooltip(cardId, x, y),
-      }).setPosition(540 + (i % 5) * 160, 470);
+      }).setPosition(513 + i * 112, 470);
       this.dynamic.push(tile);
     });
 

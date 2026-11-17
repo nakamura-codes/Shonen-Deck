@@ -12,11 +12,9 @@ import { session } from '../session.ts';
 import {
   CARD_H,
   COLORS,
-  drawArena,
   floatText,
   makeButton,
   makeCard,
-  makeCardBack,
   makeCharacter,
   makeMiniIcon,
   tweenPromise,
@@ -28,7 +26,7 @@ import {
 type Side = 0 | 1; // 0 = eu (esquerda), 1 = oponente (direita)
 
 const CHAR_X: Record<Side, number> = { 0: 260, 1: 1020 };
-const FEET_Y = 420;
+const FEET_Y = 416;
 const CHAR_SCALE = 3;
 const BODY_Y = FEET_Y - 100;
 
@@ -50,6 +48,7 @@ export class BattleScene extends Phaser.Scene {
   private readyBtn!: Button;
   private undoBtn!: Button;
   private starterText!: Phaser.GameObjects.Text;
+  private arenaImage?: Phaser.GameObjects.Image;
 
   constructor() {
     super('Battle');
@@ -62,7 +61,12 @@ export class BattleScene extends Phaser.Scene {
     this.chars = {};
     this.hpBars = {};
 
-    drawArena(this);
+    this.arenaImage = undefined;
+    // Faixa de baixo (mão e botões); a arena entra em cima quando chega o primeiro estado.
+    const panel = this.add.graphics().setDepth(-9);
+    panel.fillGradientStyle(0x231c33, 0x231c33, 0x120f1c, 0x120f1c).fillRect(0, 427, 1280, 293);
+    panel.fillStyle(COLORS.outline).fillRect(0, 424, 1280, 5);
+    panel.fillStyle(COLORS.gold, 0.6).fillRect(0, 429, 1280, 2);
     this.hud = this.add.container(0, 0).setDepth(5);
     this.hand = this.add.container(0, 0).setDepth(20);
 
@@ -149,6 +153,10 @@ export class BattleScene extends Phaser.Scene {
 
   private render(view: BattleView) {
     this.view = view;
+    if (!this.arenaImage) {
+      const key = `arena_${view.arena}`;
+      if (this.textures.exists(key)) this.arenaImage = this.add.image(0, 0, key).setOrigin(0).setDisplaySize(1280, 427).setDepth(-10);
+    }
     this.turnText.setText(`Turno ${view.turn}`);
     const starterName = view.turnStarter === view.you ? 'Você' : view.opponent.name;
     this.starterText.setText(view.phase === 'planning' ? `Começa: ${starterName}` : '');
@@ -218,6 +226,8 @@ export class BattleScene extends Phaser.Scene {
     if (str) chips.push([`Força ${str}`, '#ffb070']);
     if (f.weak) chips.push([`Fraco ${f.weak}`, '#b0e070']);
     if (f.vulnerable) chips.push([`Vulnerável ${f.vulnerable}`, '#ff8080']);
+    if (f.stunned) chips.push(['Atordoado', '#ffd060']);
+    if (f.maxKi < 5) chips.push([`Ki máx ${f.maxKi}`, '#8fd0ff']);
     chips.forEach(([label, color], i) => {
       this.hud.add(txt(this, x - (chips.length - 1) * 55 + i * 110, 146, label, 14, color, { stroke: '#0d0a14', strokeThickness: 4 }));
     });
@@ -244,31 +254,32 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private drawQueues(view: BattleView) {
-    // Fila do oponente: escondida, a não ser com Sharingan.
+    // Fila do oponente: nada é mostrado (nem quantas cartas), a não ser com Sharingan.
     const oq = view.opponent.queue;
-    const oppCount = oq ? oq.length : view.opponent.queueCount;
-    this.hud.add(
-      txt(this, 640, 112, oq ? 'Sharingan: você vê as cartas do oponente!' : `Oponente escolheu ${oppCount} carta${oppCount === 1 ? '' : 's'}`, 15, oq ? '#ff8080' : COLORS.textDim),
-    );
-    for (let i = 0; i < oppCount; i++) {
-      const x = 640 - (oppCount - 1) * 34 + i * 68;
-      const obj = oq ? makeMiniIcon(this, oq[i].card.id, 0.75) : makeCardBack(this, 0.36);
-      obj.setPosition(x, 170);
-      this.hud.add(obj);
-    }
+    const status = oq
+      ? 'Sharingan: você vê as cartas do oponente!'
+      : view.opponent.ready
+        ? 'Oponente pronto.'
+        : 'Oponente está escolhendo suas cartas…';
+    this.hud.add(txt(this, 640, 112, status, 16, oq ? '#ff8080' : '#ffffff', { stroke: '#0d0a14', strokeThickness: 4 }));
+    (oq ?? []).forEach((q, i) => {
+      const x = 640 - (oq!.length - 1) * 34 + i * 68;
+      this.hud.add(makeMiniIcon(this, q.card.id, 0.75).setPosition(x, 170));
+    });
 
     // Minha fila.
     const mq = view.me.queue;
-    this.hud.add(txt(this, 640, 262, mq.length ? 'Sua jogada' : 'Clique nas cartas da mão para jogar', 15, COLORS.textDim));
+    this.hud.add(txt(this, 640, 262, mq.length ? 'Sua jogada' : 'Clique nas cartas da mão para jogar', 16, '#ffffff', { stroke: '#0d0a14', strokeThickness: 4 }));
     mq.forEach((q, i) => {
       const x = 640 - (mq.length - 1) * 40 + i * 80;
       this.hud.add(makeMiniIcon(this, q.card.id, 0.85).setPosition(x, 330));
       this.hud.add(this.orderBadge(x - 26, 300, i + 1, COLORS.ki));
       if (q.doubled) this.hud.add(txt(this, x + 24, 300, 'x2', 18, '#ffe28a', { fontStyle: 'bold', stroke: '#0d0a14', strokeThickness: 4 }));
     });
-    if (view.me.comboLock) this.hud.add(txt(this, 640, 410, 'Combo! Nenhuma outra carta neste turno. Hollow Purple na próxima rodada.', 14, '#e9b8ff'));
-    if (view.me.lockedTo) this.hud.add(txt(this, 640, 410, `Turno travado: só ${getCard(view.me.lockedTo).name} (custo 0). O Ki deste turno não acumula.`, 14, '#e9b8ff'));
-    if (view.me.cloneNext) this.hud.add(txt(this, 640, 390, 'Kage Bunshin: a próxima carta acontece 2 vezes', 14, '#ffe28a'));
+    if (view.me.comboLock) this.hud.add(txt(this, 640, 410, 'Combo! Nenhuma outra carta neste turno. Hollow Purple na próxima rodada.', 15, '#e9b8ff', { stroke: '#0d0a14', strokeThickness: 4 }));
+    if (view.me.stunned) this.hud.add(txt(this, 640, 390, 'Atordoado pelo Haki do Rei: você não pode jogar cartas neste turno.', 15, '#ffd060', { stroke: '#0d0a14', strokeThickness: 4 }));
+    if (view.me.lockedTo) this.hud.add(txt(this, 640, 410, `Turno travado: só ${getCard(view.me.lockedTo).name} (custo 0). O Ki deste turno não acumula.`, 15, '#e9b8ff', { stroke: '#0d0a14', strokeThickness: 4 }));
+    if (view.me.cloneNext) this.hud.add(txt(this, 640, 390, 'Kage Bunshin: a próxima carta acontece 2 vezes', 15, '#ffe28a', { stroke: '#0d0a14', strokeThickness: 4 }));
   }
 
   private drawHand(view: BattleView) {
@@ -283,7 +294,9 @@ export class BattleScene extends Phaser.Scene {
       const card = makeCard(this, c.id).setPosition(x, y);
       const locked = view.me.lockedTo !== null && c.id !== view.me.lockedTo;
       const cost = view.me.lockedTo === c.id ? 0 : def.cost;
-      const blockedReason = locked
+      const blockedReason = view.me.stunned
+        ? 'Atordoado'
+        : locked
         ? `Só ${getCard(view.me.lockedTo!).name}`
         : view.me.comboLock
           ? 'Combo usado'
@@ -292,7 +305,7 @@ export class BattleScene extends Phaser.Scene {
             : null;
       const playable = canAct && !blockedReason;
       card.setAlpha(playable ? 1 : 0.55);
-      if (canAct && (locked || view.me.comboLock)) {
+      if (canAct && (view.me.stunned || locked || view.me.comboLock)) {
         const band = this.add.rectangle(0, -10, 150, 26, 0x2a1040, 0.9).setStrokeStyle(2, 0xa858e8);
         card.add([band, txt(this, 0, -10, blockedReason!, 13, '#e9b8ff', { fontStyle: 'bold' })]);
       }
@@ -338,7 +351,10 @@ export class BattleScene extends Phaser.Scene {
       switch (ev.type) {
         case 'damage': {
           const fast = lastCard === `${ev.source}:${ev.cardId}`;
-          await this.attackAnim(this.side(ev.source), ev.cardId, fast);
+          // Golpe devolvido pelo Boogie Woogie: a animação sai de quem devolveu.
+          const reflected = ev.source === ev.target;
+          const from: Side = reflected ? (this.side(ev.target) === 0 ? 1 : 0) : this.side(ev.source);
+          await this.attackAnim(from, ev.cardId, fast);
           const t = this.side(ev.target);
           hp[t] -= ev.amount;
           this.drawHpBar(t, hp[t], max[t]);
@@ -383,6 +399,46 @@ export class BattleScene extends Phaser.Scene {
           floatText(this, CHAR_X[this.side(ev.player)], BODY_Y - 110, `${getCard(ev.cardId).name} cancelada!`, '#ff8080', 22);
           await wait(this, 700);
           break;
+        case 'evade': {
+          const s2 = this.side(ev.player);
+          const c = this.chars[s2];
+          if (c) {
+            this.tweens.add({ targets: c, alpha: 0.25, yoyo: true, duration: 120, repeat: 2 });
+            this.tweens.add({ targets: c, y: FEET_Y - 30, yoyo: true, duration: 180 });
+          }
+          this.flashAura(s2, 0xb070ff);
+          floatText(this, CHAR_X[s2], BODY_Y - 120, `Infinity! Desviou de ${getCard(ev.cardId).name}`, '#e9b8ff', 20);
+          await wait(this, 650);
+          break;
+        }
+        case 'reflect':
+          await this.swapAnim();
+          floatText(this, 640, BODY_Y - 140, `Boogie Woogie! ${getCard(ev.cardId).name} voltou!`, '#e9b8ff', 22);
+          await wait(this, 250);
+          break;
+        case 'heal': {
+          const s2 = this.side(ev.player);
+          hp[s2] += ev.amount;
+          this.drawHpBar(s2, hp[s2], max[s2]);
+          this.flashAura(s2, 0x7fe0a0);
+          floatText(this, CHAR_X[s2], BODY_Y - 60, `+${ev.amount} HP`, '#7fe0a0', 26);
+          await wait(this, 500);
+          break;
+        }
+        case 'stun': {
+          const target = this.side(ev.player);
+          const caster: Side = target === 0 ? 1 : 0;
+          const ring = this.add.circle(CHAR_X[caster], BODY_Y, 30, 0x000000, 0).setStrokeStyle(10, 0x2a0a3a).setDepth(30);
+          const ring2 = this.add.circle(CHAR_X[caster], BODY_Y, 30, 0x000000, 0).setStrokeStyle(4, 0xff3050).setDepth(30);
+          this.cameras.main.shake(400, 0.012);
+          await tweenPromise(this, { targets: [ring, ring2], scale: 14, alpha: 0, duration: 650, ease: 'Cubic.easeOut' });
+          ring.destroy();
+          ring2.destroy();
+          floatText(this, CHAR_X[target], BODY_Y - 110, 'Atordoado!', '#ffd060', 26);
+          floatText(this, CHAR_X[target], BODY_Y - 70, `Ki máximo -${ev.kiPenalty}`, '#8fd0ff', 18);
+          await wait(this, 600);
+          break;
+        }
         case 'combo':
           await this.comboAnim(this.side(ev.player));
           break;
@@ -426,6 +482,20 @@ export class BattleScene extends Phaser.Scene {
     c.add(this.add.circle(0, 0, 11, color).setStrokeStyle(2, COLORS.outline));
     c.add(txt(this, 0, -1, String(n), 13, '#ffffff', { fontStyle: 'bold' }));
     return c;
+  }
+
+  /** Boogie Woogie: os dois trocam de lugar num piscar e voltam. */
+  private async swapAnim() {
+    const a = this.chars[0];
+    const b = this.chars[1];
+    if (!a || !b) return;
+    this.cameras.main.flash(120, 255, 255, 255);
+    a.setX(CHAR_X[1]);
+    b.setX(CHAR_X[0]);
+    await wait(this, 220);
+    this.cameras.main.flash(120, 255, 255, 255);
+    a.setX(CHAR_X[0]);
+    b.setX(CHAR_X[1]);
   }
 
   /** Red + Blue se fundem no Hollow Purple. */
@@ -596,6 +666,34 @@ export class BattleScene extends Phaser.Scene {
         await tweenPromise(this, { targets: [ball, swirl], scale: 2.2, alpha: 0, duration: 200 });
         ball.destroy();
         swirl.destroy();
+        return;
+      }
+      case 'black_flash': {
+        const c = this.chars[from];
+        if (c) await tweenPromise(this, { targets: c, x: CHAR_X[from] + dir * 140, duration: 120, ease: 'Quad.easeIn' });
+        const g = this.add.graphics().setDepth(depth);
+        for (let k = 0; k < 3; k++) {
+          g.clear();
+          for (const [w, color] of [[9, 0x0d0a14], [4, 0xff2030]] as const) {
+            g.lineStyle(w, color);
+            g.beginPath();
+            g.moveTo(tx - dir * 60, y - 70);
+            for (let s2 = 1; s2 <= 6; s2++) g.lineTo(tx - dir * 60 + dir * s2 * 20 + Phaser.Math.Between(-12, 12), y - 70 + s2 * 24);
+            g.strokePath();
+          }
+          if (k === 0) this.cameras.main.flash(140, 255, 40, 60);
+          await wait(this, 70);
+        }
+        this.cameras.main.shake(220, 0.015);
+        g.destroy();
+        if (c) await tweenPromise(this, { targets: c, x: CHAR_X[from], duration: 160 });
+        return;
+      }
+      case 'ki_blast': {
+        const orb = this.add.circle(sx, y + Phaser.Math.Between(-20, 20), 10, 0x8fe0ff).setDepth(depth).setStrokeStyle(3, 0xffffff);
+        await tweenPromise(this, { targets: orb, x: tx, duration: fast ? 140 : 220, ease: 'Quad.easeIn' });
+        await tweenPromise(this, { targets: orb, scale: 2, alpha: 0, duration: 120 });
+        orb.destroy();
         return;
       }
       case 'red': {

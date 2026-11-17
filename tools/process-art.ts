@@ -49,8 +49,15 @@ async function processCard(id: string, file: string) {
     return;
   }
 
-  const { data: src } = await sharp(file)
-    .removeAlpha()
+  // Tira moldura preta em volta (alguns ícones vêm com borda), depois corta no quadrado central.
+  const trimmed = await sharp(file).flatten({ background: '#000000' }).trim({ background: '#000000', threshold: 40 }).toBuffer();
+  const meta = await sharp(trimmed).metadata();
+  const original = await sharp(file).metadata();
+  // Se havia moldura, tira mais um pouco para não sobrar a linha escura.
+  const hadFrame = meta.width !== original.width || meta.height !== original.height;
+  const inset = hadFrame ? Math.round(Math.min(meta.width ?? 0, meta.height ?? 0) * 0.02) : 0;
+  const { data: src } = await sharp(trimmed)
+    .extract({ left: inset, top: inset, width: (meta.width ?? 0) - inset * 2, height: (meta.height ?? 0) - inset * 2 })
     .resize(ICON, ICON, { fit: 'cover', kernel: 'lanczos3' })
     .png({ palette: true, colors: 32, dither: 0 })
     .toBuffer()

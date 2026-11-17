@@ -7,7 +7,7 @@ export type PowerId = 'bankai' | 'gearSecond' | 'domain';
 
 /** Efeitos que uma carta pode ter. Os números ficam nos dados (cards.ts). */
 export type Effect =
-  | { kind: 'damage'; amount: number; times?: number; pierce?: boolean; fixed?: boolean }
+  | { kind: 'damage'; amount: number; times?: number; pierce?: boolean; fixed?: boolean; firstCardAmount?: number }
   | { kind: 'block'; amount: number }
   | { kind: 'strength'; amount: number; temporary?: boolean }
   | { kind: 'weak'; amount: number }
@@ -17,7 +17,14 @@ export type Effect =
   | { kind: 'reveal' }
   | { kind: 'clone' }
   | { kind: 'charge'; turns: number; damage: number; cancelOnDamage?: number }
-  | { kind: 'power'; power: PowerId };
+  | { kind: 'power'; power: PowerId }
+  /** Desvia da próxima habilidade de dano do oponente neste turno. */
+  | { kind: 'evade' }
+  /** A próxima habilidade de dano do oponente neste turno volta nele. */
+  | { kind: 'reflect' }
+  | { kind: 'heal'; amount: number }
+  /** Oponente não joga cartas no próximo turno e tem Ki máximo reduzido por alguns turnos. */
+  | { kind: 'stun'; turns: number; kiPenalty: number; kiPenaltyTurns: number };
 
 export interface CardDef {
   id: string;
@@ -100,6 +107,19 @@ export interface Fighter {
   pendingCombo: string | null;
   /** Turno travado: só pode jogar esta carta (de graça). */
   lockedTo: string | null;
+  /** Infinity: desvios disponíveis neste turno. */
+  evade: number;
+  /** Boogie Woogie: devoluções disponíveis neste turno. */
+  reflect: number;
+  /** Turnos de atordoamento ainda por vir (começam no próximo turno). */
+  stunned: number;
+  /** Atordoado neste turno: não pode jogar cartas. */
+  stunnedNow: boolean;
+  /** Redução do Ki máximo e por quantos turnos ainda vale. */
+  kiPenalty: number;
+  kiPenaltyTurns: number;
+  /** Ki máximo neste turno (5, ou menos com a penalidade do Haki do Rei). */
+  kiCap: number;
 }
 
 export interface BattleState {
@@ -112,6 +132,8 @@ export interface BattleState {
   uidCounter: number;
   /** Quem a moeda escolheu para começar o turno 1. Depois alterna. */
   firstPlayer: PlayerIndex;
+  /** Índice da arena sorteada (shared/src/arenas.ts). */
+  arena: number;
 }
 
 export type BattleEvent =
@@ -125,6 +147,10 @@ export type BattleEvent =
   | { type: 'chargeFire'; player: PlayerIndex; cardId: string }
   | { type: 'chargeCancel'; player: PlayerIndex; cardId: string }
   | { type: 'combo'; player: PlayerIndex; cardId: string }
+  | { type: 'evade'; player: PlayerIndex; cardId: string }
+  | { type: 'reflect'; player: PlayerIndex; cardId: string }
+  | { type: 'heal'; player: PlayerIndex; amount: number }
+  | { type: 'stun'; player: PlayerIndex; turns: number; kiPenalty: number }
   | { type: 'gameOver'; winner: PlayerIndex | 'draw' };
 
 /** O que cada jogador pode ver (sem as cartas escondidas do oponente). */
@@ -148,6 +174,9 @@ export interface FighterPublicView {
   ready: boolean;
   maxKi: number;
   lockedTo: string | null;
+  stunned: boolean;
+  evade: number;
+  reflect: number;
 }
 
 export interface BattleView {
@@ -156,6 +185,7 @@ export interface BattleView {
   phase: BattleState['phase'];
   winner: BattleState['winner'];
   firstPlayer: PlayerIndex;
+  arena: string;
   /** Quem resolve primeiro neste turno. */
   turnStarter: PlayerIndex;
   me: FighterPublicView & {

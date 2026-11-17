@@ -30,6 +30,7 @@ Outros comandos:
 | `npm run typecheck` | Checa os tipos de todo o projeto |
 | `npm run art` | Processa a arte das cartas (veja abaixo) |
 | `npm run art:character` | Processa as figuras do personagem e os ícones das roupas |
+| `npm run art:arenas` | Processa as arenas |
 | `npm run build` | Gera a versão de produção do cliente em `client/dist` |
 
 Para testar com embaralhamento e moeda fixos: `SEED=13 npm run dev`.
@@ -41,7 +42,7 @@ Para testar com embaralhamento e moeda fixos: `SEED=13 npm run dev`.
 - **Turnos simultâneos com 30s:** os dois escolhem as cartas em segredo, clicam em **Confirmar** e tudo é revelado junto.
 - **Moeda:** no início da partida, uma moeda sorteia quem começa. Depois os dois se alternam a cada turno.
 - Ordem da resolução:
-  1. **Armadura:** cartas com Bloqueio e sem dano, para a defesa sempre funcionar.
+  1. **Armadura:** cartas de defesa sem dano (Bloqueio, Infinity, Boogie Woogie), para a defesa sempre funcionar.
   2. **Golpes carregados** que disparam no turno.
   3. **O resto, na ordem em que cada um jogou**, alternando: 1ª de quem começa, 1ª do outro, depois as 2ªs… Buff e debuff só valem para o que vem *depois* deles.
 - A partida acaba na hora em que alguém chega a 0 HP; as cartas restantes não resolvem.
@@ -53,6 +54,20 @@ Para testar com embaralhamento e moeda fixos: `SEED=13 npm run dev`.
 - **Sharingan** mostra as cartas que o oponente escolheu no turno.
 - **Poderes** (Bankai, Gear Second, Domain Expansion) ficam ativos até o fim da partida.
 - Se um jogador desconectar e não voltar em 30s, perde a partida.
+
+### Habilidades especiais
+- **Infinity** (2 Ki): desvia da próxima habilidade de dano do oponente no turno, com todos os golpes dela. Funciona também contra golpes carregados e contra o Hollow Purple.
+- **Boogie Woogie** (2 Ki): troca de lugar com o oponente na hora do golpe; a próxima habilidade de dano dele no turno acerta ele mesmo.
+- **Técnica Reversa** (2 Ki): recupera 10 HP. Exaurir.
+- **Black Flash** (2 Ki): 8 de dano, ou 20 se for a primeira carta que você joga no turno.
+- **Ki Blast** (1 Ki): 3 de dano duas vezes.
+- **Haki do Rei** (3 Ki):
+  - o oponente fica atordoado no turno seguinte e não pode jogar cartas;
+  - o Ki máximo dele cai 2 por 2 turnos;
+  - Exaurir.
+
+### Arenas
+Cada partida sorteia uma arena pela seed, então os dois jogadores veem a mesma. As imagens originais ficam em `art/raw/arenas/`, e `npm run art:arenas` as prepara. A lista de arenas fica em `shared/src/arenas.ts`.
 
 ### Combo: Red + Blue → Hollow Purple
 - **Red** (3 Ki): 14 de dano. **Blue** (2 Ki): 1 de Fraco e 1 de Vulnerável. Os dois vêm do Cabelo e Venda.
@@ -109,10 +124,12 @@ As imagens originais ficam em `art/raw/character/`:
 | `humanoide_cinza.png` | Boneco cinza sem roupa |
 | `seis_visuais.png` | Cada peça de cabeça e de corpo sozinha |
 | `nove_combinacoes.png` | As 3×3 combinações de cabeça + corpo |
+| `combinacoes_naruto_hollow.png` | Cada cabeça com o uniforme ninja, e a máscara Hollow com cada corpo |
+| `mascara_hollow.png` / `uniforme_naruto.png` | As duas peças novas sozinhas (os ícones delas são recortados daqui) |
 | `icones_roupas.png` | Ícones do inventário |
 
 `npm run art:character` processa essas imagens:
-- recorta as 16 figuras (cada combinação, incluindo espaço vazio);
+- recorta as 25 figuras (cada combinação, incluindo espaço vazio);
 - coloca todas na mesma escala;
 - alinha pelos pés;
 - grava em `client/public/assets/character/` e `client/public/assets/items/`.

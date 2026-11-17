@@ -250,7 +250,7 @@ export function makeItemTile(
   c.add(makeItemIcon(scene, itemId, w - 16, 82).setPosition(0, -h / 2 + 42));
   c.add(fitText(txt(scene, 0, h / 2 - 52, item.name, 16, '#ffffff', { fontStyle: 'bold' }), w - 12));
   item.cards.forEach((cardId, i) => {
-    const x = (i - 1) * 46;
+    const x = (i - 1) * Math.min(46, (w - 10) / 3);
     const icon = makeMiniIcon(scene, cardId, 0.48).setPosition(x, h / 2 - 22);
     c.add(icon);
     if (opts.onHover) {

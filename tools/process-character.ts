@@ -8,6 +8,9 @@
  *  - seis_visuais.png      3 peças de cabeça sozinhas + 3 peças de corpo sozinhas
  *  - nove_combinacoes.png  3×3: linhas = cabeça, colunas = corpo
  *  - icones_roupas.png     ícones do inventário (2 linhas × 3)
+ *  - combinacoes_naruto_hollow.png  linha 1: cada cabeça + uniforme do Naruto; linha 2: máscara + cada corpo
+ *  - mascara_hollow.png    máscara Hollow sozinha
+ *  - uniforme_naruto.png   uniforme do Naruto sozinho
  *
  * Saída:
  *  - client/public/assets/character/fig_<cabeça|none>_<corpo|none>.png  (as 16 combinações)
@@ -27,6 +30,8 @@ const OUT_ITEMS = join(ROOT, 'client/public/assets/items');
 
 const HEADS = ['chapeu_palha', 'venda_olhos', 'bandana_ninja'] as const;
 const BODIES = ['gi_laranja', 'shihakusho', 'uniforme_jujutsu'] as const;
+const MASK = 'mascara_hollow';
+const NARUTO = 'uniforme_naruto';
 
 /** Altura do corpo (sem chapéu) em pixels na arte final. */
 const BODY_H = 64;
@@ -172,6 +177,66 @@ async function figures() {
   const bandanaExtra = (sixBoxes[2].y1 - sixBoxes[2].y0) / sixBody;
   const nineBody = Math.max(...grid[2].map((b) => b.y1 - b.y0)) / bandanaExtra;
   for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) await write(nine, grid[r][c], nineBody, HEADS[r], BODIES[c]);
+
+  // Máscara Hollow e uniforme do Naruto. A máscara não aumenta a altura, então as figuras
+  // com máscara dão a altura do corpo.
+  const extra = await load('combinacoes_naruto_hollow.png');
+  const rows = findFigures(extra);
+  if (rows.length !== 2 || rows[0].length !== 4 || rows[1].length !== 3) throw new Error('combinacoes_naruto_hollow: esperava 4 + 3 figuras');
+  const extraBody = Math.max(...rows[1].map((b) => b.y1 - b.y0));
+  for (let i = 0; i < 3; i++) await write(extra, rows[0][i], extraBody, HEADS[i], NARUTO);
+  await write(extra, rows[0][3], extraBody, MASK, NARUTO);
+  for (let i = 0; i < 3; i++) await write(extra, rows[1][i], extraBody, MASK, BODIES[i]);
+
+  for (const [file, head, body] of [
+    ['mascara_hollow.png', MASK, 'none'],
+    ['uniforme_naruto.png', 'none', NARUTO],
+  ] as const) {
+    const img = await load(file);
+    const box = findFigures(img)[0][0];
+    await write(img, box, box.y1 - box.y0, head, body);
+  }
+}
+
+/** Linha do pescoço: a linha mais estreita entre 20% e 50% da altura da figura. */
+function neckRow(img: Img, box: Box): number {
+  let best = box.y0;
+  let bestW = Infinity;
+  const h = box.y1 - box.y0;
+  for (let y = box.y0 + Math.round(h * 0.2); y < box.y0 + Math.round(h * 0.5); y++) {
+    let w = 0;
+    for (let x = box.x0; x < box.x1; x++) if (opaque(img, x, y)) w++;
+    if (w < bestW) {
+      bestW = w;
+      best = y;
+    }
+  }
+  return best;
+}
+
+/** Ícone recortado de uma figura (para peças que vieram sem ícone próprio). */
+async function iconFromFigure(file: string, part: 'head' | 'body', id: string) {
+  const img = await load(file);
+  const box = findFigures(img)[0][0];
+  const neck = neckRow(img, box);
+  const y0 = part === 'head' ? box.y0 : neck;
+  const y1 = part === 'head' ? neck : box.y0 + Math.round((box.y1 - box.y0) * 0.72);
+  const w = box.x1 - box.x0;
+  const h = y1 - y0;
+  const buf = Buffer.alloc(w * h * 4);
+  for (let y = 0; y < h; y++) img.data.copy(buf, y * w * 4, ((y0 + y) * img.w + box.x0) * 4, ((y0 + y) * img.w + box.x1) * 4);
+  const trimmed = await sharp(buf, { raw: { width: w, height: h, channels: 4 } }).trim({ threshold: 1 }).png().toBuffer();
+  const meta = await sharp(trimmed).metadata();
+  const tw = 56;
+  const th = Math.min(48, Math.round(((meta.height ?? 1) / (meta.width ?? 1)) * tw));
+  const { data, info } = await sharp(trimmed)
+    .resize(tw, th, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 }, kernel: 'lanczos3' })
+    .png({ palette: true, colors: 32, dither: 0 })
+    .toBuffer()
+    .then((b) => sharp(b).ensureAlpha().raw().toBuffer({ resolveWithObject: true }));
+  for (let i = 3; i < data.length; i += 4) data[i] = data[i] > 127 ? 255 : 0;
+  await sharp(data, { raw: { width: info.width, height: info.height, channels: 4 } }).png().toFile(join(OUT_ITEMS, `${id}.png`));
+  console.log(`  ✓ item ${id} (recortado da figura)`);
 }
 
 /** Ícones do inventário: 6 painéis azuis separados por linhas escuras. O azul vira transparente. */
@@ -233,6 +298,8 @@ async function main() {
   await figures();
   console.log('Ícones das roupas…');
   await items();
+  await iconFromFigure('mascara_hollow.png', 'head', MASK);
+  await iconFromFigure('uniforme_naruto.png', 'body', NARUTO);
 }
 
 main().catch((e) => {

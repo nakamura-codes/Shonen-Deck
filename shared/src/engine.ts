@@ -1,6 +1,7 @@
 import { BASE_DECK, comboFor, getCard, isArmor } from './cards.ts';
 import { outfitCards } from './outfits.ts';
 import { nextRandom, shuffle } from './rng.ts';
+import { ARENAS } from './arenas.ts';
 import type {
   BattleEvent,
   BattleState,
@@ -65,6 +66,13 @@ function newFighter(setup: PlayerSetup, cards: CardInstance[]): Fighter {
     decayVulnerable: false,
     pendingCombo: null,
     lockedTo: null,
+    evade: 0,
+    reflect: 0,
+    stunned: 0,
+    stunnedNow: false,
+    kiPenalty: 0,
+    kiPenaltyTurns: 0,
+    kiCap: RULES.maxKi,
   };
 }
 
@@ -85,12 +93,14 @@ export function createBattle(seed: number, players: [PlayerSetup, PlayerSetup]):
 
   // Moeda: quem começa o turno 1. Depois alterna.
   const [coin, afterCoin] = nextRandom(rng);
-  rng = afterCoin;
+  const [arenaRoll, afterArena] = nextRandom(afterCoin);
+  rng = afterArena;
 
   const state: BattleState = {
     seed,
     rngState: rng,
     firstPlayer: coin < 0.5 ? 0 : 1,
+    arena: Math.floor(arenaRoll * ARENAS.length),
     turn: 0,
     phase: 'planning',
     fighters,
@@ -121,7 +131,14 @@ function startTurn(state: BattleState, events: BattleEvent[]) {
   for (const p of [0, 1] as PlayerIndex[]) {
     const f = state.fighters[p];
     f.block = 0;
-    f.ki = Math.min(RULES.maxKi, f.ki + RULES.kiPerTurn);
+    f.evade = 0;
+    f.reflect = 0;
+    // Haki do Rei: atordoamento e Ki máximo reduzido valem a partir deste turno.
+    f.stunnedNow = f.stunned > 0;
+    if (f.stunned > 0) f.stunned -= 1;
+    f.kiCap = RULES.maxKi - (f.kiPenaltyTurns > 0 ? f.kiPenalty : 0);
+    if (f.kiPenaltyTurns > 0) f.kiPenaltyTurns -= 1;
+    f.ki = Math.min(f.kiCap, f.ki + RULES.kiPerTurn);
     f.queue = [];
     f.ready = false;
     f.revealing = false;
@@ -133,7 +150,7 @@ function startTurn(state: BattleState, events: BattleEvent[]) {
     const f = state.fighters[p];
     for (const power of f.powers) {
       if (power === 'gearSecond') {
-        f.ki = Math.min(RULES.maxKi, f.ki + 1);
+        f.ki = Math.min(f.kiCap, f.ki + 1);
         loseHp(f, p, 2, 'Gear Second', events);
       } else if (power === 'domain') {
         state.fighters[other(p)].weak += 1;
@@ -198,6 +215,7 @@ export function playCard(state: BattleState, player: PlayerIndex, cardUid: strin
   const idx = f.hand.findIndex((c) => c.uid === cardUid);
   if (idx < 0) return { ok: false, error: 'Essa carta não está na sua mão.' };
   const def = getCard(f.hand[idx].id);
+  if (f.stunnedNow) return { ok: false, error: 'Você está atordoado neste turno.' };
   if (f.lockedTo && def.id !== f.lockedTo) {
     return { ok: false, error: `Neste turno você só pode jogar ${getCard(f.lockedTo).name}.` };
   }
@@ -272,17 +290,64 @@ function dealDamage(
   events.push({ type: 'damage', source, target, cardId, amount: hpDamage, blocked });
 }
 
+/**
+ * Infinity e Boogie Woogie agem sobre uma habilidade inteira (todos os golpes da carta).
+ * Boogie Woogie tem prioridade: se o alvo tiver os dois, a habilidade volta no atacante.
+ */
+function intercept(state: BattleState, attacker: PlayerIndex, cardId: string, events: BattleEvent[]): 'evade' | 'reflect' | null {
+  const target = other(attacker);
+  const t = state.fighters[target];
+  if (t.reflect > 0) {
+    t.reflect -= 1;
+    events.push({ type: 'reflect', player: target, cardId });
+    return 'reflect';
+  }
+  if (t.evade > 0) {
+    t.evade -= 1;
+    events.push({ type: 'evade', player: target, cardId });
+    return 'evade';
+  }
+  return null;
+}
+
 function resolveCard(state: BattleState, player: PlayerIndex, q: QueuedCard, events: BattleEvent[]) {
   const def = getCard(q.card.id);
   const f = state.fighters[player];
   const opp = other(player);
   const repeats = q.doubled ? 2 : 1;
+  const isFirstCard = f.queue[0]?.card.uid === q.card.uid;
+  let caught: 'evade' | 'reflect' | null | undefined;
   for (let r = 0; r < repeats; r++) {
     for (const e of def.effects) {
       switch (e.kind) {
-        case 'damage':
-          for (let i = 0; i < (e.times ?? 1); i++) dealDamage(state, player, opp, e.amount, !!e.pierce, def.id, events, !!e.fixed);
+        case 'damage': {
+          if (caught === undefined) caught = intercept(state, player, def.id, events);
+          if (caught === 'evade') break;
+          const target = caught === 'reflect' ? player : opp;
+          const amount = isFirstCard && e.firstCardAmount !== undefined ? e.firstCardAmount : e.amount;
+          for (let i = 0; i < (e.times ?? 1); i++) dealDamage(state, player, target, amount, !!e.pierce, def.id, events, !!e.fixed);
           break;
+        }
+        case 'evade':
+          f.evade += 1;
+          break;
+        case 'reflect':
+          f.reflect += 1;
+          break;
+        case 'heal': {
+          const healed = Math.min(e.amount, f.maxHp - f.hp);
+          f.hp += healed;
+          events.push({ type: 'heal', player, amount: healed });
+          break;
+        }
+        case 'stun': {
+          const o = state.fighters[opp];
+          o.stunned = Math.max(o.stunned, e.turns);
+          o.kiPenalty = e.kiPenalty;
+          o.kiPenaltyTurns = Math.max(o.kiPenaltyTurns, e.kiPenaltyTurns);
+          events.push({ type: 'stun', player: opp, turns: e.turns, kiPenalty: e.kiPenalty });
+          break;
+        }
         case 'block':
           f.block += e.amount;
           events.push({ type: 'block', player, amount: e.amount });
@@ -335,7 +400,8 @@ function tickCharges(state: BattleState, order: PlayerIndex[], events: BattleEve
       ch.turnsLeft -= 1;
       if (ch.turnsLeft <= 0) {
         events.push({ type: 'chargeFire', player: p, cardId: ch.cardId });
-        dealDamage(state, p, other(p), ch.damage, false, ch.cardId, events);
+        const caught = intercept(state, p, ch.cardId, events);
+        if (caught !== 'evade') dealDamage(state, p, caught === 'reflect' ? p : other(p), ch.damage, false, ch.cardId, events);
       } else {
         remaining.push(ch);
       }
@@ -464,8 +530,11 @@ function publicView(f: Fighter): FighterPublicView {
     discardCount: f.discard.length,
     queueCount: f.queue.length,
     ready: f.ready,
-    maxKi: RULES.maxKi,
+    maxKi: f.kiCap,
     lockedTo: f.lockedTo,
+    stunned: f.stunnedNow,
+    evade: f.evade,
+    reflect: f.reflect,
   };
 }
 
@@ -479,6 +548,7 @@ export function viewFor(state: BattleState, player: PlayerIndex): BattleView {
     phase: state.phase,
     winner: state.winner,
     firstPlayer: state.firstPlayer,
+    arena: ARENAS[state.arena]?.id ?? ARENAS[0].id,
     turnStarter: turnStarter(state),
     me: {
       ...publicView(me),
@@ -488,7 +558,8 @@ export function viewFor(state: BattleState, player: PlayerIndex): BattleView {
       revealing: me.revealing,
       comboLock: hasComboLock(me),
     },
-    opponent: { ...publicView(opp), queue: me.revealing ? opp.queue : null },
+    // O oponente não fica sabendo quantas cartas você escolheu (só com Sharingan).
+    opponent: { ...publicView(opp), queueCount: me.revealing ? opp.queue.length : 0, queue: me.revealing ? opp.queue : null },
   };
 }
 

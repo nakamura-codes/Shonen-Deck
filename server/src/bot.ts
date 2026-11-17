@@ -56,6 +56,10 @@ export function botPlays(state: BattleState, p: PlayerIndex): BattleState {
         if (e.kind === 'clone') score += kiAfter >= 2 ? 6 : -5;
         if (e.kind === 'reveal') score += 2;
         if (e.kind === 'drawNext') score += 2;
+        if (e.kind === 'evade') score += opp.charges.length > 0 ? 14 : 5;
+        if (e.kind === 'reflect') score += opp.charges.length > 0 ? 16 : 6;
+        if (e.kind === 'heal') score += f.hp <= f.maxHp - e.amount ? e.amount : 0;
+        if (e.kind === 'stun') score += 15;
       }
       score = score / Math.max(1, def.cost) + Math.random() * 2;
       if (!best || score > best.score) best = { uid: c.uid, score };

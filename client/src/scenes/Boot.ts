@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { CARDS, OUTFIT_ITEMS, itemsForSlot } from '@oficina/shared';
+import { ARENAS, CARDS, OUTFIT_ITEMS, itemsForSlot } from '@oficina/shared';
 import { session } from '../session.ts';
 import { txt } from '../ui.ts';
 
@@ -14,6 +14,7 @@ export class BootScene extends Phaser.Scene {
     // Arte que faltar não quebra o jogo: cartas usam ícone provisório.
     this.load.on('loaderror', (file: Phaser.Loader.File) => console.warn('Arte não encontrada:', file.src));
     for (const id of Object.keys(CARDS)) this.load.image(`card_${id}`, `assets/cards/${id}.png`);
+    for (const a of ARENAS) this.load.image(`arena_${a.id}`, `assets/arenas/${a.id}.png`);
     for (const item of OUTFIT_ITEMS) this.load.image(`item_${item.id}`, `assets/items/${item.id}.png`);
     const heads = ['none', ...itemsForSlot('head').map((i) => i.id)];
     const bodies = ['none', ...itemsForSlot('body').map((i) => i.id)];

@@ -4,6 +4,7 @@ import {
   EMPTY_OUTFIT,
   figureKey,
   OUTFIT_ITEMS,
+  RETIRED_CARDS,
   RULES,
   buildDeck,
   createBattle,
@@ -66,7 +67,7 @@ describe('dados', () => {
 
   it('toda carta aparece em alguma peça', () => {
     const fromItems = new Set(OUTFIT_ITEMS.flatMap((i) => i.cards));
-    for (const id of Object.keys(CARDS)) if (!CARDS[id].token && !id.endsWith('_basico') && id !== 'defesa_basica') expect(fromItems.has(id), id).toBe(true);
+    for (const id of Object.keys(CARDS)) if (!CARDS[id].token && !RETIRED_CARDS.includes(id) && !id.endsWith('_basico') && id !== 'defesa_basica') expect(fromItems.has(id), id).toBe(true);
   });
 
   it('peça inválida ou no espaço errado vira espaço vazio', () => {
@@ -500,5 +501,111 @@ describe('combo Red + Blue → Hollow Purple', () => {
     const { state, events } = readyAndResolve(s);
     expect(state.phase).toBe('over');
     expect(events.some((e) => e.type === 'combo')).toBe(false);
+  });
+});
+
+describe('novas habilidades', () => {
+  it('Infinity desvia da próxima habilidade inteira (todos os golpes), mesmo jogado depois', () => {
+    let s = newBattle();
+    giveHand(s, 0, ['gatling', 'golpe_basico']);
+    giveHand(s, 1, ['infinity']);
+    s.fighters[0].ki = 5;
+    s = play(s, 0, 'gatling');
+    s = play(s, 0, 'golpe_basico');
+    s = play(s, 1, 'infinity');
+    const { state, events } = readyAndResolve(s);
+    expect(events.some((e) => e.type === 'evade' && e.cardId === 'gatling')).toBe(true);
+    expect(state.fighters[1].hp).toBe(60 - 6); // só o Golpe Básico acerta
+  });
+
+  it('Infinity desvia do Hollow Purple', () => {
+    let s = newBattle();
+    s.fighters[0].lockedTo = 'hollow_purple';
+    s.fighters[0].hand = [{ uid: 'hp', id: 'hollow_purple' }];
+    giveHand(s, 1, ['infinity']);
+    s = play(s, 0, 'hollow_purple');
+    s = play(s, 1, 'infinity');
+    expect(readyAndResolve(s).state.fighters[1].hp).toBe(60);
+  });
+
+  it('Boogie Woogie devolve a próxima habilidade no atacante', () => {
+    let s = newBattle();
+    giveHand(s, 0, ['getsuga']);
+    giveHand(s, 1, ['boogie_woogie']);
+    s = play(s, 0, 'getsuga');
+    s = play(s, 1, 'boogie_woogie');
+    const { state, events } = readyAndResolve(s);
+    expect(events.some((e) => e.type === 'reflect')).toBe(true);
+    expect(state.fighters[1].hp).toBe(60);
+    expect(state.fighters[0].hp).toBe(60 - 14);
+  });
+
+  it('Boogie Woogie também devolve golpe carregado', () => {
+    let s = newBattle();
+    giveHand(s, 0, ['kamehameha']);
+    s = play(s, 0, 'kamehameha');
+    s = readyAndResolve(s).state;
+    giveHand(s, 1, ['boogie_woogie']);
+    s = play(s, 1, 'boogie_woogie');
+    const { state } = readyAndResolve(s);
+    expect(state.fighters[0].hp).toBe(60 - 18);
+    expect(state.fighters[1].hp).toBe(60);
+  });
+
+  it('Técnica Reversa cura 10 sem passar do máximo e é exaurida', () => {
+    let s = newBattle();
+    s.fighters[0].hp = 45;
+    giveHand(s, 0, ['tecnica_reversa']);
+    s = play(s, 0, 'tecnica_reversa');
+    let r = readyAndResolve(s);
+    expect(r.state.fighters[0].hp).toBe(55);
+    expect(r.state.fighters[0].exhausted.map((c) => c.id)).toContain('tecnica_reversa');
+    s = newBattle();
+    s.fighters[0].hp = 56;
+    giveHand(s, 0, ['tecnica_reversa']);
+    s = play(s, 0, 'tecnica_reversa');
+    r = readyAndResolve(s);
+    expect(r.state.fighters[0].hp).toBe(60);
+  });
+
+  it('Black Flash causa 20 como primeira carta e 8 depois', () => {
+    let s = newBattle();
+    giveHand(s, 0, ['black_flash']);
+    s = play(s, 0, 'black_flash');
+    expect(readyAndResolve(s).state.fighters[1].hp).toBe(40);
+    s = newBattle();
+    giveHand(s, 0, ['shunpo', 'black_flash']);
+    s = play(s, 0, 'shunpo');
+    s = play(s, 0, 'black_flash');
+    expect(readyAndResolve(s).state.fighters[1].hp).toBe(52);
+  });
+
+  it('Ki Blast custa 1 e causa 3 duas vezes', () => {
+    let s = newBattle();
+    giveHand(s, 0, ['ki_blast']);
+    s = play(s, 0, 'ki_blast');
+    expect(s.fighters[0].ki).toBe(2);
+    expect(readyAndResolve(s).state.fighters[1].hp).toBe(54);
+  });
+
+  it('Haki do Rei atordoa 1 turno e reduz o Ki máximo do oponente em 2 por 2 turnos', () => {
+    let s = newBattle();
+    s.fighters[1].ki = 5;
+    giveHand(s, 0, ['haki_do_rei']);
+    s = play(s, 0, 'haki_do_rei');
+    let r = readyAndResolve(s);
+    s = r.state;
+    // Turno 2: atordoado e com Ki máximo 3.
+    expect(s.fighters[1].stunnedNow).toBe(true);
+    expect(viewFor(s, 1).me.maxKi).toBe(3);
+    expect(s.fighters[1].ki).toBe(3);
+    expect(playCard(s, 1, s.fighters[1].hand[0].uid)).toEqual({ ok: false, error: 'Você está atordoado neste turno.' });
+    s = readyAndResolve(s).state;
+    // Turno 3: já pode jogar, mas o Ki máximo ainda é 3.
+    expect(s.fighters[1].stunnedNow).toBe(false);
+    expect(viewFor(s, 1).me.maxKi).toBe(3);
+    s = readyAndResolve(s).state;
+    // Turno 4: volta ao normal.
+    expect(viewFor(s, 1).me.maxKi).toBe(5);
   });
 });
