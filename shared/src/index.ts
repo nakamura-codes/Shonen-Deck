@@ -5,3 +5,4 @@ export * from './rng.ts';
 export * from './engine.ts';
 export * from './protocol.ts';
 export * from './arenas.ts';
+export * from './preview.ts';

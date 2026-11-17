@@ -9,6 +9,7 @@ import {
   buildDeck,
   createBattle,
   playCard,
+  previewCardDamage,
   resolveTurn,
   sanitizeOutfit,
   setReady,
@@ -649,5 +650,37 @@ describe('Máscara Hollow', () => {
     expect(state.fighters[1].hp).toBe(60 - 12 - 6);
     // Bloqueio de 4 absorve parte do golpe de 6.
     expect(state.fighters[0].hp).toBe(58);
+  });
+});
+
+describe('prévia de dano na carta', () => {
+  it('soma Força, Vulnerável do oponente e cartas já na fila', () => {
+    let s = newBattle();
+    s.fighters[0].strength = 2;
+    giveHand(s, 0, ['kaioken', 'golpe_basico', 'chidori']);
+    expect(previewCardDamage(viewFor(s, 0), 'golpe_basico')).toEqual({ base: 6, value: 8 });
+    s = play(s, 0, 'kaioken');
+    expect(previewCardDamage(viewFor(s, 0), 'golpe_basico')).toEqual({ base: 6, value: 11 });
+    s.fighters[1].vulnerable = 1;
+    expect(previewCardDamage(viewFor(s, 0), 'golpe_basico')).toEqual({ base: 6, value: 13 });
+  });
+
+  it('Fraco reduz; golpe carregado e dano fixo não têm prévia', () => {
+    const s = newBattle();
+    s.fighters[0].weak = 1;
+    expect(previewCardDamage(viewFor(s, 0), 'golpe_basico')).toEqual({ base: 6, value: 4 });
+    expect(previewCardDamage(viewFor(s, 0), 'kamehameha')).toBeNull();
+    expect(previewCardDamage(viewFor(s, 0), 'hollow_purple')).toBeNull();
+    expect(previewCardDamage(viewFor(s, 0), 'defesa_basica')).toBeNull();
+  });
+
+  it('Black Flash mostra 20 como primeira carta; Sonído vai para o primeiro ataque', () => {
+    let s = newBattle();
+    giveHand(s, 0, ['black_flash', 'sonido', 'ki_blast', 'golpe_basico']);
+    expect(previewCardDamage(viewFor(s, 0), 'black_flash')).toEqual({ base: 20, value: 20 });
+    s = play(s, 0, 'sonido');
+    expect(previewCardDamage(viewFor(s, 0), 'ki_blast')).toEqual({ base: 3, value: 6 });
+    s = play(s, 0, 'ki_blast');
+    expect(previewCardDamage(viewFor(s, 0), 'golpe_basico')).toEqual({ base: 6, value: 6 });
   });
 });

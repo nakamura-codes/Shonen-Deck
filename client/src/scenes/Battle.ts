@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import {
   getCard,
+  previewCardDamage,
   type BattleEvent,
   type BattleView,
   type FighterPublicView,
@@ -291,7 +292,7 @@ export class BattleScene extends Phaser.Scene {
     cards.forEach((c, i) => {
       const def = getCard(c.id);
       const x = 620 - ((n - 1) * spacing) / 2 + i * spacing;
-      const card = makeCard(this, c.id).setPosition(x, y);
+      const card = makeCard(this, c.id, { preview: previewCardDamage(view, c.id) }).setPosition(x, y);
       const locked = view.me.lockedTo !== null && c.id !== view.me.lockedTo;
       const cost = view.me.lockedTo === c.id ? 0 : def.cost;
       const blockedReason = view.me.stunned

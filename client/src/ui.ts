@@ -108,7 +108,7 @@ export const CARD_W = 156;
 export const CARD_H = 226;
 
 /** Desenha uma carta completa: moldura, custo, ícone hexagonal, nome e texto. */
-export function makeCard(scene: Phaser.Scene, cardId: string, opts: { cost?: number } = {}) {
+export function makeCard(scene: Phaser.Scene, cardId: string, opts: { cost?: number; preview?: { base: number; value: number } | null } = {}) {
   const def = getCard(cardId);
   const c = scene.add.container(0, 0);
   const g = scene.add.graphics();
@@ -157,6 +157,21 @@ export function makeCard(scene: Phaser.Scene, cardId: string, opts: { cost?: num
   orb.fillStyle(0x8fd0ff).fillCircle(-w / 2 + 10, -h / 2 + 9, 4);
   c.add(orb);
   c.add(txt(scene, -w / 2 + 14, -h / 2 + 13, String(cost), 18, '#ffffff', { fontStyle: 'bold', stroke: '#0d0a14', strokeThickness: 3 }));
+
+  // Prévia do dano: valor da carta riscado e o dano real ao lado (verde se maior, vermelho se menor).
+  const p = opts.preview;
+  if (p && p.value !== p.base) {
+    const up = p.value > p.base;
+    const badge = scene.add.container(w / 2 - 34, -10);
+    const bg = scene.add.graphics();
+    bg.fillStyle(COLORS.outline).fillRoundedRect(-34, -15, 68, 30, 6);
+    bg.fillStyle(0x231c33).fillRoundedRect(-32, -13, 64, 26, 5);
+    const oldT = txt(scene, -15, -1, String(p.base), 15, '#a89cc0', { fontStyle: 'bold' });
+    const strike = scene.add.rectangle(-15, 0, oldT.width + 6, 2, 0xff6070);
+    const newT = txt(scene, 15, -1, String(p.value), 19, up ? '#7fe0a0' : '#ff7a7a', { fontStyle: 'bold', stroke: '#0d0a14', strokeThickness: 3 });
+    badge.add([bg, oldT, strike, newT]);
+    c.add(badge);
+  }
 
   c.setSize(w, h);
   return c;
