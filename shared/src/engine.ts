@@ -350,13 +350,6 @@ function intercept(state: BattleState, attacker: PlayerIndex, cardId: string, ev
 
 function resolveCard(state: BattleState, player: PlayerIndex, q: QueuedCard, events: BattleEvent[]) {
   const def = getCard(q.card.id);
-  if (q.powered && def.evolve) {
-    // Versão carregada: sem dano agora; a carta evoluída chega na mão no próximo turno.
-    state.fighters[player].pendingCards.push(def.evolve.into);
-    state.fighters[player].exhausted.push(q.card);
-    events.push({ type: 'chargeStart', player, cardId: def.id, turns: 1 });
-    return;
-  }
   const f = state.fighters[player];
   const opp = other(player);
   const repeats = q.doubled ? 2 : 1;
@@ -462,6 +455,14 @@ function resolveCard(state: BattleState, player: PlayerIndex, q: QueuedCard, eve
           break;
       }
     }
+  }
+  // Evolução (Galick Gun com Ki cheio): depois do efeito normal, a carta vira outra,
+  // que chega na mão no próximo turno.
+  if (q.powered && def.evolve) {
+    f.pendingCards.push(def.evolve.into);
+    f.exhausted.push(q.card);
+    events.push({ type: 'evolve', player, from: def.id, into: def.evolve.into });
+    return;
   }
   if (def.exhaust || def.type === 'power') f.exhausted.push(q.card);
   else f.discard.push(q.card);

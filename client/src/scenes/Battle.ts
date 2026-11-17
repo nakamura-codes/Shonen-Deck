@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import {
+  COMBOS,
   getCard,
   previewCardDamage,
   type BattleEvent,
@@ -472,9 +473,11 @@ export class BattleScene extends Phaser.Scene {
           await wait(this, 600);
           break;
         }
+        case 'evolve':
+          await this.evolveAnim(this.side(ev.player), ev.from, ev.into);
+          break;
         case 'combo':
-          sfx('combo');
-          await this.comboAnim(this.side(ev.player));
+          await this.comboAnim(this.side(ev.player), ev.cardId);
           break;
         case 'gameOver':
         case 'play':
@@ -533,23 +536,88 @@ export class BattleScene extends Phaser.Scene {
     b.setX(CHAR_X[1]);
   }
 
-  /** Red + Blue se fundem no Hollow Purple. */
-  private async comboAnim(side: Side) {
-    const x = CHAR_X[side];
-    const y = BODY_Y - 150;
-    const red = this.add.circle(x - 90, y, 20, 0xff4050).setDepth(45).setStrokeStyle(4, 0xffffff);
-    const blue = this.add.circle(x + 90, y, 20, 0x4fa8ff).setDepth(45).setStrokeStyle(4, 0xffffff);
-    await tweenPromise(this, { targets: [red, blue], x, duration: 600, ease: 'Sine.easeIn' });
-    red.destroy();
-    blue.destroy();
-    const purple = this.add.circle(x, y, 26, 0xa040ff).setDepth(45).setStrokeStyle(5, 0xffffff);
-    this.cameras.main.flash(200, 200, 120, 255);
-    await tweenPromise(this, { targets: purple, scale: 1.8, duration: 250, ease: 'Back.easeOut' });
-    const t1 = txt(this, x, y - 60, 'HOLLOW PURPLE!', 30, '#ffffff', { fontStyle: 'bold', stroke: '#6a2aa8', strokeThickness: 8 }).setDepth(46);
-    const t2 = txt(this, x, y + 56, 'chega na próxima rodada', 16, '#e9b8ff', { stroke: '#0d0a14', strokeThickness: 4 }).setDepth(46);
-    await wait(this, 900);
-    await tweenPromise(this, { targets: [purple, t1, t2], alpha: 0, duration: 250 });
-    [purple, t1, t2].forEach((o) => o.destroy());
+  /**
+   * Evolução de carta: aparece no meio da tela, treme e pisca, "troca de pele" (vira de lado
+   * e volta como a carta nova) e depois cai na mão de quem evoluiu.
+   */
+  private async evolveAnim(side: Side, from: string, into: string) {
+    const x = 640;
+    const y = 300;
+    const glow = this.add.circle(x, y, 90, 0xffe28a, 0).setDepth(59);
+    const card = makeCard(this, from).setPosition(x, y).setScale(0).setDepth(60);
+    await tweenPromise(this, { targets: card, scale: 1.1, duration: 300, ease: 'Back.easeOut' });
+    sfx('charge');
+    // Tremida crescente com brilho pulsando por trás.
+    this.tweens.add({ targets: glow, fillAlpha: 0.55, scale: 1.6, yoyo: true, repeat: 2, duration: 160 });
+    for (let k = 0; k < 8; k++) {
+      card.setX(x + (k % 2 ? 1 : -1) * (2 + k));
+      await wait(this, 45);
+    }
+    card.setX(x);
+    // Troca de pele.
+    await tweenPromise(this, { targets: card, scaleX: 0, duration: 130, ease: 'Sine.easeIn' });
+    card.destroy();
+    this.cameras.main.flash(220, 255, 240, 200);
+    sfx('combo');
+    const next = makeCard(this, into).setPosition(x, y).setScale(0, 1.1).setDepth(60);
+    await tweenPromise(this, { targets: next, scaleX: 1.1, duration: 160, ease: 'Sine.easeOut' });
+    const ring = this.add.circle(x, y, 60, 0x000000, 0).setStrokeStyle(6, 0xffe28a).setDepth(58);
+    this.tweens.add({ targets: ring, scale: 3, alpha: 0, duration: 500, onComplete: () => ring.destroy() });
+    const label = txt(this, x, y - 150, 'EVOLUIU!', 32, '#ffe28a', { fontStyle: 'bold', stroke: '#0d0a14', strokeThickness: 7 }).setDepth(61);
+    await wait(this, 700);
+    // Cai na mão (sua) ou vai para o lado do oponente.
+    const target = side === 0 ? { x: 620, y: 650, scale: 0.45 } : { x: CHAR_X[1], y: BODY_Y - 60, scale: 0.2 };
+    await Promise.all([
+      tweenPromise(this, { targets: next, x: target.x, y: target.y, scale: target.scale, alpha: 0.2, duration: 450, ease: 'Quad.easeIn' }),
+      tweenPromise(this, { targets: [label, glow], alpha: 0, duration: 300 }),
+    ]);
+    [next, label, glow].forEach((o) => o.destroy());
+  }
+
+  /**
+   * Combo (Red + Blue → Hollow Purple): as duas cartas sobem dos cantos de baixo, se encontram
+   * no centro, "trocam de pele" juntas e viram a carta do combo, que cai na mão de quem fez.
+   */
+  private async comboAnim(side: Side, cardId: string) {
+    const combo = COMBOS.find((c) => c.creates === cardId);
+    const [leftId, rightId] = combo ? combo.requires : ['red', 'blue'];
+    const x = 640;
+    const y = 300;
+    const left = makeCard(this, leftId).setPosition(140, 820).setScale(0.8).setAngle(-12).setDepth(60);
+    const right = makeCard(this, rightId).setPosition(1140, 820).setScale(0.8).setAngle(12).setDepth(60);
+    sfx('charge');
+    await Promise.all([
+      tweenPromise(this, { targets: left, x: x - 90, y, angle: -6, duration: 520, ease: 'Cubic.easeOut' }),
+      tweenPromise(this, { targets: right, x: x + 90, y, angle: 6, duration: 520, ease: 'Cubic.easeOut' }),
+    ]);
+    await wait(this, 180);
+    // Encontro no centro.
+    await tweenPromise(this, { targets: [left, right], x, angle: 0, duration: 220, ease: 'Quad.easeIn' });
+    this.cameras.main.shake(160, 0.008);
+    // Troca de pele: as duas viram de lado e volta a carta do combo.
+    await tweenPromise(this, { targets: [left, right], scaleX: 0, duration: 130, ease: 'Sine.easeIn' });
+    left.destroy();
+    right.destroy();
+    this.cameras.main.flash(260, 200, 120, 255);
+    sfx('combo');
+    const glow = this.add.circle(x, y, 100, 0xa040ff, 0.4).setDepth(59);
+    const next = makeCard(this, cardId).setPosition(x, y).setScale(0, 1.1).setDepth(60);
+    await tweenPromise(this, { targets: next, scaleX: 1.1, duration: 170, ease: 'Sine.easeOut' });
+    const ring = this.add.circle(x, y, 60, 0x000000, 0).setStrokeStyle(6, 0xe9b8ff).setDepth(58);
+    this.tweens.add({ targets: ring, scale: 3.2, alpha: 0, duration: 550, onComplete: () => ring.destroy() });
+    const label = txt(this, x, y - 150, `${getCard(cardId).name.toUpperCase()}!`, 32, '#ffffff', {
+      fontStyle: 'bold',
+      stroke: '#6a2aa8',
+      strokeThickness: 8,
+    }).setDepth(61);
+    const sub = txt(this, x, y + 150, 'chega na mão na próxima rodada', 16, '#e9b8ff', { stroke: '#0d0a14', strokeThickness: 4 }).setDepth(61);
+    await wait(this, 800);
+    const target = side === 0 ? { x: 620, y: 650, scale: 0.45 } : { x: CHAR_X[1], y: BODY_Y - 60, scale: 0.2 };
+    await Promise.all([
+      tweenPromise(this, { targets: next, x: target.x, y: target.y, scale: target.scale, alpha: 0.2, duration: 450, ease: 'Quad.easeIn' }),
+      tweenPromise(this, { targets: [label, sub, glow], alpha: 0, duration: 300 }),
+    ]);
+    [next, label, sub, glow].forEach((o) => o.destroy());
   }
 
   /** Moeda estilo Legends of Runeterra: decide quem começa a partida. */

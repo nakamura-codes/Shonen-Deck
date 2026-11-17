@@ -52,7 +52,7 @@ export interface CardDef {
   ethereal?: boolean;
   /** Fica na mão de um turno para o outro, até ser usada. */
   retain?: boolean;
-  /** Se jogada com pelo menos `atKi` de Ki: gasta esse Ki e, em vez dos efeitos normais, vira `into` no próximo turno. */
+  /** Se jogada com pelo menos `atKi` de Ki: gasta esse Ki, causa o efeito normal e evolui para `into` (chega na mão no próximo turno). */
   evolve?: { atKi: number; into: string };
 }
 
@@ -173,6 +173,7 @@ export type BattleEvent =
   | { type: 'chargeFire'; player: PlayerIndex; cardId: string }
   | { type: 'chargeCancel'; player: PlayerIndex; cardId: string }
   | { type: 'combo'; player: PlayerIndex; cardId: string }
+  | { type: 'evolve'; player: PlayerIndex; from: string; into: string }
   | { type: 'evade'; player: PlayerIndex; cardId: string }
   | { type: 'reflect'; player: PlayerIndex; cardId: string }
   | { type: 'heal'; player: PlayerIndex; amount: number }

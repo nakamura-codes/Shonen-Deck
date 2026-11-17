@@ -24,6 +24,7 @@ export class BootScene extends Phaser.Scene {
   }
 
   create() {
-    this.scene.start(session.created ? 'Wardrobe' : 'Create');
+    if (new URLSearchParams(location.search).has('galeria')) this.scene.start('Gallery');
+    else this.scene.start(session.created ? 'Wardrobe' : 'Create');
   }
 }

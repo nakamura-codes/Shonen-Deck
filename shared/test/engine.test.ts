@@ -776,14 +776,15 @@ describe('Galick Gun → Big Bang Attack', () => {
     expect(u.state.fighters[0].ki).toBe(5);
   });
 
-  it('Galick Gun com 5 de Ki gasta tudo e vira Big Bang Attack no próximo turno, que fica na mão até ser usado', () => {
+  it('Galick Gun com 5 de Ki causa dano, gasta tudo e evolui para Big Bang Attack no próximo turno, que fica na mão até ser usado', () => {
     let s = newBattle();
     s.fighters[0].ki = 5;
     giveHand(s, 0, ['galick_gun']);
     s = play(s, 0, 'galick_gun');
     expect(s.fighters[0].ki).toBe(0);
     let r = readyAndResolve(s);
-    expect(r.state.fighters[1].hp).toBe(60); // só carregou
+    expect(r.state.fighters[1].hp).toBe(50); // causa os 10 e evolui
+    expect(r.events.some((e) => e.type === 'evolve')).toBe(true)
     s = r.state;
     const bba = () => s.fighters[0].hand.filter((c) => c.id === 'big_bang_attack');
     expect(bba()).toHaveLength(1);
@@ -796,7 +797,7 @@ describe('Galick Gun → Big Bang Attack', () => {
     s = play(s, 1, 'defesa_basica');
     s = play(s, 0, 'big_bang_attack');
     r = readyAndResolve(s);
-    expect(r.state.fighters[1].hp).toBe(30);
+    expect(r.state.fighters[1].hp).toBe(20);
     // Some, e o Galick Gun volta ao baralho de compra.
     const f = r.state.fighters[0];
     expect([...f.hand, ...f.drawPile, ...f.discard].some((c) => c.id === 'big_bang_attack')).toBe(false);

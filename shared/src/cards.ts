@@ -158,7 +158,7 @@ export const CARDS: Record<string, CardDef> = {
   },
   galick_gun: {
     id: 'galick_gun', name: 'Galick Gun', cost: 2, type: 'attack', rarity: 'rare',
-    text: 'Causa 10 de dano. Com 5 de Ki: gasta tudo e vira Big Bang Attack no próximo turno.',
+    text: 'Causa 10 de dano. Com 5 de Ki: gasta tudo e evolui para Big Bang Attack.',
     effects: [{ kind: 'damage', amount: 10 }],
     evolve: { atKi: 5, into: 'big_bang_attack' },
   },

@@ -4,6 +4,7 @@ import { CreateScene } from './scenes/Create.ts';
 import { WardrobeScene } from './scenes/Wardrobe.ts';
 import { LobbyScene } from './scenes/Lobby.ts';
 import { BattleScene } from './scenes/Battle.ts';
+import { GalleryScene } from './scenes/Gallery.ts';
 import { unlockAudio } from './sfx.ts';
 
 // O navegador só libera som depois de uma interação.
@@ -30,7 +31,7 @@ async function start() {
     pixelArt: true,
     dom: { createContainer: true },
     scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
-    scene: [BootScene, CreateScene, WardrobeScene, LobbyScene, BattleScene],
+    scene: [BootScene, CreateScene, WardrobeScene, LobbyScene, BattleScene, GalleryScene],
   });
 }
 
