@@ -139,11 +139,49 @@ async function frame(file: string, outName: string, transparentHoles: boolean) {
     out[i * 4] = r; out[i * 4 + 1] = g; out[i * 4 + 2] = b;
     out[i * 4 + 3] = transparentHoles && pinkish ? 0 : 255;
   }
+  // A redução mistura o magenta com a moldura e deixa uma borda rosada em volta dos buracos.
+  // Os pixels rosados vizinhos de um buraco também viram buraco (algumas passadas).
+  if (transparentHoles) {
+    for (let pass = 0; pass < 3; pass++) {
+      const grow: number[] = [];
+      for (let y = 1; y < CARD_H - 1; y++)
+        for (let x = 1; x < CARD_W - 1; x++) {
+          const i = y * CARD_W + x;
+          if (out[i * 4 + 3] === 0) continue;
+          const r = out[i * 4], g = out[i * 4 + 1], b = out[i * 4 + 2];
+          const rosado = r > 140 && b > 120 && g < 150 && r - g > 60 && b - g > 40;
+          if (!rosado) continue;
+          if ([i - 1, i + 1, i - CARD_W, i + CARD_W].some((j) => out[j * 4 + 3] === 0)) grow.push(i);
+        }
+      for (const i of grow) out[i * 4 + 3] = 0;
+    }
+  }
   await sharp(out, { raw: { width: CARD_W, height: CARD_H, channels: 4 } })
     .png({ palette: true, colors: 96, dither: 0 })
     .toFile(join(OUT, `${outName}.png`));
   console.log(`  ✓ ${outName}`);
-  return { data, W: info.width, H: info.height };
+  return { data, W: info.width, H: info.height, alpha: out };
+}
+
+/** Buraco (transparente) da moldura reduzida que contém o centro de `guess`: a medida exata usada no jogo. */
+function holeAround(alpha: Buffer, guess: Rect): Rect {
+  const seed = Math.round(guess.y + guess.h / 2) * CARD_W + Math.round(guess.x + guess.w / 2);
+  if (alpha[seed * 4 + 3] !== 0) return guess;
+  const seen = new Uint8Array(CARD_W * CARD_H);
+  let x0 = CARD_W, y0 = CARD_H, x1 = 0, y1 = 0;
+  const st = [seed];
+  while (st.length) {
+    const i = st.pop()!;
+    const x = i % CARD_W, y = (i - x) / CARD_W;
+    if (seen[i] || alpha[i * 4 + 3] !== 0 || x > guess.x + guess.w + 6 || y > guess.y + guess.h + 6) continue;
+    seen[i] = 1;
+    x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y);
+    if (x > 0) st.push(i - 1);
+    if (x < CARD_W - 1) st.push(i + 1);
+    if (y > 0) st.push(i - CARD_W);
+    if (y < CARD_H - 1) st.push(i + CARD_W);
+  }
+  return { x: x0, y: y0, w: x1 - x0 + 1, h: y1 - y0 + 1 };
 }
 
 const scaleRect = (r: Rect, W: number, H: number): Rect => ({
@@ -157,7 +195,7 @@ async function main() {
   mkdirSync(OUT, { recursive: true });
   const layout: Record<string, Record<string, Rect>> = {};
   for (const [type, file] of Object.entries(FRAMES)) {
-    const { data, W, H } = await frame(file, type, true);
+    const { data, W, H, alpha } = await frame(file, type, true);
     const regs = regions(data, W, H).sort((a, b) => a.y - b.y);
     // Ignora pedaços pequenos (ex.: um canto) e fica com as 4 áreas principais por altura.
     const main4 = regs.filter((r) => r.w > W * 0.4).sort((a, b) => a.y - b.y);
@@ -165,7 +203,7 @@ async function main() {
     const [top, name, text, typeStrip] = main4;
     const { cost, art } = splitTop(data, W, top);
     layout[type] = {
-      cost: scaleRect(cost, W, H),
+      cost: holeAround(alpha, scaleRect(cost, W, H)),
       art: scaleRect(art, W, H),
       name: scaleRect(name, W, H),
       text: scaleRect(text, W, H),

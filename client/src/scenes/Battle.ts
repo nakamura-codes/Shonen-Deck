@@ -93,8 +93,8 @@ export class BattleScene extends Phaser.Scene {
     const ki = this.add.graphics().setDepth(4);
     ki.fillStyle(COLORS.outline).fillCircle(90, 590, 52);
     ki.fillStyle(0x1f4f8a).fillCircle(90, 590, 47);
-    ki.fillStyle(COLORS.ki).fillCircle(90, 586, 42);
-    ki.fillStyle(0x8fd0ff, 0.8).fillCircle(76, 570, 9);
+    ki.fillStyle(COLORS.ki).fillCircle(90, 590, 42);
+    ki.fillStyle(0x8fd0ff, 0.8).fillCircle(70, 570, 7);
 
     const off = session.net.on((msg) => this.onMessage(msg));
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, off);
@@ -182,8 +182,8 @@ export class BattleScene extends Phaser.Scene {
     this.drawQueues(view);
     this.drawHand(view);
 
-    this.hud.add(centerInk(txt(this, 0, 0, `${view.me.ki}/${view.me.maxKi}`, 30, '#ffffff', { fontFamily: NUM_FONT, stroke: '#0d0a14', strokeThickness: 4 }), 90, 584));
-    this.hud.add(txt(this, 90, 625, 'Ki', 14, '#d8ecff'));
+    // Só o Ki que o jogador tem agora, no centro da bola.
+    this.hud.add(centerInk(txt(this, 0, 0, String(view.me.ki), 44, '#ffffff', { fontFamily: NUM_FONT, stroke: '#0d0a14', strokeThickness: 5 }), 90, 590));
     this.hud.add(txt(this, 90, 670, `Compra ${view.me.drawCount}  ·  Descarte ${view.me.discardCount}`, 13, COLORS.textDim));
 
     const canAct = view.phase === 'planning' && !view.me.ready && !this.animating;

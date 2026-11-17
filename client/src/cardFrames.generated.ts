@@ -36,9 +36,9 @@ export const FRAME_LAYOUT = {
   },
   "skill": {
     "cost": {
-      "x": 7,
+      "x": 6,
       "y": 8,
-      "w": 25,
+      "w": 26,
       "h": 24
     },
     "art": {
@@ -71,7 +71,7 @@ export const FRAME_LAYOUT = {
       "x": 7,
       "y": 8,
       "w": 25,
-      "h": 25
+      "h": 24
     },
     "art": {
       "x": 29,
