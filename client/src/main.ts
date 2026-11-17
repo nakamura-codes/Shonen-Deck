@@ -1,5 +1,7 @@
 import Phaser from 'phaser';
 import { BootScene } from './scenes/Boot.ts';
+import { LoginScene } from './scenes/Login.ts';
+import { MainMenuScene } from './scenes/MainMenu.ts';
 import { WardrobeScene } from './scenes/Wardrobe.ts';
 import { LobbyScene } from './scenes/Lobby.ts';
 import { BattleScene } from './scenes/Battle.ts';
@@ -37,7 +39,7 @@ async function start() {
     pixelArt: true,
     dom: { createContainer: true },
     scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
-    scene: [BootScene, WardrobeScene, LobbyScene, BattleScene, GalleryScene],
+    scene: [BootScene, LoginScene, MainMenuScene, WardrobeScene, LobbyScene, BattleScene, GalleryScene],
   });
   game.events.once(Phaser.Core.Events.READY, () => {
     for (const scene of game.scene.scenes) {

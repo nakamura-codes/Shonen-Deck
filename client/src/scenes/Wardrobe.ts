@@ -46,17 +46,9 @@ export class WardrobeScene extends Phaser.Scene {
 
     // Nome editável na plaquinha do painel do personagem.
     const n = INV.name;
-    // O elemento é configurado antes de ir para a cena, para o Phaser centralizar pelo tamanho certo.
-    const el = document.createElement('input');
-    el.className = 'plate-input';
-    el.style.width = `${n.w - 24}px`;
-    this.add.dom(n.x + n.w / 2, n.y + n.h / 2, el).setOrigin(0.5);
-    el.maxLength = 16;
-    el.value = session.name;
-    el.addEventListener('input', () => {
-      session.name = el.value.trim() || session.name;
-      session.save();
-    });
+    // Nome da conta na plaquinha (troca de nome = trocar de conta, no login).
+    txt(this, n.x + n.w / 2, n.y + n.h / 2, session.name, 17, '#ffffff', { fontStyle: 'bold', stroke: '#0d0a14', strokeThickness: 4 });
+    makeButton(this, 70, 30, 110, 34, '◀ Menu', () => this.scene.start('MainMenu'), 0xb0a0c8, 15);
 
     this.deckLabel = txt(this, L.deckLabel.x, L.deckLabel.y, '', 17, '#ffffff', { fontStyle: 'bold', stroke: '#0d0a14', strokeThickness: 4 });
     // Centralizados no painel da direita (x 406–1197, centro 801).

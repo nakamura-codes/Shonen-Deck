@@ -1,4 +1,4 @@
-# Oficina Duel
+# Shonen Deck
 
 Deckbuilder PvP em pixel art, no estilo Slay the Spire, com poderes de anime: Kamehameha, Getsuga Tenshou, Gomu Gomu no Gatling, Rasengan e outros.
 
@@ -33,6 +33,7 @@ Outros comandos:
 | `npm run art:arenas` | Processa as arenas |
 | `npm run art:hud` | Processa a HUD de baixo e os botões (`art/raw/ui/`) |
 | `npm run art:inventory` | Processa o fundo do inventário e as molduras das peças |
+| `npm run art:menus` | Processa o login, o menu principal e os botões do menu |
 | `npm run art:fx` | Processa os efeitos visuais (golpes, buffs, explosões) |
 | `npm run art:frames` | Processa as molduras das cartas (ataque, técnica, poder e verso) |
 | `npm run build` | Gera a versão de produção do cliente em `client/dist` |

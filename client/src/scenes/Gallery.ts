@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { CARDS } from '@oficina/shared';
-import { makeCard, txt } from '../ui.ts';
+import { makeButton, makeCard, txt } from '../ui.ts';
+import { auth } from '../session.ts';
 
 /** Galeria de todas as cartas em tamanho de leitura. Abra com ?galeria na URL; clique para trocar de página. */
 export class GalleryScene extends Phaser.Scene {
@@ -13,7 +14,10 @@ export class GalleryScene extends Phaser.Scene {
 
   create() {
     this.cameras.main.setBackgroundColor('#16121f');
-    this.input.on('pointerdown', () => this.show(this.page + 1));
+    this.input.on('pointerdown', (_p: Phaser.Input.Pointer, over: Phaser.GameObjects.GameObject[]) => {
+      if (!over.length) this.show(this.page + 1);
+    });
+    makeButton(this, 70, 18, 110, 30, '◀ Menu', () => this.scene.start(auth.loggedIn ? 'MainMenu' : 'Login'), 0xb0a0c8, 14).setDepth(10);
     this.input.keyboard?.on('keydown', () => this.show(this.page + 1));
     this.show(0);
   }
