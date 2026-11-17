@@ -3,9 +3,9 @@ import { figureKey, getCard, getItem, type CardDef, type Outfit } from '@oficina
 import { FRAME_LAYOUT, FRAME_SIZE } from './cardFrames.generated.ts';
 import { sfx } from './sfx.ts';
 
-export const FONT = '"Pixelify Sans", monospace';
+export const FONT = '"GameFont", monospace';
 /** Fonte só para números (custo, dano, HP, Ki): mais nítida em tamanho pequeno. */
-export const NUM_FONT = '"Jersey 10", "Pixelify Sans", monospace';
+export const NUM_FONT = '"GameNum", "GameFont", monospace';
 
 export const COLORS = {
   bg: 0x16121f,
@@ -48,6 +48,32 @@ export function txt(
   return scene.add
     .text(x, y, s, { fontFamily: FONT, fontSize: `${size}px`, color, ...style })
     .setOrigin(0.5);
+}
+
+/**
+ * Centraliza o texto pelo desenho dos caracteres (os pixels pintados), não pela caixa da fonte.
+ * A Jersey 10 tem bastante espaço sobrando em cima e embaixo, o que deixa números fora do centro.
+ * O texto precisa ter origem 0.5.
+ */
+export function centerInk(t: Phaser.GameObjects.Text, x: number, y: number) {
+  t.setPosition(x, y);
+  const cnv = t.canvas;
+  if (!cnv || !cnv.width || !cnv.height) return t;
+  const data = t.context.getImageData(0, 0, cnv.width, cnv.height).data;
+  let x0 = cnv.width, y0 = cnv.height, x1 = -1, y1 = -1;
+  for (let yy = 0; yy < cnv.height; yy++)
+    for (let xx = 0; xx < cnv.width; xx++)
+      if (data[(yy * cnv.width + xx) * 4 + 3] > 60) {
+        if (xx < x0) x0 = xx;
+        if (xx > x1) x1 = xx;
+        if (yy < y0) y0 = yy;
+        if (yy > y1) y1 = yy;
+      }
+  if (x1 < 0) return t;
+  const res = t.style.resolution || 1;
+  const dx = ((x0 + x1 + 1) / 2 - cnv.width / 2) / res;
+  const dy = ((y0 + y1 + 1) / 2 - cnv.height / 2) / res;
+  return t.setPosition(x - dx * t.scaleX, y - dy * t.scaleY);
 }
 
 /** Texto que diminui até caber na largura. */
@@ -132,9 +158,9 @@ function previewBadge(scene: Phaser.Scene, p: { base: number; value: number }) {
   const bg = scene.add.graphics();
   bg.fillStyle(COLORS.outline).fillRoundedRect(-34, -15, 68, 30, 6);
   bg.fillStyle(0x231c33).fillRoundedRect(-32, -13, 64, 26, 5);
-  const oldT = txt(scene, -15, -1, String(p.base), 19, '#a89cc0', { fontFamily: NUM_FONT });
+  const oldT = centerInk(txt(scene, 0, 0, String(p.base), 19, '#a89cc0', { fontFamily: NUM_FONT }), -15, 0);
   const strike = scene.add.rectangle(-15, 0, oldT.width + 6, 2, 0xff6070);
-  const newT = txt(scene, 15, -1, String(p.value), 24, up ? '#7fe0a0' : '#ff7a7a', { fontFamily: NUM_FONT, stroke: '#0d0a14', strokeThickness: 3 });
+  const newT = centerInk(txt(scene, 0, 0, String(p.value), 24, up ? '#7fe0a0' : '#ff7a7a', { fontFamily: NUM_FONT, stroke: '#0d0a14', strokeThickness: 3 }), 15, 0);
   badge.add([bg, oldT, strike, newT]);
   return badge;
 }
@@ -195,7 +221,7 @@ function makeFramedCard(scene: Phaser.Scene, cardId: string, opts: CardOpts) {
 
   const cost = opts.cost ?? def.cost;
   // Número centralizado no círculo do custo.
-  c.add(txt(scene, cx(L.cost), cy(L.cost), String(cost), 27, '#ffffff', { fontFamily: NUM_FONT, stroke: '#0d0a14', strokeThickness: 5 }));
+  c.add(centerInk(txt(scene, 0, 0, String(cost), 22, '#ffffff', { fontFamily: NUM_FONT, stroke: '#0d0a14', strokeThickness: 4 }), cx(L.cost), cy(L.cost)));
 
   if (opts.preview && opts.preview.value !== opts.preview.base) {
     c.add(previewBadge(scene, opts.preview).setPosition(ox + L.art.x + L.art.w - 30, oy + L.art.y + L.art.h - 14));
@@ -253,7 +279,7 @@ function makeClassicCard(scene: Phaser.Scene, cardId: string, opts: CardOpts = {
   orb.fillStyle(COLORS.ki).fillCircle(-w / 2 + 14, -h / 2 + 14, 14);
   orb.fillStyle(0x8fd0ff).fillCircle(-w / 2 + 10, -h / 2 + 9, 4);
   c.add(orb);
-  c.add(txt(scene, -w / 2 + 14, -h / 2 + 13, String(cost), 22, '#ffffff', { fontFamily: NUM_FONT, stroke: '#0d0a14', strokeThickness: 3 }));
+  c.add(centerInk(txt(scene, 0, 0, String(cost), 20, '#ffffff', { fontFamily: NUM_FONT, stroke: '#0d0a14', strokeThickness: 3 }), -w / 2 + 14, -h / 2 + 14));
 
   if (opts.preview && opts.preview.value !== opts.preview.base) c.add(previewBadge(scene, opts.preview).setPosition(w / 2 - 34, -10));
 

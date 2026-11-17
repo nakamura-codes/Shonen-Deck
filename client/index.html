@@ -4,14 +4,16 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Oficina Duel</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;700&family=Jersey+10&display=swap" rel="stylesheet" />
     <style>
+      /* GameFont: Pixelify Sans para o texto e Jersey 10 só para os dígitos (a regra mais específica vem depois). */
+      @font-face { font-family: 'GameFont'; src: url('fonts/pixelify.woff2') format('woff2'); font-weight: 400 700; font-display: block; }
+      @font-face { font-family: 'GameFont'; src: url('fonts/jersey10.woff2') format('woff2'); unicode-range: U+0030-0039; size-adjust: 118%; font-weight: 400 700; font-display: block; }
+      /* GameNum: Jersey 10 inteira, para números sozinhos (custo, HP, Ki, tempo). */
+      @font-face { font-family: 'GameNum'; src: url('fonts/jersey10.woff2') format('woff2'); font-display: block; }
       html, body { margin: 0; height: 100%; background: #120f1c; overflow: hidden; }
       #game { width: 100vw; height: 100vh; }
       input.name-input {
-        font-family: 'Pixelify Sans', monospace; font-size: 18px; width: 220px; padding: 6px 10px;
+        font-family: 'GameFont', monospace; font-size: 18px; width: 220px; padding: 6px 10px;
         background: #1f1a2e; color: #f4ecd8; border: 3px solid #f0a830; border-radius: 4px; outline: none;
       }
       input.name-input:focus { border-color: #ffe28a; }

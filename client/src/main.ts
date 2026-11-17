@@ -16,9 +16,10 @@ async function start() {
   try {
     await Promise.race([
       Promise.all([
-        document.fonts.load('16px "Pixelify Sans"'),
-        document.fonts.load('bold 16px "Pixelify Sans"'),
-        document.fonts.load('16px "Jersey 10"'),
+        document.fonts.load('16px "GameFont"', 'Aa'),
+        document.fonts.load('bold 16px "GameFont"', 'Aa'),
+        document.fonts.load('16px "GameFont"', '0123456789'),
+        document.fonts.load('16px "GameNum"', '0123456789'),
       ]),
       new Promise((r) => setTimeout(r, 2500)),
     ]);

@@ -21,6 +21,7 @@ import {
   makeCharacter,
   makeMiniIcon,
   NUM_FONT,
+  centerInk,
   tweenPromise,
   txt,
   wait,
@@ -181,7 +182,7 @@ export class BattleScene extends Phaser.Scene {
     this.drawQueues(view);
     this.drawHand(view);
 
-    this.hud.add(txt(this, 90, 586, `${view.me.ki}/${view.me.maxKi}`, 40, '#ffffff', { fontFamily: NUM_FONT, stroke: '#0d0a14', strokeThickness: 5 }));
+    this.hud.add(centerInk(txt(this, 0, 0, `${view.me.ki}/${view.me.maxKi}`, 30, '#ffffff', { fontFamily: NUM_FONT, stroke: '#0d0a14', strokeThickness: 4 }), 90, 584));
     this.hud.add(txt(this, 90, 625, 'Ki', 14, '#d8ecff'));
     this.hud.add(txt(this, 90, 670, `Compra ${view.me.drawCount}  ·  Descarte ${view.me.discardCount}`, 13, COLORS.textDim));
 
@@ -216,6 +217,7 @@ export class BattleScene extends Phaser.Scene {
     bar.g.fillStyle(COLORS.hp).fillRect(x, 440, Math.round(w * ratio), 18);
     bar.g.fillStyle(0xff8a8a).fillRect(x, 440, Math.round(w * ratio), 4);
     bar.t.setText(`${Math.max(0, hp)}/${max}`);
+    centerInk(bar.t, CHAR_X[side], 449);
   }
 
   private drawSide(side: Side, f: FighterPublicView) {
@@ -228,7 +230,7 @@ export class BattleScene extends Phaser.Scene {
       g.fillStyle(COLORS.outline).fillCircle(bx, 449, 19);
       g.fillStyle(COLORS.block).fillCircle(bx, 449, 16);
       this.hud.add(g);
-      this.hud.add(txt(this, bx, 448, String(f.block), 20, '#ffffff', { fontFamily: NUM_FONT, stroke: '#0d0a14', strokeThickness: 3 }));
+      this.hud.add(centerInk(txt(this, 0, 0, String(f.block), 20, '#ffffff', { fontFamily: NUM_FONT, stroke: '#0d0a14', strokeThickness: 3 }), bx, 449));
     }
 
     const chips: [string, string][] = [];
@@ -520,7 +522,7 @@ export class BattleScene extends Phaser.Scene {
   private orderBadge(x: number, y: number, n: number, color: number) {
     const c = this.add.container(x, y);
     c.add(this.add.circle(0, 0, 11, color).setStrokeStyle(2, COLORS.outline));
-    c.add(txt(this, 0, -1, String(n), 16, '#ffffff', { fontFamily: NUM_FONT }));
+    c.add(centerInk(txt(this, 0, 0, String(n), 16, '#ffffff', { fontFamily: NUM_FONT }), 0, 0));
     return c;
   }
 
