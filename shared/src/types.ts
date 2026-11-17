@@ -52,6 +52,8 @@ export interface CardDef {
   ethereal?: boolean;
   /** Fica na mão de um turno para o outro, até ser usada. */
   retain?: boolean;
+  /** Se jogada com pelo menos `atKi` de Ki: gasta esse Ki e, em vez dos efeitos normais, vira `into` no próximo turno. */
+  evolve?: { atKi: number; into: string };
 }
 
 export interface ComboDef {
@@ -87,6 +89,10 @@ export interface Charge {
 export interface QueuedCard {
   card: CardInstance;
   doubled: boolean;
+  /** Ki pago (para desfazer devolver o valor certo). */
+  paid?: number;
+  /** Jogada com Ki cheio: usa a versão evoluída da carta (ex.: Galick Gun). */
+  powered?: boolean;
 }
 
 export interface Fighter {

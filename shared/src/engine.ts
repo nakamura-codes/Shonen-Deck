@@ -237,7 +237,9 @@ export function playCard(state: BattleState, player: PlayerIndex, cardUid: strin
     return { ok: false, error: `Neste turno você só pode jogar ${getCard(f.lockedTo).name}.` };
   }
   if (hasComboLock(f)) return { ok: false, error: 'Combo feito: nenhuma outra carta neste turno.' };
-  const cost = effectiveCost(f, def.id);
+  // Galick Gun com Ki cheio: vira a carga do Big Bang Attack (gasta todo esse Ki).
+  const powered = !!def.evolve && f.ki >= def.evolve.atKi;
+  const cost = powered ? def.evolve!.atKi : effectiveCost(f, def.id);
   if (cost > f.ki) return { ok: false, error: 'Ki insuficiente.' };
 
   const next = clone(state);
@@ -245,7 +247,7 @@ export function playCard(state: BattleState, player: PlayerIndex, cardUid: strin
   const [card] = nf.hand.splice(idx, 1);
   nf.ki -= cost;
   const isClone = def.effects.some((e) => e.kind === 'clone');
-  nf.queue.push({ card, doubled: nf.cloneNext && !isClone });
+  nf.queue.push({ card, doubled: nf.cloneNext && !isClone, paid: cost, powered });
   recomputeQueueFlags(nf);
   return { ok: true, state: next };
 }
@@ -259,7 +261,7 @@ export function undoLastCard(state: BattleState, player: PlayerIndex): ActionRes
   const next = clone(state);
   const nf = next.fighters[player];
   const q = nf.queue.pop()!;
-  nf.ki += effectiveCost(nf, q.card.id);
+  nf.ki += q.paid ?? effectiveCost(nf, q.card.id);
   nf.hand.push(q.card);
   recomputeQueueFlags(nf);
   return { ok: true, state: next };
@@ -348,6 +350,13 @@ function intercept(state: BattleState, attacker: PlayerIndex, cardId: string, ev
 
 function resolveCard(state: BattleState, player: PlayerIndex, q: QueuedCard, events: BattleEvent[]) {
   const def = getCard(q.card.id);
+  if (q.powered && def.evolve) {
+    // Versão carregada: sem dano agora; a carta evoluída chega na mão no próximo turno.
+    state.fighters[player].pendingCards.push(def.evolve.into);
+    state.fighters[player].exhausted.push(q.card);
+    events.push({ type: 'chargeStart', player, cardId: def.id, turns: 1 });
+    return;
+  }
   const f = state.fighters[player];
   const opp = other(player);
   const repeats = q.doubled ? 2 : 1;

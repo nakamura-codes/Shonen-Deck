@@ -157,10 +157,10 @@ export const CARDS: Record<string, CardDef> = {
     effects: [{ kind: 'reveal' }, { kind: 'reorder' }],
   },
   galick_gun: {
-    id: 'galick_gun', name: 'Galick Gun', cost: 5, type: 'attack', rarity: 'rare',
-    text: 'Carrega: no próximo turno vira Big Bang Attack na sua mão.',
-    effects: [{ kind: 'evolve', into: 'big_bang_attack' }],
-    exhaust: true,
+    id: 'galick_gun', name: 'Galick Gun', cost: 2, type: 'attack', rarity: 'rare',
+    text: 'Causa 10 de dano. Com 5 de Ki: gasta tudo e vira Big Bang Attack no próximo turno.',
+    effects: [{ kind: 'damage', amount: 10 }],
+    evolve: { atKi: 5, into: 'big_bang_attack' },
   },
   big_bang_attack: {
     id: 'big_bang_attack', name: 'Big Bang Attack', cost: 5, type: 'attack', rarity: 'power',

@@ -19,6 +19,7 @@ export function previewCardDamage(view: BattleView, cardId: string): DamagePrevi
   const def = getCard(cardId);
   const dmg = def.effects.find((e) => e.kind === 'damage');
   if (!dmg || dmg.kind !== 'damage' || dmg.fixed) return null;
+  if (def.evolve && view.me.ki >= def.evolve.atKi) return null;
 
   const isFirst = view.me.queue.length === 0;
   const base = isFirst && dmg.firstCardAmount !== undefined ? dmg.firstCardAmount : dmg.amount;

@@ -754,7 +754,29 @@ describe('Modo Sábio', () => {
 });
 
 describe('Galick Gun → Big Bang Attack', () => {
-  it('Galick Gun custa 5, vira Big Bang Attack no próximo turno, que fica na mão até ser usado', () => {
+  it('Galick Gun sem 5 de Ki é um ataque normal (2 Ki, 10 de dano)', () => {
+    let s = newBattle();
+    giveHand(s, 0, ['galick_gun']);
+    s = play(s, 0, 'galick_gun');
+    expect(s.fighters[0].ki).toBe(1);
+    const r = readyAndResolve(s);
+    expect(r.state.fighters[1].hp).toBe(50);
+    expect(r.state.fighters[0].hand.some((c) => c.id === 'big_bang_attack')).toBe(false);
+    expect(r.state.fighters[0].discard.some((c) => c.id === 'galick_gun')).toBe(true);
+  });
+
+  it('desfazer o Galick Gun carregado devolve os 5 de Ki', () => {
+    let s = newBattle();
+    s.fighters[0].ki = 5;
+    giveHand(s, 0, ['galick_gun']);
+    s = play(s, 0, 'galick_gun');
+    expect(s.fighters[0].ki).toBe(0);
+    const u = undoLastCard(s, 0);
+    if (!u.ok) throw new Error(u.error);
+    expect(u.state.fighters[0].ki).toBe(5);
+  });
+
+  it('Galick Gun com 5 de Ki gasta tudo e vira Big Bang Attack no próximo turno, que fica na mão até ser usado', () => {
     let s = newBattle();
     s.fighters[0].ki = 5;
     giveHand(s, 0, ['galick_gun']);
