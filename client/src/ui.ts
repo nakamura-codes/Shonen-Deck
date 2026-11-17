@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { figureKey, getCard, getItem, type CardDef, type Outfit } from '@oficina/shared';
+import { FRAME_LAYOUT, FRAME_SIZE } from './cardFrames.generated.ts';
 
 export const FONT = '"Pixelify Sans", monospace';
 
@@ -105,10 +106,88 @@ export function makeButton(
 }
 
 export const CARD_W = 156;
-export const CARD_H = 226;
+export const CARD_H = 234;
 
 /** Desenha uma carta completa: moldura, custo, ícone hexagonal, nome e texto. */
-export function makeCard(scene: Phaser.Scene, cardId: string, opts: { cost?: number; preview?: { base: number; value: number } | null } = {}) {
+type CardOpts = { cost?: number; preview?: { base: number; value: number } | null };
+
+/** Carta completa. Usa a moldura pixelada (assets/cards/frames) quando ela existe. */
+export function makeCard(scene: Phaser.Scene, cardId: string, opts: CardOpts = {}) {
+  const def = getCard(cardId);
+  if (scene.textures.exists(`frame_${def.type}`)) return makeFramedCard(scene, cardId, opts);
+  return makeClassicCard(scene, cardId, opts);
+}
+
+/** Selo de prévia do dano: valor riscado e o dano real (verde se maior, vermelho se menor). */
+function previewBadge(scene: Phaser.Scene, p: { base: number; value: number }) {
+  const up = p.value > p.base;
+  const badge = scene.add.container(0, 0);
+  const bg = scene.add.graphics();
+  bg.fillStyle(COLORS.outline).fillRoundedRect(-34, -15, 68, 30, 6);
+  bg.fillStyle(0x231c33).fillRoundedRect(-32, -13, 64, 26, 5);
+  const oldT = txt(scene, -15, -1, String(p.base), 15, '#a89cc0', { fontStyle: 'bold' });
+  const strike = scene.add.rectangle(-15, 0, oldT.width + 6, 2, 0xff6070);
+  const newT = txt(scene, 15, -1, String(p.value), 19, up ? '#7fe0a0' : '#ff7a7a', { fontStyle: 'bold', stroke: '#0d0a14', strokeThickness: 3 });
+  badge.add([bg, oldT, strike, newT]);
+  return badge;
+}
+
+function makeFramedCard(scene: Phaser.Scene, cardId: string, opts: CardOpts) {
+  const def = getCard(cardId);
+  const L = FRAME_LAYOUT[def.type];
+  const w = FRAME_SIZE.w;
+  const h = FRAME_SIZE.h;
+  const ox = -w / 2;
+  const oy = -h / 2;
+  const cx = (r: { x: number; w: number }) => ox + r.x + r.w / 2;
+  const cy = (r: { y: number; h: number }) => oy + r.y + r.h / 2;
+  const c = scene.add.container(0, 0);
+
+  // Fundo das áreas vazadas da moldura.
+  const g = scene.add.graphics();
+  g.fillStyle(0x15111f).fillRect(ox + L.art.x, oy + L.art.y, L.art.w, L.art.h);
+  g.fillStyle(0x221a30).fillRect(ox + L.name.x, oy + L.name.y, L.name.w, L.name.h);
+  g.fillStyle(0xf1e6cf).fillRect(ox + L.text.x, oy + L.text.y, L.text.w, L.text.h);
+  g.fillStyle(0x221a30).fillRect(ox + L.type.x, oy + L.type.y, L.type.w, L.type.h);
+  g.fillStyle(COLORS.ki).fillCircle(cx(L.cost), cy(L.cost), L.cost.w / 2);
+  g.fillStyle(0x8fd0ff).fillCircle(cx(L.cost) - 5, cy(L.cost) - 6, 4);
+  c.add(g);
+
+  // Arte (hexágono com a moldura de raridade) dentro da janela.
+  const key = `card_${cardId}`;
+  if (scene.textures.exists(key)) {
+    const img = scene.add.image(cx(L.art), cy(L.art), key);
+    img.setScale(Math.min((L.art.w - 6) / img.width, (L.art.h - 4) / img.height));
+    c.add(img);
+  } else {
+    c.add(placeholderIcon(scene, def).setPosition(cx(L.art), cy(L.art)).setScale(0.9));
+  }
+
+  c.add(scene.add.image(0, 0, `frame_${def.type}`));
+
+  c.add(fitText(txt(scene, cx(L.name), cy(L.name), def.name, 14, '#ffffff', { fontStyle: 'bold' }), L.name.w - 8));
+  const body = txt(scene, cx(L.text), cy(L.text), def.text, 12, '#2a2030', {
+    align: 'center',
+    wordWrap: { width: L.text.w - 10 },
+    lineSpacing: -3,
+  });
+  if (body.height > L.text.h - 2) body.setFontSize(10);
+  c.add(body);
+  const typeLabel = def.ethereal ? `${TYPE_LABEL[def.type]} · Etérea` : TYPE_LABEL[def.type];
+  c.add(fitText(txt(scene, cx(L.type), cy(L.type), typeLabel, 10, def.ethereal ? '#e9b8ff' : '#f4ecd8'), L.type.w - 6));
+
+  const cost = opts.cost ?? def.cost;
+  c.add(txt(scene, cx(L.cost), cy(L.cost) - 1, String(cost), 20, '#ffffff', { fontStyle: 'bold', stroke: '#0d0a14', strokeThickness: 4 }));
+
+  if (opts.preview && opts.preview.value !== opts.preview.base) {
+    c.add(previewBadge(scene, opts.preview).setPosition(ox + L.art.x + L.art.w - 30, oy + L.art.y + L.art.h - 14));
+  }
+
+  c.setSize(w, h);
+  return c;
+}
+
+function makeClassicCard(scene: Phaser.Scene, cardId: string, opts: CardOpts = {}) {
   const def = getCard(cardId);
   const c = scene.add.container(0, 0);
   const g = scene.add.graphics();
@@ -158,20 +237,7 @@ export function makeCard(scene: Phaser.Scene, cardId: string, opts: { cost?: num
   c.add(orb);
   c.add(txt(scene, -w / 2 + 14, -h / 2 + 13, String(cost), 18, '#ffffff', { fontStyle: 'bold', stroke: '#0d0a14', strokeThickness: 3 }));
 
-  // Prévia do dano: valor da carta riscado e o dano real ao lado (verde se maior, vermelho se menor).
-  const p = opts.preview;
-  if (p && p.value !== p.base) {
-    const up = p.value > p.base;
-    const badge = scene.add.container(w / 2 - 34, -10);
-    const bg = scene.add.graphics();
-    bg.fillStyle(COLORS.outline).fillRoundedRect(-34, -15, 68, 30, 6);
-    bg.fillStyle(0x231c33).fillRoundedRect(-32, -13, 64, 26, 5);
-    const oldT = txt(scene, -15, -1, String(p.base), 15, '#a89cc0', { fontStyle: 'bold' });
-    const strike = scene.add.rectangle(-15, 0, oldT.width + 6, 2, 0xff6070);
-    const newT = txt(scene, 15, -1, String(p.value), 19, up ? '#7fe0a0' : '#ff7a7a', { fontStyle: 'bold', stroke: '#0d0a14', strokeThickness: 3 });
-    badge.add([bg, oldT, strike, newT]);
-    c.add(badge);
-  }
+  if (opts.preview && opts.preview.value !== opts.preview.base) c.add(previewBadge(scene, opts.preview).setPosition(w / 2 - 34, -10));
 
   c.setSize(w, h);
   return c;
@@ -179,6 +245,11 @@ export function makeCard(scene: Phaser.Scene, cardId: string, opts: { cost?: num
 
 /** Verso da carta (cartas escondidas do oponente). */
 export function makeCardBack(scene: Phaser.Scene, scale = 0.5) {
+  if (scene.textures.exists('card_back')) {
+    const c0 = scene.add.container(0, 0);
+    c0.add(scene.add.image(0, 0, 'card_back').setScale((CARD_W * scale) / FRAME_SIZE.w));
+    return c0;
+  }
   const c = scene.add.container(0, 0);
   const g = scene.add.graphics();
   const w = CARD_W * scale;
@@ -223,13 +294,17 @@ export function makeCharacter(scene: Phaser.Scene, outfit: Outfit, scale: number
   const c = scene.add.container(0, 0);
   c.add(scene.add.ellipse(0, -scale, 34 * scale, 6 * scale, 0x000000, 0.35));
   const key = scene.textures.exists(figureKey(outfit)) ? figureKey(outfit) : 'fig_none_none';
-  c.add(
-    scene.add
-      .image(0, 0, key)
-      .setOrigin(0.5, FIG_FEET / FIG_H)
-      .setScale(scale)
-      .setFlipX(flip),
-  );
+  const layer = (k: string) =>
+    c.add(
+      scene.add
+        .image(0, 0, k)
+        .setOrigin(0.5, FIG_FEET / FIG_H)
+        .setScale(scale)
+        .setFlipX(flip),
+    );
+  layer(key);
+  // Acessório: camada por cima da figura, no mesmo tamanho (64×80).
+  if (outfit.accessory && scene.textures.exists(`acc_${outfit.accessory}`)) layer(`acc_${outfit.accessory}`);
   c.setSize(FIG_W * scale, FIG_H * scale);
   return c;
 }

@@ -14,20 +14,22 @@ export const OUTFIT_ITEMS: OutfitItem[] = [
   { id: 'shihakusho', slot: 'body', name: 'Shihakusho Negro', cards: ['bankai', 'getsuga', 'shunpo'] },
   { id: 'uniforme_jujutsu', slot: 'body', name: 'Uniforme Jujutsu', cards: ['black_flash', 'boogie_woogie', 'tecnica_reversa'] },
   { id: 'uniforme_naruto', slot: 'body', name: 'Uniforme Ninja', cards: ['kage_bunshin', 'rasengan', 'gear_second'] },
+  { id: 'scouter', slot: 'accessory', name: 'Scouter', cards: ['leitura_de_poder', 'big_bang_attack', 'final_flash'] },
 ];
 
 /** Cartas que existem mas estão fora das roupas por enquanto. */
 export const RETIRED_CARDS = ['domain_expansion', 'kaioken', 'haki'];
 
-export const OUTFIT_SLOTS: OutfitSlot[] = ['head', 'body'];
+export const OUTFIT_SLOTS: OutfitSlot[] = ['head', 'body', 'accessory'];
 
 export const SLOT_LABELS: Record<OutfitSlot, string> = {
   head: 'Cabeça',
   body: 'Corpo',
+  accessory: 'Acessório',
 };
 
 /** Personagem novo: totalmente cinza, sem nada vestido. */
-export const EMPTY_OUTFIT: Outfit = { head: null, body: null };
+export const EMPTY_OUTFIT: Outfit = { head: null, body: null, accessory: null };
 
 export function itemsForSlot(slot: OutfitSlot): OutfitItem[] {
   return OUTFIT_ITEMS.filter((i) => i.slot === slot);

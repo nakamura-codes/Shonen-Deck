@@ -300,9 +300,103 @@ async function main() {
   await items();
   await iconFromFigure('mascara_hollow.png', 'head', MASK);
   await iconFromFigure('uniforme_naruto.png', 'body', NARUTO);
+  console.log('Acessórios…');
+  await scouterLayer();
 }
 
 main().catch((e) => {
   console.error(e);
   process.exit(1);
 });
+
+/**
+ * Scouter: vem desenhado no boneco cinza (art/raw/character/scouter.jpg, fundo preto).
+ * Pegamos só os pixels do aparelho (verde, vermelho, branco e o contorno em volta) e
+ * reamostramos para a escala das figuras, na mesma posição relativa à cabeça.
+ * Medidas da cabeça (em pixels): na imagem original e na figura final de 64×80.
+ */
+const SCOUTER_SRC = { headCenterX: 143.5, headTop: 36, headHeight: 122 };
+const FIG_HEAD = { centerX: 31.5, top: 16, height: 20 };
+const SCOUTER_ZOOM = 1.3; // um pouco maior que a escala real, para aparecer melhor
+
+export async function scouterLayer() {
+  const { data, info } = await sharp(join(RAW, 'scouter.jpg')).removeAlpha().raw().toBuffer({ resolveWithObject: true });
+  const W = info.width;
+  const H = info.height;
+  const px = (x: number, y: number) => [data[(y * W + x) * 3], data[(y * W + x) * 3 + 1], data[(y * W + x) * 3 + 2]];
+  const isCore = (x: number, y: number) => {
+    const [r, g, b] = px(x, y);
+    return (g > r + 30 && g > b + 30) || (r > g + 60 && r > b + 60) || Math.min(r, g, b) > 222;
+  };
+  let x0 = W, y0 = H, x1 = 0, y1 = 0;
+  const core = new Uint8Array(W * H);
+  for (let y = 0; y < H; y++)
+    for (let x = 0; x < W; x++)
+      if (isCore(x, y)) {
+        core[y * W + x] = 1;
+        x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y);
+      }
+  // Contorno escuro perto do aparelho também faz parte dele.
+  const keep = (x: number, y: number) => {
+    if (core[y * W + x]) return true;
+    if (Math.max(...px(x, y)) >= 70) return false;
+    for (let dy = -5; dy <= 5; dy++)
+      for (let dx = -5; dx <= 5; dx++) {
+        const xx = x + dx, yy = y + dy;
+        if (xx >= 0 && yy >= 0 && xx < W && yy < H && core[yy * W + xx]) return true;
+      }
+    return false;
+  };
+  const scale = (FIG_HEAD.height / SCOUTER_SRC.headHeight) * SCOUTER_ZOOM;
+  const u = ((x0 + x1) / 2 - SCOUTER_SRC.headCenterX) / SCOUTER_SRC.headHeight;
+  const v = ((y0 + y1) / 2 - SCOUTER_SRC.headTop) / SCOUTER_SRC.headHeight;
+  const cx = FIG_HEAD.centerX + u * FIG_HEAD.height;
+  const cy = FIG_HEAD.top + v * FIG_HEAD.height;
+  const sx0 = x0 - 6, sy0 = y0 - 6, sx1 = x1 + 7, sy1 = y1 + 7;
+  const ox = cx - ((sx1 - sx0) * scale) / 2;
+  const oy = cy - ((sy1 - sy0) * scale) / 2;
+
+  // Cada pixel final = média dos pixels originais que caem nele (só se a maioria for scouter).
+  const sum = new Float64Array(CANVAS_W * CANVAS_H * 3);
+  const hit = new Float64Array(CANVAS_W * CANVAS_H);
+  const all = new Float64Array(CANVAS_W * CANVAS_H);
+  for (let y = sy0; y < sy1; y++)
+    for (let x = sx0; x < sx1; x++) {
+      const X = Math.floor(ox + (x - sx0) * scale);
+      const Y = Math.floor(oy + (y - sy0) * scale);
+      if (X < 0 || Y < 0 || X >= CANVAS_W || Y >= CANVAS_H) continue;
+      const i = Y * CANVAS_W + X;
+      all[i]++;
+      if (keep(x, y)) {
+        hit[i]++;
+        const [r, g, b] = px(x, y);
+        sum[i * 3] += r; sum[i * 3 + 1] += g; sum[i * 3 + 2] += b;
+      }
+    }
+  const out = Buffer.alloc(CANVAS_W * CANVAS_H * 4);
+  for (let i = 0; i < CANVAS_W * CANVAS_H; i++) {
+    if (!all[i] || hit[i] / all[i] < 0.45) continue;
+    out[i * 4] = sum[i * 3] / hit[i];
+    out[i * 4 + 1] = sum[i * 3 + 1] / hit[i];
+    out[i * 4 + 2] = sum[i * 3 + 2] / hit[i];
+    out[i * 4 + 3] = 255;
+  }
+  await save(out, CANVAS_W, CANVAS_H, join(OUT_FIG, 'acc_scouter.png'));
+  console.log('  ✓ acc_scouter (camada)');
+
+  // Ícone do inventário: o aparelho recortado, ampliado sem suavizar.
+  const iw = sx1 - sx0, ih = sy1 - sy0;
+  const icon = Buffer.alloc(iw * ih * 4);
+  for (let y = 0; y < ih; y++)
+    for (let x = 0; x < iw; x++) {
+      if (!keep(sx0 + x, sy0 + y)) continue;
+      const [r, g, b] = px(sx0 + x, sy0 + y);
+      const o = (y * iw + x) * 4;
+      icon[o] = r; icon[o + 1] = g; icon[o + 2] = b; icon[o + 3] = 255;
+    }
+  await sharp(icon, { raw: { width: iw, height: ih, channels: 4 } })
+    .resize(56, Math.round((ih / iw) * 56), { kernel: 'lanczos3' })
+    .png({ palette: true, colors: 24, dither: 0 })
+    .toFile(join(OUT_ITEMS, 'scouter.png'));
+  console.log('  ✓ item scouter');
+}

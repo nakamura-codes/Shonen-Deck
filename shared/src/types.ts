@@ -7,7 +7,7 @@ export type PowerId = 'bankai' | 'gearSecond' | 'domain' | 'hollow';
 
 /** Efeitos que uma carta pode ter. Os números ficam nos dados (cards.ts). */
 export type Effect =
-  | { kind: 'damage'; amount: number; times?: number; pierce?: boolean; fixed?: boolean; firstCardAmount?: number }
+  | { kind: 'damage'; amount: number; times?: number; pierce?: boolean; fixed?: boolean; firstCardAmount?: number; bonusVsBlock?: number }
   | { kind: 'block'; amount: number }
   | { kind: 'strength'; amount: number; temporary?: boolean }
   | { kind: 'weak'; amount: number }
@@ -22,6 +22,8 @@ export type Effect =
   | { kind: 'evade' }
   /** A próxima habilidade de dano do oponente neste turno volta nele. */
   | { kind: 'reflect' }
+  /** Permite mudar a ordem da própria jogada (escolher qual carta resolve primeiro). */
+  | { kind: 'reorder' }
   /** O próximo ataque deste turno causa +amount (por golpe). */
   | { kind: 'nextAttackBonus'; amount: number }
   | { kind: 'heal'; amount: number }
@@ -54,7 +56,7 @@ export interface CardInstance {
   id: string;
 }
 
-export type OutfitSlot = 'head' | 'body';
+export type OutfitSlot = 'head' | 'body' | 'accessory';
 
 export interface OutfitItem {
   id: string;
@@ -199,6 +201,8 @@ export interface BattleView {
     revealing: boolean;
     /** Red + Blue já na fila: nenhuma outra carta neste turno. */
     comboLock: boolean;
+    /** Leitura de Poder na fila: pode escolher qual carta resolve primeiro. */
+    canReorder: boolean;
   };
   opponent: FighterPublicView & { queue: QueuedCard[] | null };
 }

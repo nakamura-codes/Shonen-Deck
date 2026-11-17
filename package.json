@@ -14,7 +14,8 @@
     "typecheck": "tsc -p shared && tsc -p server && tsc -p client",
     "art": "tsx tools/process-art.ts",
     "art:character": "tsx tools/process-character.ts",
-    "art:arenas": "tsx tools/process-arenas.ts"
+    "art:arenas": "tsx tools/process-arenas.ts",
+    "art:frames": "tsx tools/process-frames.ts"
   },
   "devDependencies": {
     "concurrently": "^9.1.0",

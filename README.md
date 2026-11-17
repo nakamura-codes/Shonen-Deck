@@ -2,7 +2,7 @@
 
 Deckbuilder PvP em pixel art, no estilo Slay the Spire, com poderes de anime: Kamehameha, Getsuga Tenshou, Gomu Gomu no Gatling, Rasengan e outros.
 
-O personagem começa totalmente cinza. Na criação, o jogador escolhe a roupa inicial e as outras peças ficam no inventário para vestir depois. As peças vestidas (cabeça e corpo) definem o baralho: cada uma coloca 3 poderes nele.
+O personagem começa totalmente cinza. Na criação, o jogador escolhe a roupa inicial e as outras peças ficam no inventário para vestir depois. As peças vestidas (cabeça, corpo e acessório) definem o baralho: cada uma coloca 3 poderes nele.
 
 O personagem e o inventário ficam salvos no navegador, já que ainda não há contas.
 
@@ -31,6 +31,7 @@ Outros comandos:
 | `npm run art` | Processa a arte das cartas (veja abaixo) |
 | `npm run art:character` | Processa as figuras do personagem e os ícones das roupas |
 | `npm run art:arenas` | Processa as arenas |
+| `npm run art:frames` | Processa as molduras das cartas (ataque, técnica, poder e verso) |
 | `npm run build` | Gera a versão de produção do cliente em `client/dist` |
 
 Para testar com embaralhamento e moeda fixos: `SEED=13 npm run dev`.
@@ -64,6 +65,9 @@ Para testar com embaralhamento e moeda fixos: `SEED=13 npm run dev`.
 - **Cero** (2 Ki): carrega 1 turno e depois causa 16 de dano.
 - **Hollowficação** (2 Ki, Poder): +2 de Força até o fim da partida; perde 2 HP no início de cada turno.
 - **Sonído** (0 Ki): 4 de Bloqueio, e o próximo ataque do turno causa +3 em cada golpe.
+- **Leitura de Poder** (1 Ki, Scouter): vê as cartas do oponente neste turno, e você pode clicar numa carta da sua jogada para ela resolver primeiro.
+- **Big Bang Attack** (2 Ki, Scouter): 12 de dano; +6 se o oponente estiver com Bloqueio.
+- **Final Flash** (3 Ki, Scouter): carrega 1 turno e depois causa 28 de dano.
 - **Haki do Rei** (3 Ki):
   - o oponente fica atordoado no turno seguinte e não pode jogar cartas;
   - o Ki máximo dele cai 2 por 2 turnos;
@@ -143,3 +147,14 @@ Quais cartas cada peça dá fica em `shared/src/outfits.ts`.
 1. Gere a figura dela com cada peça do outro espaço.
 2. Gere o ícone.
 3. Atualize o script e o `outfits.ts`.
+
+### Acessórios
+O acessório é uma camada desenhada por cima da figura (`client/public/assets/character/acc_<id>.png`, 64×80). O Scouter vem de `art/raw/character/scouter.jpg`, que é o boneco cinza usando o aparelho. O `npm run art:character` recorta só o aparelho e o coloca na posição da cabeça.
+
+### Molduras das cartas
+As imagens ficam em `art/raw/cards_frames/`, com as áreas de conteúdo pintadas de magenta (#FF00FF). O `npm run art:frames`:
+- reduz as molduras para 156×234;
+- troca o magenta por transparente;
+- gera `client/src/cardFrames.generated.ts` com a posição de cada área (custo, arte, nome, texto e tipo).
+
+Para trocar uma moldura, basta substituir a imagem e rodar o comando de novo.

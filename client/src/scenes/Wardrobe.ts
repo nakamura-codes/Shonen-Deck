@@ -61,19 +61,19 @@ export class WardrobeScene extends Phaser.Scene {
 
     // Peças vestidas.
     this.dynamic.push(txt(this, 460, 92, 'Vestindo', 20, '#ffffff', { fontStyle: 'bold' }).setOrigin(0, 0.5));
-    OUTFIT_SLOTS.forEach((slot, i) => this.drawEquipped(slot, 460, 120 + i * 112));
+    OUTFIT_SLOTS.forEach((slot, i) => this.drawEquipped(slot, 460, 110 + i * 84));
 
     // Peças guardadas.
     const stored = OUTFIT_ITEMS.filter((it) => session.outfit[it.slot] !== it.id);
-    this.dynamic.push(txt(this, 460, 360, 'Guardado no inventário', 20, '#ffffff', { fontStyle: 'bold' }).setOrigin(0, 0.5));
-    this.dynamic.push(txt(this, 1240, 360, 'Clique para vestir', 14, COLORS.textDim).setOrigin(1, 0.5));
+    this.dynamic.push(txt(this, 460, 382, 'Guardado no inventário', 20, '#ffffff', { fontStyle: 'bold' }).setOrigin(0, 0.5));
+    this.dynamic.push(txt(this, 1240, 382, 'Clique para vestir', 14, COLORS.textDim).setOrigin(1, 0.5));
     stored.forEach((item, i) => {
       const tile = makeItemTile(this, item.id, {
         width: 108,
         tag: SLOT_LABELS[item.slot],
         onClick: () => this.equip(item.slot, item.id),
         onHover: (cardId, x, y) => this.showTooltip(cardId, x, y),
-      }).setPosition(513 + i * 112, 470);
+      }).setPosition(513 + i * 112, 482);
       this.dynamic.push(tile);
     });
 
@@ -84,29 +84,30 @@ export class WardrobeScene extends Phaser.Scene {
   private drawEquipped(slot: OutfitSlot, x: number, y: number) {
     const item = getItem(session.outfit[slot]);
     const w = 780;
-    const h = 100;
+    const h = 76;
+    const mid = y + h / 2;
     const g = this.add.graphics();
     g.fillStyle(COLORS.outline).fillRoundedRect(x - 3, y - 3, w + 6, h + 6, 10);
     g.fillStyle(COLORS.panel).fillRoundedRect(x, y, w, h, 8);
-    g.fillStyle(item ? 0x1f5bb8 : 0x2a2238).fillRoundedRect(x + 10, y + 10, 110, 80, 6);
+    g.fillStyle(item ? 0x1f5bb8 : 0x2a2238).fillRoundedRect(x + 8, y + 8, 110, h - 16, 6);
     this.dynamic.push(g);
-    this.dynamic.push(txt(this, x + 140, y + 26, SLOT_LABELS[slot], 14, COLORS.textDim).setOrigin(0, 0.5));
+    this.dynamic.push(txt(this, x + 140, y + 20, SLOT_LABELS[slot], 14, COLORS.textDim).setOrigin(0, 0.5));
     if (!item) {
-      this.dynamic.push(txt(this, x + 65, y + 50, 'vazio', 14, COLORS.textDim));
-      this.dynamic.push(txt(this, x + 140, y + 58, 'Nada vestido. Escolha uma peça guardada abaixo.', 16, COLORS.textDim).setOrigin(0, 0.5));
+      this.dynamic.push(txt(this, x + 63, mid, 'vazio', 14, COLORS.textDim));
+      this.dynamic.push(txt(this, x + 140, y + 48, 'Nada vestido. Escolha uma peça guardada abaixo.', 16, COLORS.textDim).setOrigin(0, 0.5));
       return;
     }
-    this.dynamic.push(makeItemIcon(this, item.id, 100, 70).setPosition(x + 65, y + 50));
-    this.dynamic.push(txt(this, x + 140, y + 58, item.name, 20, '#ffffff', { fontStyle: 'bold' }).setOrigin(0, 0.5));
+    this.dynamic.push(makeItemIcon(this, item.id, 100, 54).setPosition(x + 63, mid));
+    this.dynamic.push(txt(this, x + 140, y + 48, item.name, 20, '#ffffff', { fontStyle: 'bold' }).setOrigin(0, 0.5));
     item.cards.forEach((cardId, i) => {
       const cx = x + 420 + i * 70;
-      const icon = makeMiniIcon(this, cardId, 0.62).setPosition(cx, y + 50);
-      const zone = this.add.zone(cx, y + 50, 50, 56).setInteractive();
-      zone.on('pointerover', () => this.showTooltip(cardId, cx, y + 50));
+      const icon = makeMiniIcon(this, cardId, 0.55).setPosition(cx, mid);
+      const zone = this.add.zone(cx, mid, 50, 50).setInteractive();
+      zone.on('pointerover', () => this.showTooltip(cardId, cx, mid));
       zone.on('pointerout', () => this.hideTooltip());
       this.dynamic.push(icon, zone);
     });
-    this.dynamic.push(makeButton(this, x + w - 70, y + 50, 100, 40, 'Tirar', () => this.equip(slot, null), 0xb0a0c8, 16));
+    this.dynamic.push(makeButton(this, x + w - 70, mid, 100, 40, 'Tirar', () => this.equip(slot, null), 0xb0a0c8, 16));
   }
 
   private equip(slot: OutfitSlot, id: string | null) {

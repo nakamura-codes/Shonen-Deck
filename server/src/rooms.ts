@@ -5,6 +5,7 @@ import {
   TURN_SECONDS,
   bothReady,
   createBattle,
+  moveToFront,
   playCard,
   resolveTurn,
   setReady,
@@ -57,7 +58,7 @@ export class Match {
     private onFinish: (m: Match) => void,
   ) {
     const botName = 'Bot Treinador';
-    const botOutfit: Outfit = { head: 'venda_olhos', body: 'shihakusho' };
+    const botOutfit: Outfit = { head: 'venda_olhos', body: 'shihakusho', accessory: 'scouter' };
     // SEED fixa o embaralhamento e a moeda (útil para testes).
     const seed = process.env.SEED ? Number(process.env.SEED) : randomInt(2 ** 31);
     this.state = createBattle(seed, [
@@ -123,11 +124,13 @@ export class Match {
     this.resolve();
   }
 
-  handle(p: PlayerIndex, msg: { t: 'play'; uid: string } | { t: 'undo' } | { t: 'ready' }) {
+  handle(p: PlayerIndex, msg: { t: 'play'; uid: string } | { t: 'undo' } | { t: 'ready' } | { t: 'moveFirst'; uid: string }) {
     if (this.finished) return;
     const r =
       msg.t === 'play'
         ? playCard(this.state, p, msg.uid)
+        : msg.t === 'moveFirst'
+          ? moveToFront(this.state, p, msg.uid)
         : msg.t === 'undo'
           ? undoLastCard(this.state, p)
           : setReady(this.state, p);

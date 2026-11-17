@@ -39,11 +39,12 @@ wss.on('connection', (ws: WebSocket) => {
         matchmaker.leaveQueue(ws);
         return;
       case 'play':
+      case 'moveFirst':
       case 'undo':
       case 'ready': {
         const found = matchmaker.matchOf(ws);
         if (!found) return send(ws, { t: 'error', message: 'Você não está em uma partida.' });
-        if (msg.t === 'play' && typeof msg.uid !== 'string') return send(ws, { t: 'error', message: 'Carta inválida.' });
+        if ((msg.t === 'play' || msg.t === 'moveFirst') && typeof msg.uid !== 'string') return send(ws, { t: 'error', message: 'Carta inválida.' });
         found.match.handle(found.seat, msg);
         return;
       }

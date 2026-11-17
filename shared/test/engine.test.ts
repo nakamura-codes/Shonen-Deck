@@ -8,6 +8,7 @@ import {
   RULES,
   buildDeck,
   createBattle,
+  moveToFront,
   playCard,
   previewCardDamage,
   resolveTurn,
@@ -20,7 +21,7 @@ import {
   type PlayerIndex,
 } from '../src/index.ts';
 
-const FULL = { head: 'chapeu_palha', body: 'gi_laranja' };
+const FULL = { head: 'chapeu_palha', body: 'gi_laranja', accessory: null };
 
 /** Batalha de teste: o jogador 0 começa o turno 1 (a moeda é fixada). */
 function newBattle(seed = 1): BattleState {
@@ -62,7 +63,7 @@ describe('dados', () => {
 
   it('baralho inicial = 8 básicas + 3 por peça vestida', () => {
     expect(buildDeck(FULL)).toHaveLength(14);
-    expect(buildDeck({ head: 'bandana_ninja', body: null })).toHaveLength(11);
+    expect(buildDeck({ head: 'bandana_ninja', body: null, accessory: null })).toHaveLength(11);
     expect(buildDeck(EMPTY_OUTFIT)).toHaveLength(8);
   });
 
@@ -73,7 +74,7 @@ describe('dados', () => {
 
   it('peça inválida ou no espaço errado vira espaço vazio', () => {
     expect(sanitizeOutfit({ head: 'gi_laranja', body: 'xxx' })).toEqual(EMPTY_OUTFIT);
-    expect(sanitizeOutfit({ head: 'bandana_ninja' })).toEqual({ head: 'bandana_ninja', body: null });
+    expect(sanitizeOutfit({ head: 'bandana_ninja' })).toEqual({ head: 'bandana_ninja', body: null, accessory: null });
     expect(sanitizeOutfit(null)).toEqual(EMPTY_OUTFIT);
   });
 
@@ -682,5 +683,45 @@ describe('prévia de dano na carta', () => {
     expect(previewCardDamage(viewFor(s, 0), 'ki_blast')).toEqual({ base: 3, value: 6 });
     s = play(s, 0, 'ki_blast');
     expect(previewCardDamage(viewFor(s, 0), 'golpe_basico')).toEqual({ base: 6, value: 6 });
+  });
+});
+
+describe('Scouter', () => {
+  it('Leitura de Poder revela o oponente e permite pôr uma carta na frente', () => {
+    let s = newBattle();
+    s.fighters[0].ki = 5;
+    giveHand(s, 0, ['golpe_basico', 'black_flash', 'leitura_de_poder']);
+    giveHand(s, 1, ['pistol']);
+    s = play(s, 1, 'pistol');
+    s = play(s, 0, 'golpe_basico');
+    s = play(s, 0, 'black_flash');
+    const bf = s.fighters[0].queue[1].card.uid;
+    expect(moveToFront(s, 0, bf).ok).toBe(false); // ainda sem Leitura de Poder
+    s = play(s, 0, 'leitura_de_poder');
+    expect(viewFor(s, 0).opponent.queue?.map((q) => q.card.id)).toEqual(['pistol']);
+    expect(viewFor(s, 0).me.canReorder).toBe(true);
+    const r = moveToFront(s, 0, bf);
+    if (!r.ok) throw new Error(r.error);
+    expect(r.state.fighters[0].queue.map((q) => q.card.id)).toEqual(['black_flash', 'golpe_basico', 'leitura_de_poder']);
+    // Black Flash agora é a primeira carta: 20 + Golpe Básico 6.
+    expect(readyAndResolve(r.state).state.fighters[1].hp).toBe(60 - 26);
+  });
+
+  it('Big Bang Attack ganha +6 contra Bloqueio', () => {
+    let s = newBattle();
+    giveHand(s, 0, ['big_bang_attack']);
+    giveHand(s, 1, ['defesa_basica']);
+    s = play(s, 0, 'big_bang_attack');
+    s = play(s, 1, 'defesa_basica');
+    // 12 + 6 = 18, 5 bloqueados.
+    expect(readyAndResolve(s).state.fighters[1].hp).toBe(60 - 13);
+  });
+
+  it('Final Flash carrega 1 turno e causa 28', () => {
+    let s = newBattle();
+    giveHand(s, 0, ['final_flash']);
+    s = play(s, 0, 'final_flash');
+    const r = readyAndResolve(readyAndResolve(s).state);
+    expect(r.state.fighters[1].hp).toBe(32);
   });
 });

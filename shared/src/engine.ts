@@ -252,6 +252,25 @@ export function undoLastCard(state: BattleState, player: PlayerIndex): ActionRes
   return { ok: true, state: next };
 }
 
+/** Leitura de Poder: coloca uma carta da sua jogada como a primeira a resolver. */
+export function moveToFront(state: BattleState, player: PlayerIndex, cardUid: string): ActionResult {
+  if (state.phase !== 'planning') return { ok: false, error: 'A partida não está na fase de escolha.' };
+  const f = state.fighters[player];
+  if (f.ready) return { ok: false, error: 'Você já confirmou este turno.' };
+  if (!canReorder(f)) return { ok: false, error: 'Só com Leitura de Poder na sua jogada.' };
+  const idx = f.queue.findIndex((q) => q.card.uid === cardUid);
+  if (idx < 0) return { ok: false, error: 'Essa carta não está na sua jogada.' };
+  const next = clone(state);
+  const nf = next.fighters[player];
+  const [item] = nf.queue.splice(idx, 1);
+  nf.queue.unshift(item);
+  return { ok: true, state: next };
+}
+
+export function canReorder(f: Fighter): boolean {
+  return f.queue.some((q) => getCard(q.card.id).effects.some((e) => e.kind === 'reorder'));
+}
+
 export function setReady(state: BattleState, player: PlayerIndex): ActionResult {
   if (state.phase !== 'planning') return { ok: false, error: 'A partida não está na fase de escolha.' };
   const next = clone(state);
@@ -336,6 +355,7 @@ function resolveCard(state: BattleState, player: PlayerIndex, q: QueuedCard, eve
             f.nextAttackBonus = 0;
           }
           amount += bonus;
+          if (e.bonusVsBlock && state.fighters[target].block > 0) amount += e.bonusVsBlock;
           for (let i = 0; i < (e.times ?? 1); i++) dealDamage(state, player, target, amount, !!e.pierce, def.id, events, !!e.fixed);
           break;
         }
@@ -397,6 +417,7 @@ function resolveCard(state: BattleState, player: PlayerIndex, q: QueuedCard, eve
           events.push({ type: 'power', player, power: e.power });
           break;
         case 'reveal':
+        case 'reorder':
         case 'clone':
           break;
       }
@@ -571,6 +592,7 @@ export function viewFor(state: BattleState, player: PlayerIndex): BattleView {
       cloneNext: me.cloneNext,
       revealing: me.revealing,
       comboLock: hasComboLock(me),
+      canReorder: canReorder(me),
     },
     // O oponente não fica sabendo quantas cartas você escolheu (só com Sharingan).
     opponent: { ...publicView(opp), queueCount: me.revealing ? opp.queue.length : 0, queue: me.revealing ? opp.queue : null },

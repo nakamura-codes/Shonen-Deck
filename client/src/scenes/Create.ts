@@ -22,7 +22,7 @@ export class CreateScene extends Phaser.Scene {
   create() {
     drawArena(this);
     this.add.rectangle(640, 360, 1280, 720, 0x0d0a14, 0.5);
-    session.outfit = { head: null, body: null };
+    session.outfit = { head: null, body: null, accessory: null };
 
     txt(this, 640, 44, 'Crie seu personagem', 40, '#ffe28a', { fontStyle: 'bold', stroke: '#0d0a14', strokeThickness: 6 });
     txt(this, 640, 84, 'Escolha a roupa inicial. As outras peças ficam no seu inventário.', 18, COLORS.textDim);
@@ -41,8 +41,8 @@ export class CreateScene extends Phaser.Scene {
     this.nameInput.value = session.name;
     this.nameInput.addEventListener('input', () => this.updateButton());
 
-    this.hint = txt(this, 860, 590, '', 16, COLORS.textDim);
-    this.createBtn = makeButton(this, 860, 640, 300, 60, 'Criar personagem', () => this.finish(), COLORS.gold, 22);
+    this.hint = txt(this, 860, 600, '', 16, COLORS.textDim);
+    this.createBtn = makeButton(this, 860, 652, 300, 60, 'Criar personagem', () => this.finish(), COLORS.gold, 22);
     this.drawTiles();
     this.updateButton();
   }
@@ -56,8 +56,8 @@ export class CreateScene extends Phaser.Scene {
     for (const o of this.tiles) o.destroy();
     this.tiles = [];
     OUTFIT_SLOTS.forEach((slot, row) => {
-      const y = 200 + row * 190;
-      this.tiles.push(txt(this, 520, y - 92, SLOT_LABELS[slot], 18, '#ffffff', { fontStyle: 'bold' }).setOrigin(0, 0.5));
+      const y = 182 + row * 150;
+      this.tiles.push(txt(this, 520, y - 72, SLOT_LABELS[slot], 18, '#ffffff', { fontStyle: 'bold' }).setOrigin(0, 0.5));
       itemsForSlot(slot).forEach((item, col) => {
         const selected = session.outfit[slot] === item.id;
         const tile = makeItemTile(this, item.id, {
@@ -66,7 +66,9 @@ export class CreateScene extends Phaser.Scene {
           tag: selected ? 'Vestindo' : undefined,
           onClick: () => this.toggle(slot, item.id),
           onHover: (cardId, x, yy) => this.showTooltip(cardId, x, yy),
-        }).setPosition(600 + col * 172, y);
+        })
+          .setScale(0.82)
+          .setPosition(590 + col * 148, y);
         this.tiles.push(tile);
       });
     });

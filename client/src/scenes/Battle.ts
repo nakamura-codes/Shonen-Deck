@@ -273,11 +273,20 @@ export class BattleScene extends Phaser.Scene {
     this.hud.add(txt(this, 640, 262, mq.length ? 'Sua jogada' : 'Clique nas cartas da mão para jogar', 16, '#ffffff', { stroke: '#0d0a14', strokeThickness: 4 }));
     mq.forEach((q, i) => {
       const x = 640 - (mq.length - 1) * 40 + i * 80;
-      this.hud.add(makeMiniIcon(this, q.card.id, 0.85).setPosition(x, 330));
+      const icon = makeMiniIcon(this, q.card.id, 0.85).setPosition(x, 330);
+      this.hud.add(icon);
+      // Leitura de Poder: clicar numa carta da jogada a coloca para resolver primeiro.
+      if (view.me.canReorder && !view.me.ready && i > 0) {
+        icon.setInteractive({ useHandCursor: true });
+        icon.on('pointerdown', () => session.net.send({ t: 'moveFirst', uid: q.card.uid }));
+        icon.on('pointerover', () => icon.setScale(0.95));
+        icon.on('pointerout', () => icon.setScale(0.85));
+      }
       this.hud.add(this.orderBadge(x - 26, 300, i + 1, COLORS.ki));
       if (q.doubled) this.hud.add(txt(this, x + 24, 300, 'x2', 18, '#ffe28a', { fontStyle: 'bold', stroke: '#0d0a14', strokeThickness: 4 }));
     });
     if (view.me.comboLock) this.hud.add(txt(this, 640, 410, 'Combo! Nenhuma outra carta neste turno. Hollow Purple na próxima rodada.', 15, '#e9b8ff', { stroke: '#0d0a14', strokeThickness: 4 }));
+    if (view.me.canReorder && !view.me.ready && mq.length > 1) this.hud.add(txt(this, 640, 372, 'Scouter: clique numa carta da sua jogada para ela resolver primeiro', 15, '#9dff8a', { stroke: '#0d0a14', strokeThickness: 4 }));
     if (view.me.stunned) this.hud.add(txt(this, 640, 390, 'Atordoado pelo Haki do Rei: você não pode jogar cartas neste turno.', 15, '#ffd060', { stroke: '#0d0a14', strokeThickness: 4 }));
     if (view.me.lockedTo) this.hud.add(txt(this, 640, 410, `Turno travado: só ${getCard(view.me.lockedTo).name} (custo 0). O Ki deste turno não acumula.`, 15, '#e9b8ff', { stroke: '#0d0a14', strokeThickness: 4 }));
     if (view.me.cloneNext) this.hud.add(txt(this, 640, 390, 'Kage Bunshin: a próxima carta acontece 2 vezes', 15, '#ffe28a', { stroke: '#0d0a14', strokeThickness: 4 }));

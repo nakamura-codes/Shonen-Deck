@@ -151,6 +151,21 @@ export const CARDS: Record<string, CardDef> = {
     text: 'Ganha 4 de Bloqueio. Seu próximo ataque neste turno causa +3.',
     effects: [{ kind: 'block', amount: 4 }, { kind: 'nextAttackBonus', amount: 3 }],
   },
+  leitura_de_poder: {
+    id: 'leitura_de_poder', name: 'Leitura de Poder', cost: 1, type: 'skill', rarity: 'common',
+    text: 'Vê as cartas do oponente neste turno. Você escolhe qual das suas cartas resolve primeiro.',
+    effects: [{ kind: 'reveal' }, { kind: 'reorder' }],
+  },
+  big_bang_attack: {
+    id: 'big_bang_attack', name: 'Big Bang Attack', cost: 2, type: 'attack', rarity: 'rare',
+    text: 'Causa 12 de dano. +6 se o oponente estiver com Bloqueio.',
+    effects: [{ kind: 'damage', amount: 12, bonusVsBlock: 6 }],
+  },
+  final_flash: {
+    id: 'final_flash', name: 'Final Flash', cost: 3, type: 'attack', rarity: 'rare',
+    text: 'Carrega 1 turno. Depois causa 28 de dano.',
+    effects: [{ kind: 'charge', turns: 1, damage: 28 }],
+  },
   shunpo: {
     id: 'shunpo', name: 'Shunpo', cost: 0, type: 'skill', rarity: 'common',
     text: 'Ganha 5 de Bloqueio. +1 carta no próximo turno.',

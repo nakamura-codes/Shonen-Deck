@@ -7,6 +7,7 @@ export type ClientMessage =
   | { t: 'leaveQueue' }
   | { t: 'play'; uid: string }
   | { t: 'undo' }
+  | { t: 'moveFirst'; uid: string }
   | { t: 'ready' };
 
 /** Mensagens do servidor para o cliente. */
