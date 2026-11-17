@@ -28,7 +28,7 @@ const profile = loadProfile();
 export const session = {
   net: new Net(defaultServerUrl()),
   created: profile.created,
-  name: profile.name,
+  name: profile.name || `Jogador${Math.floor(Math.random() * 900 + 100)}`,
   outfit: profile.outfit,
   match: null as null | { you: PlayerIndex; opponentName: string },
   /** Último estado recebido (a cena de batalha pode abrir depois da primeira mensagem chegar). */

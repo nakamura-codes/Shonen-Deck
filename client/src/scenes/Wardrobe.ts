@@ -24,15 +24,21 @@ export class WardrobeScene extends Phaser.Scene {
     const g = this.add.graphics();
     g.fillStyle(COLORS.outline).fillEllipse(220, 540, 240, 54);
     g.fillStyle(0x3a2f55).fillEllipse(220, 534, 230, 46);
-    txt(this, 220, 110, session.name, 26, '#ffffff', { fontStyle: 'bold', stroke: '#0d0a14', strokeThickness: 5 });
+    // Nome editável direto aqui (não há mais tela de criação).
+    txt(this, 220, 92, 'Seu nome', 14, COLORS.textDim);
+    const input = this.add.dom(220, 124, 'input').setOrigin(0.5);
+    const el = input.node as HTMLInputElement;
+    el.className = 'name-input';
+    el.maxLength = 16;
+    el.value = session.name;
+    el.addEventListener('input', () => {
+      session.name = el.value.trim() || session.name;
+      session.save();
+    });
 
     this.deckLabel = txt(this, 220, 590, '', 16, COLORS.textDim);
     makeButton(this, 760, 650, 260, 60, 'Procurar oponente', () => this.go(false), COLORS.gold, 22);
     makeButton(this, 1040, 650, 240, 60, 'Treinar com bot', () => this.go(true), 0x7fc8a9, 22);
-    makeButton(this, 220, 650, 220, 40, 'Novo personagem', () => {
-      session.reset();
-      this.scene.start('Create');
-    }, 0xb0a0c8, 16);
 
     this.refresh();
 
@@ -66,15 +72,18 @@ export class WardrobeScene extends Phaser.Scene {
 
     // Peças guardadas.
     const stored = OUTFIT_ITEMS.filter((it) => session.outfit[it.slot] !== it.id);
-    this.dynamic.push(txt(this, 460, 300, 'Guardado no inventário', 20, '#ffffff', { fontStyle: 'bold' }).setOrigin(0, 0.5));
-    this.dynamic.push(txt(this, 1240, 300, 'Clique para vestir', 14, COLORS.textDim).setOrigin(1, 0.5));
+    this.dynamic.push(txt(this, 460, 294, 'Guardado no inventário', 20, '#ffffff', { fontStyle: 'bold' }).setOrigin(0, 0.5));
+    this.dynamic.push(txt(this, 1240, 294, 'Clique para vestir', 14, COLORS.textDim).setOrigin(1, 0.5));
     stored.forEach((item, i) => {
       const tile = makeItemTile(this, item.id, {
         width: 108,
         tag: SLOT_LABELS[item.slot],
         onClick: () => this.equip(item.slot, item.id),
         onHover: (cardId, x, y) => this.showTooltip(cardId, x, y),
-      }).setPosition(513 + (i % 6) * 112, 388 + Math.floor(i / 6) * 156);
+      })
+        // Até 8 por linha, a 80%, para as duas linhas caberem acima dos botões.
+        .setScale(0.8)
+        .setPosition(505 + (i % 8) * 94, 376 + Math.floor(i / 8) * 128);
       this.dynamic.push(tile);
     });
 

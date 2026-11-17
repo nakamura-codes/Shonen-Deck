@@ -2,7 +2,7 @@
 
 Deckbuilder PvP em pixel art, no estilo Slay the Spire, com poderes de anime: Kamehameha, Getsuga Tenshou, Gomu Gomu no Gatling, Rasengan e outros.
 
-O personagem começa totalmente cinza. Na criação, o jogador escolhe a roupa inicial e as outras peças ficam no inventário para vestir depois. As peças vestidas (cabeça e corpo) definem o baralho: cada uma coloca 3 poderes nele.
+O personagem começa totalmente cinza e sem nada vestido. No inventário, o jogador escolhe o que vestir: cada peça dá cartas extras ao baralho. As peças vestidas (cabeça e corpo) definem o baralho: cada uma coloca 3 poderes nele.
 
 O personagem e o inventário ficam salvos no navegador, já que ainda não há contas.
 
