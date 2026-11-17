@@ -170,8 +170,8 @@ function makeFramedCard(scene: Phaser.Scene, cardId: string, opts: CardOpts) {
 
   // Custo de Ki (por cima da arte, dentro do círculo da moldura).
   const orb = scene.add.graphics();
-  orb.fillStyle(COLORS.ki).fillCircle(cx(L.cost), cy(L.cost), L.cost.w / 2);
-  orb.fillStyle(0x8fd0ff).fillCircle(cx(L.cost) - 5, cy(L.cost) - 6, 4);
+  orb.fillStyle(COLORS.ki).fillCircle(cx(L.cost), cy(L.cost), L.cost.w / 2 + 1);
+  orb.fillStyle(0x8fd0ff).fillCircle(cx(L.cost) - L.cost.w * 0.2, cy(L.cost) - L.cost.h * 0.22, 2.5);
   c.add(orb);
 
   c.add(scene.add.image(0, 0, `frame_${def.type}`));
@@ -189,7 +189,8 @@ function makeFramedCard(scene: Phaser.Scene, cardId: string, opts: CardOpts) {
   c.add(fitText(txt(scene, cx(L.type), cy(L.type), typeLabel, 10, def.ethereal ? '#e9b8ff' : '#f4ecd8'), L.type.w - 6));
 
   const cost = opts.cost ?? def.cost;
-  c.add(txt(scene, cx(L.cost), cy(L.cost) - 1, String(cost), 20, '#ffffff', { fontStyle: 'bold', stroke: '#0d0a14', strokeThickness: 4 }));
+  // Número centralizado no círculo do custo.
+  c.add(txt(scene, cx(L.cost), cy(L.cost), String(cost), 17, '#ffffff', { fontStyle: 'bold', stroke: '#0d0a14', strokeThickness: 3 }));
 
   if (opts.preview && opts.preview.value !== opts.preview.base) {
     c.add(previewBadge(scene, opts.preview).setPosition(ox + L.art.x + L.art.w - 30, oy + L.art.y + L.art.h - 14));

@@ -81,21 +81,42 @@ function splitTop(data: Buffer, W: number, top: Rect): { cost: Rect; art: Rect }
     const i = (y * W + x) * 3;
     return isMagenta(data[i], data[i + 1], data[i + 2]);
   };
-  // Círculo: magenta dentro do quarto superior esquerdo.
-  let cx0 = W, cy0 = 1e9, cx1 = 0, cy1 = 0;
+  // Círculo: só a área magenta conectada ao primeiro pixel magenta do canto superior esquerdo
+  // (preenchimento), para não pegar pedaços da janela da arte.
+  let seed = -1;
   const lim = Math.round(W * 0.25);
-  for (let y = top.y; y < top.y + lim; y++)
+  for (let y = top.y; y < top.y + lim && seed < 0; y++)
     for (let x = top.x; x < top.x + lim; x++)
       if (mag(x, y)) {
-        cx0 = Math.min(cx0, x); cy0 = Math.min(cy0, y); cx1 = Math.max(cx1, x); cy1 = Math.max(cy1, y);
+        seed = y * W + x;
+        break;
       }
-  // Janela: todo o magenta da faixa de cima, menos o canto do círculo do custo.
+  const inCircle = new Uint8Array(W * data.length / 3 / W);
+  let cx0 = W, cy0 = 1e9, cx1 = 0, cy1 = 0;
+  const stack = seed >= 0 ? [seed] : [];
+  while (stack.length) {
+    const i = stack.pop()!;
+    const x = i % W;
+    const y = (i - x) / W;
+    if (inCircle[i] || !mag(x, y) || x >= top.x + lim || y >= top.y + lim) continue;
+    inCircle[i] = 1;
+    cx0 = Math.min(cx0, x); cy0 = Math.min(cy0, y); cx1 = Math.max(cx1, x); cy1 = Math.max(cy1, y);
+    stack.push(i - 1, i + 1, i - W, i + W);
+  }
+  // Janela: largura medida abaixo do círculo (onde o hexágono é mais largo); topo e base
+  // medidos na faixa central, longe do círculo.
   let ax0 = W, ay0 = 1e9, ax1 = 0, ay1 = 0;
-  const circleCorner = (x: number, y: number) => x <= cx1 + 2 && y <= cy1 + 2;
-  for (let y = top.y; y < top.y + top.h; y++)
+  for (let y = cy1 + 4; y < top.y + top.h; y++)
     for (let x = top.x; x < top.x + top.w; x++)
-      if (mag(x, y) && !circleCorner(x, y)) {
-        ax0 = Math.min(ax0, x); ay0 = Math.min(ay0, y); ax1 = Math.max(ax1, x); ay1 = Math.max(ay1, y);
+      if (mag(x, y) && !inCircle[y * W + x]) {
+        ax0 = Math.min(ax0, x);
+        ax1 = Math.max(ax1, x);
+      }
+  for (let y = top.y; y < top.y + top.h; y++)
+    for (let x = Math.round(W * 0.3); x < Math.round(W * 0.7); x++)
+      if (mag(x, y)) {
+        ay0 = Math.min(ay0, y);
+        ay1 = Math.max(ay1, y);
       }
   return {
     cost: { x: cx0, y: cy0, w: cx1 - cx0 + 1, h: cy1 - cy0 + 1 },

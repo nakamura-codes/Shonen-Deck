@@ -6,8 +6,8 @@ export const FRAME_LAYOUT = {
     "cost": {
       "x": 9,
       "y": 8,
-      "w": 39,
-      "h": 39
+      "w": 25,
+      "h": 24
     },
     "art": {
       "x": 29,
@@ -38,8 +38,8 @@ export const FRAME_LAYOUT = {
     "cost": {
       "x": 7,
       "y": 8,
-      "w": 39,
-      "h": 39
+      "w": 25,
+      "h": 24
     },
     "art": {
       "x": 25,
@@ -70,8 +70,8 @@ export const FRAME_LAYOUT = {
     "cost": {
       "x": 7,
       "y": 8,
-      "w": 39,
-      "h": 39
+      "w": 25,
+      "h": 25
     },
     "art": {
       "x": 29,
