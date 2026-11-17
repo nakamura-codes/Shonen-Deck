@@ -302,6 +302,7 @@ async function main() {
   await iconFromFigure('uniforme_naruto.png', 'body', NARUTO);
   console.log('Scouter…');
   await scouterLayer();
+  await scouterOutfits();
 }
 
 main().catch((e) => {
@@ -404,4 +405,92 @@ export async function scouterLayer() {
     .png({ palette: true, colors: 24, dither: 0 })
     .toFile(join(OUT_ITEMS, 'scouter.png'));
   console.log('  ✓ item scouter');
+}
+
+/**
+ * Figuras prontas do Scouter com Gi, Shihakusho e Uniforme Jujutsu (art/raw/character/scouter_roupas.png,
+ * grade 3×3 em fundo preto; usamos a 1ª linha). O fundo preto vira transparente por preenchimento a partir
+ * das bordas, e a borda clara fina em volta do contorno é removida.
+ * Substituem as versões montadas (boneco + aparelho) para esses corpos.
+ */
+export async function scouterOutfits() {
+  const { data, info } = await sharp(join(RAW, 'scouter_roupas.png')).removeAlpha().raw().toBuffer({ resolveWithObject: true });
+  const W = info.width;
+  const H = info.height;
+  const sum = (i: number) => data[i * 3] + data[i * 3 + 1] + data[i * 3 + 2];
+  // A borda clara em volta de cada figura serve de barreira. Ela tem falhas, então é engrossada
+  // em 3 px antes de preencher o fundo (senão o preenchimento vaza pelo contorno preto).
+  const barrier = new Uint8Array(W * H);
+  for (let y = 0; y < H; y++)
+    for (let x = 0; x < W; x++) {
+      if (sum(y * W + x) < 60) continue;
+      for (let dy = -3; dy <= 3; dy++)
+        for (let dx = -3; dx <= 3; dx++) {
+          const xx = x + dx, yy = y + dy;
+          if (xx >= 0 && yy >= 0 && xx < W && yy < H) barrier[yy * W + xx] = 1;
+        }
+    }
+  const bg = new Uint8Array(W * H);
+  const stack: number[] = [];
+  for (let x = 0; x < W; x++) stack.push(x, (H - 1) * W + x);
+  for (let y = 0; y < H; y++) stack.push(y * W, y * W + W - 1);
+  while (stack.length) {
+    const i = stack.pop()!;
+    if (bg[i] || barrier[i]) continue;
+    bg[i] = 1;
+    const x = i % W;
+    const y = (i - x) / W;
+    if (x > 0) stack.push(i - 1);
+    if (x < W - 1) stack.push(i + 1);
+    if (y > 0) stack.push(i - W);
+    if (y < H - 1) stack.push(i + W);
+  }
+  // Tira a faixa externa (borda clara + o engrossamento): tudo a até 9 px do fundo que não seja
+  // contorno preto; o contorno preto a até 4 px do fundo também sai (era a margem engrossada).
+  const distToBg = (x: number, y: number, r: number) => {
+    for (let dy = -r; dy <= r; dy++)
+      for (let dx = -r; dx <= r; dx++) {
+        const xx = x + dx, yy = y + dy;
+        if (xx >= 0 && yy >= 0 && xx < W && yy < H && bg[yy * W + xx]) return true;
+      }
+    return false;
+  };
+  const rgba = Buffer.alloc(W * H * 4);
+  for (let y = 0; y < H; y++)
+    for (let x = 0; x < W; x++) {
+      const i = y * W + x;
+      if (bg[i]) continue;
+      const s = sum(i);
+      if (s < 60 ? distToBg(x, y, 4) : s <= 450 && distToBg(x, y, 9)) continue;
+      rgba[i * 4] = data[i * 3];
+      rgba[i * 4 + 1] = data[i * 3 + 1];
+      rgba[i * 4 + 2] = data[i * 3 + 2];
+      rgba[i * 4 + 3] = 255;
+    }
+  const img: Img = { w: W, h: H, data: rgba };
+  const rows = findFigures(img);
+  if (rows.length < 1 || rows[0].length !== 3) throw new Error('scouter_roupas: esperava 3 figuras na 1ª linha');
+  for (let c = 0; c < 3; c++) {
+    const box = rows[0][c];
+    // O scouter não passa do topo da cabeça: a figura inteira é a altura do corpo.
+    const buf = await normalize(img, box, BODY_H / (box.y1 - box.y0));
+    addOutline(buf);
+    await save(buf, CANVAS_W, CANVAS_H, join(OUT_FIG, `fig_scouter_${BODIES[c]}.png`));
+    console.log(`  ✓ fig_scouter_${BODIES[c]} (figura pronta)`);
+  }
+}
+
+/** Contorno escuro de 1 px em volta da figura (igual ao das outras figuras). */
+function addOutline(buf: Buffer) {
+  const solid = (x: number, y: number) => x >= 0 && y >= 0 && x < CANVAS_W && y < CANVAS_H && buf[(y * CANVAS_W + x) * 4 + 3] > 0;
+  const edge: number[] = [];
+  for (let y = 0; y < CANVAS_H; y++)
+    for (let x = 0; x < CANVAS_W; x++)
+      if (!solid(x, y) && (solid(x - 1, y) || solid(x + 1, y) || solid(x, y - 1) || solid(x, y + 1))) edge.push(y * CANVAS_W + x);
+  for (const i of edge) {
+    buf[i * 4] = 0x1a;
+    buf[i * 4 + 1] = 0x14;
+    buf[i * 4 + 2] = 0x20;
+    buf[i * 4 + 3] = 255;
+  }
 }
