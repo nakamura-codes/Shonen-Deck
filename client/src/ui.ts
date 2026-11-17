@@ -4,6 +4,8 @@ import { FRAME_LAYOUT, FRAME_SIZE } from './cardFrames.generated.ts';
 import { sfx } from './sfx.ts';
 
 export const FONT = '"Pixelify Sans", monospace';
+/** Fonte só para números (custo, dano, HP, Ki): mais nítida em tamanho pequeno. */
+export const NUM_FONT = '"Jersey 10", "Pixelify Sans", monospace';
 
 export const COLORS = {
   bg: 0x16121f,
@@ -130,9 +132,9 @@ function previewBadge(scene: Phaser.Scene, p: { base: number; value: number }) {
   const bg = scene.add.graphics();
   bg.fillStyle(COLORS.outline).fillRoundedRect(-34, -15, 68, 30, 6);
   bg.fillStyle(0x231c33).fillRoundedRect(-32, -13, 64, 26, 5);
-  const oldT = txt(scene, -15, -1, String(p.base), 15, '#a89cc0', { fontStyle: 'bold' });
+  const oldT = txt(scene, -15, -1, String(p.base), 19, '#a89cc0', { fontFamily: NUM_FONT });
   const strike = scene.add.rectangle(-15, 0, oldT.width + 6, 2, 0xff6070);
-  const newT = txt(scene, 15, -1, String(p.value), 19, up ? '#7fe0a0' : '#ff7a7a', { fontStyle: 'bold', stroke: '#0d0a14', strokeThickness: 3 });
+  const newT = txt(scene, 15, -1, String(p.value), 24, up ? '#7fe0a0' : '#ff7a7a', { fontFamily: NUM_FONT, stroke: '#0d0a14', strokeThickness: 3 });
   badge.add([bg, oldT, strike, newT]);
   return badge;
 }
@@ -193,7 +195,7 @@ function makeFramedCard(scene: Phaser.Scene, cardId: string, opts: CardOpts) {
 
   const cost = opts.cost ?? def.cost;
   // Número centralizado no círculo do custo.
-  c.add(txt(scene, cx(L.cost), cy(L.cost), String(cost), 21, '#ffffff', { fontStyle: 'bold', stroke: '#0d0a14', strokeThickness: 5 }));
+  c.add(txt(scene, cx(L.cost), cy(L.cost), String(cost), 27, '#ffffff', { fontFamily: NUM_FONT, stroke: '#0d0a14', strokeThickness: 5 }));
 
   if (opts.preview && opts.preview.value !== opts.preview.base) {
     c.add(previewBadge(scene, opts.preview).setPosition(ox + L.art.x + L.art.w - 30, oy + L.art.y + L.art.h - 14));
@@ -251,7 +253,7 @@ function makeClassicCard(scene: Phaser.Scene, cardId: string, opts: CardOpts = {
   orb.fillStyle(COLORS.ki).fillCircle(-w / 2 + 14, -h / 2 + 14, 14);
   orb.fillStyle(0x8fd0ff).fillCircle(-w / 2 + 10, -h / 2 + 9, 4);
   c.add(orb);
-  c.add(txt(scene, -w / 2 + 14, -h / 2 + 13, String(cost), 18, '#ffffff', { fontStyle: 'bold', stroke: '#0d0a14', strokeThickness: 3 }));
+  c.add(txt(scene, -w / 2 + 14, -h / 2 + 13, String(cost), 22, '#ffffff', { fontFamily: NUM_FONT, stroke: '#0d0a14', strokeThickness: 3 }));
 
   if (opts.preview && opts.preview.value !== opts.preview.base) c.add(previewBadge(scene, opts.preview).setPosition(w / 2 - 34, -10));
 
@@ -388,7 +390,9 @@ export function wait(scene: Phaser.Scene, ms: number): Promise<void> {
 
 /** Texto que sobe e some (dano, bloqueio, status). */
 export function floatText(scene: Phaser.Scene, x: number, y: number, s: string, color: string, size = 28) {
-  const t = txt(scene, x, y, s, size, color, { fontStyle: 'bold', stroke: '#0d0a14', strokeThickness: 5 }).setDepth(50);
+  // Números puros ("-12", "+5") usam a fonte de números.
+  const onlyNumber = /^[-+]?\d+$/.test(s);
+  const t = txt(scene, x, y, s, onlyNumber ? Math.round(size * 1.2) : size, color, { fontStyle: 'bold', ...(onlyNumber ? { fontFamily: NUM_FONT } : {}), stroke: '#0d0a14', strokeThickness: 5 }).setDepth(50);
   scene.tweens.add({ targets: t, y: y - 60, alpha: 0, duration: 1100, ease: 'Cubic.easeOut', onComplete: () => t.destroy() });
 }
 

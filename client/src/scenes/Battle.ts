@@ -20,6 +20,7 @@ import {
   makeCard,
   makeCharacter,
   makeMiniIcon,
+  NUM_FONT,
   tweenPromise,
   txt,
   wait,
@@ -77,7 +78,7 @@ export class BattleScene extends Phaser.Scene {
     top.fillStyle(COLORS.outline, 0.85).fillRect(0, 0, 1280, 52);
     top.fillStyle(COLORS.gold).fillRect(0, 52, 1280, 3);
     this.turnText = txt(this, 90, 27, 'Turno 1', 22, '#ffe28a', { fontStyle: 'bold' }).setDepth(6);
-    this.timerText = txt(this, 640, 27, '', 30, '#ffffff', { fontStyle: 'bold' }).setDepth(6);
+    this.timerText = txt(this, 640, 27, '', 36, '#ffffff', { fontFamily: NUM_FONT }).setDepth(6);
     this.starterText = txt(this, 1110, 27, '', 16, '#ffe28a').setDepth(6);
     // Som ligado/desligado.
     const muteBtn = txt(this, 1250, 27, isMuted() ? '🔇' : '🔊', 22, '#ffffff').setDepth(7).setInteractive({ useHandCursor: true });
@@ -180,7 +181,7 @@ export class BattleScene extends Phaser.Scene {
     this.drawQueues(view);
     this.drawHand(view);
 
-    this.hud.add(txt(this, 90, 588, `${view.me.ki}/${view.me.maxKi}`, 32, '#ffffff', { fontStyle: 'bold', stroke: '#0d0a14', strokeThickness: 5 }));
+    this.hud.add(txt(this, 90, 586, `${view.me.ki}/${view.me.maxKi}`, 40, '#ffffff', { fontFamily: NUM_FONT, stroke: '#0d0a14', strokeThickness: 5 }));
     this.hud.add(txt(this, 90, 625, 'Ki', 14, '#d8ecff'));
     this.hud.add(txt(this, 90, 670, `Compra ${view.me.drawCount}  ·  Descarte ${view.me.discardCount}`, 13, COLORS.textDim));
 
@@ -202,7 +203,7 @@ export class BattleScene extends Phaser.Scene {
   private drawHpBar(side: Side, hp: number, max: number) {
     let bar = this.hpBars[side];
     if (!bar) {
-      bar = { g: this.add.graphics().setDepth(6), t: txt(this, CHAR_X[side], 449, '', 15, '#ffffff', { fontStyle: 'bold', stroke: '#0d0a14', strokeThickness: 4 }).setDepth(7), max };
+      bar = { g: this.add.graphics().setDepth(6), t: txt(this, CHAR_X[side], 448, '', 19, '#ffffff', { fontFamily: NUM_FONT, stroke: '#0d0a14', strokeThickness: 4 }).setDepth(7), max };
       this.hpBars[side] = bar;
     }
     bar.max = max;
@@ -227,7 +228,7 @@ export class BattleScene extends Phaser.Scene {
       g.fillStyle(COLORS.outline).fillCircle(bx, 449, 19);
       g.fillStyle(COLORS.block).fillCircle(bx, 449, 16);
       this.hud.add(g);
-      this.hud.add(txt(this, bx, 448, String(f.block), 16, '#ffffff', { fontStyle: 'bold', stroke: '#0d0a14', strokeThickness: 3 }));
+      this.hud.add(txt(this, bx, 448, String(f.block), 20, '#ffffff', { fontFamily: NUM_FONT, stroke: '#0d0a14', strokeThickness: 3 }));
     }
 
     const chips: [string, string][] = [];
@@ -519,7 +520,7 @@ export class BattleScene extends Phaser.Scene {
   private orderBadge(x: number, y: number, n: number, color: number) {
     const c = this.add.container(x, y);
     c.add(this.add.circle(0, 0, 11, color).setStrokeStyle(2, COLORS.outline));
-    c.add(txt(this, 0, -1, String(n), 13, '#ffffff', { fontStyle: 'bold' }));
+    c.add(txt(this, 0, -1, String(n), 16, '#ffffff', { fontFamily: NUM_FONT }));
     return c;
   }
 
