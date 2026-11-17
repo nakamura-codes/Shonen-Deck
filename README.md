@@ -32,6 +32,7 @@ Outros comandos:
 | `npm run art:character` | Processa as figuras do personagem e os ícones das roupas |
 | `npm run art:arenas` | Processa as arenas |
 | `npm run art:hud` | Processa a HUD de baixo e os botões (`art/raw/ui/`) |
+| `npm run art:inventory` | Processa o fundo do inventário e as molduras das peças |
 | `npm run art:fx` | Processa os efeitos visuais (golpes, buffs, explosões) |
 | `npm run art:frames` | Processa as molduras das cartas (ataque, técnica, poder e verso) |
 | `npm run build` | Gera a versão de produção do cliente em `client/dist` |
