@@ -32,6 +32,7 @@ const HEADS = ['chapeu_palha', 'venda_olhos', 'bandana_ninja'] as const;
 const BODIES = ['gi_laranja', 'shihakusho', 'uniforme_jujutsu'] as const;
 const MASK = 'mascara_hollow';
 const NARUTO = 'uniforme_naruto';
+const LUFFY = 'roupa_luffy';
 
 /** Altura do corpo (sem chapéu) em pixels na arte final. */
 const BODY_H = 64;
@@ -215,8 +216,8 @@ function neckRow(img: Img, box: Box): number {
 }
 
 /** Ícone recortado de uma figura (para peças que vieram sem ícone próprio). */
-async function iconFromFigure(file: string, part: 'head' | 'body', id: string) {
-  const img = await load(file);
+async function iconFromFigure(file: string | Img, part: 'head' | 'body', id: string) {
+  const img = typeof file === 'string' ? await load(file) : file;
   const box = findFigures(img)[0][0];
   const neck = neckRow(img, box);
   const y0 = part === 'head' ? box.y0 : neck;
@@ -300,6 +301,8 @@ async function main() {
   await items();
   await iconFromFigure('mascara_hollow.png', 'head', MASK);
   await iconFromFigure('uniforme_naruto.png', 'body', NARUTO);
+  console.log('Roupa do Luffy…');
+  await luffyOutfit();
   console.log('Scouter…');
   await scouterLayer();
   await scouterOutfits();
@@ -383,7 +386,7 @@ export async function scouterLayer() {
     out[i * 4 + 3] = 255;
   }
   // O Scouter é uma peça de cabeça: a figura é o boneco sem nada na cabeça + o aparelho.
-  for (const body of ['none', ...BODIES, NARUTO]) {
+  for (const body of ['none', ...BODIES, NARUTO, LUFFY]) {
     const base = await sharp(join(OUT_FIG, `fig_none_${body}.png`)).ensureAlpha().raw().toBuffer();
     for (let i = 0; i < CANVAS_W * CANVAS_H; i++) if (out[i * 4 + 3]) out.copy(base, i * 4, i * 4, i * 4 + 4);
     await save(base, CANVAS_W, CANVAS_H, join(OUT_FIG, `fig_scouter_${body}.png`));
@@ -413,8 +416,12 @@ export async function scouterLayer() {
  * das bordas, e a borda clara fina em volta do contorno é removida.
  * Substituem as versões montadas (boneco + aparelho) para esses corpos.
  */
-export async function scouterOutfits() {
-  const { data, info } = await sharp(join(RAW, 'scouter_roupas.png')).removeAlpha().raw().toBuffer({ resolveWithObject: true });
+/**
+ * Recorta figuras desenhadas em fundo preto (com uma borda clara fina em volta do contorno):
+ * o fundo vira transparente e a borda clara é retirada.
+ */
+async function cutoutOnBlack(file: string, barrierMin = 60): Promise<Img> {
+  const { data, info } = await sharp(join(RAW, file)).removeAlpha().raw().toBuffer({ resolveWithObject: true });
   const W = info.width;
   const H = info.height;
   const sum = (i: number) => data[i * 3] + data[i * 3 + 1] + data[i * 3 + 2];
@@ -423,7 +430,7 @@ export async function scouterOutfits() {
   const barrier = new Uint8Array(W * H);
   for (let y = 0; y < H; y++)
     for (let x = 0; x < W; x++) {
-      if (sum(y * W + x) < 60) continue;
+      if (sum(y * W + x) < barrierMin) continue;
       for (let dy = -3; dy <= 3; dy++)
         for (let dx = -3; dx <= 3; dx++) {
           const xx = x + dx, yy = y + dy;
@@ -470,7 +477,11 @@ export async function scouterOutfits() {
       rgba[i * 4 + 2] = data[i * 3 + 2];
       rgba[i * 4 + 3] = 255;
     }
-  const img: Img = { w: W, h: H, data: rgba };
+  return { w: W, h: H, data: rgba };
+}
+
+export async function scouterOutfits() {
+  const img = await cutoutOnBlack('scouter_roupas.png');
   const rows = findFigures(img);
   if (rows.length < 1 || rows[0].length !== 3) throw new Error('scouter_roupas: esperava 3 figuras na 1ª linha');
   for (let c = 0; c < 3; c++) {
@@ -496,4 +507,35 @@ function addOutline(buf: Buffer) {
     buf[i * 4 + 2] = 0x20;
     buf[i * 4 + 3] = 255;
   }
+}
+
+/**
+ * Roupa do Luffy (corpo), em fundo preto:
+ *  - roupa_luffy.jpg          corpo sozinho + com Chapéu de Palha (mesma escala)
+ *  - roupa_luffy_cabecas.jpg  com Chapéu, Cabelo e Venda, Bandana e Máscara Hollow
+ * Escala: na 1ª imagem, a figura sem nada na cabeça; na 2ª, a figura com a máscara
+ * (a máscara não aumenta a altura).
+ */
+export async function luffyOutfit() {
+  // Nestas imagens a borda em volta do contorno é mais escura: barreira mais baixa.
+  const solo = await cutoutOnBlack('roupa_luffy.jpg', 25);
+  const soloFigs = findFigures(solo).flat().sort((a, b) => a.x0 - b.x0);
+  if (soloFigs.length !== 2) throw new Error(`roupa_luffy: esperava 2 figuras, achei ${soloFigs.length}`);
+  const soloBody = soloFigs[0].y1 - soloFigs[0].y0;
+  const write = async (img: Img, box: Box, bodyH: number, head: string) => {
+    const buf = await normalize(img, box, BODY_H / bodyH);
+    addOutline(buf);
+    await save(buf, CANVAS_W, CANVAS_H, join(OUT_FIG, `fig_${head}_${LUFFY}.png`));
+    console.log(`  ✓ fig_${head}_${LUFFY}`);
+  };
+  await write(solo, soloFigs[0], soloBody, 'none');
+
+  const heads = await cutoutOnBlack('roupa_luffy_cabecas.jpg', 25);
+  const figs = findFigures(heads).flat().sort((a, b) => a.x0 - b.x0);
+  if (figs.length !== 4) throw new Error(`roupa_luffy_cabecas: esperava 4 figuras, achei ${figs.length}`);
+  const order = ['chapeu_palha', 'venda_olhos', 'bandana_ninja', MASK];
+  const headsBody = figs[3].y1 - figs[3].y0;
+  for (let i = 0; i < 4; i++) await write(heads, figs[i], headsBody, order[i]);
+
+  await iconFromFigure(solo, 'body', LUFFY);
 }
