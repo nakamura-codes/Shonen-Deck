@@ -12,9 +12,11 @@ import { INV } from '../inventory.generated.ts';
 const L = {
   pedestal: { x: 217, y: 528 },
   deckLabel: { x: 217, y: 624 },
-  equippedTab: { x: 442, y: 147 },
-  equipped: { x: 414, y: 156, w: 776, h: 58, gap: 6 },
-  storedTab: { x: 442, y: 309 },
+  // Centro da aba (depois do losango).
+  equippedTab: { x: 503, y: 147 },
+  // Caixa do "Vestindo" no fundo: x 406–1197, y 148–281 (a aba ocupa o topo até ~162).
+  equipped: { x: 412, y: 166, w: 780, h: 53, gap: 5 },
+  storedTab: { x: 503, y: 309 },
   storedHint: { x: 1196, y: 294 },
   stored: { x0: 404, y0: 334, cols: 9, w: 84, gapX: 5, gapY: 6 },
   buttonsY: 610,
@@ -26,7 +28,6 @@ export class WardrobeScene extends Phaser.Scene {
   private dynamic: Phaser.GameObjects.GameObject[] = [];
   private tooltip?: Phaser.GameObjects.Container;
   private deckLabel!: Phaser.GameObjects.Text;
-  private deckDetail!: Phaser.GameObjects.Text;
 
   constructor() {
     super('Wardrobe');
@@ -45,10 +46,11 @@ export class WardrobeScene extends Phaser.Scene {
 
     // Nome editável na plaquinha do painel do personagem.
     const n = INV.name;
-    const input = this.add.dom(n.x + n.w / 2, n.y + n.h / 2, 'input').setOrigin(0.5);
-    const el = input.node as HTMLInputElement;
+    // O elemento é configurado antes de ir para a cena, para o Phaser centralizar pelo tamanho certo.
+    const el = document.createElement('input');
     el.className = 'plate-input';
-    el.style.width = `${n.w - 12}px`;
+    el.style.width = `${n.w - 24}px`;
+    this.add.dom(n.x + n.w / 2, n.y + n.h / 2, el).setOrigin(0.5);
     el.maxLength = 16;
     el.value = session.name;
     el.addEventListener('input', () => {
@@ -56,8 +58,7 @@ export class WardrobeScene extends Phaser.Scene {
       session.save();
     });
 
-    this.deckLabel = txt(this, L.deckLabel.x, L.deckLabel.y - 6, '', 16, '#ffffff', { fontStyle: 'bold', stroke: '#0d0a14', strokeThickness: 4 });
-    this.deckDetail = txt(this, L.deckLabel.x, L.deckLabel.y + 12, '', 11, '#a8b4d0');
+    this.deckLabel = txt(this, L.deckLabel.x, L.deckLabel.y, '', 17, '#ffffff', { fontStyle: 'bold', stroke: '#0d0a14', strokeThickness: 4 });
     makeButton(this, 690, L.buttonsY, 250, 46, 'Procurar oponente', () => this.go(false), COLORS.gold, 20);
     makeButton(this, 960, L.buttonsY, 230, 46, 'Treinar com bot', () => this.go(true), 0x7fc8a9, 20);
 
@@ -87,11 +88,11 @@ export class WardrobeScene extends Phaser.Scene {
     this.dynamic = [];
     this.hideTooltip();
 
-    this.dynamic.push(txt(this, L.equippedTab.x, L.equippedTab.y, 'Vestindo', 17, '#ffffff', { fontStyle: 'bold' }).setOrigin(0, 0.5));
+    this.dynamic.push(txt(this, L.equippedTab.x, L.equippedTab.y, 'Vestindo', 17, '#ffffff', { fontStyle: 'bold' }));
     OUTFIT_SLOTS.forEach((slot, i) => this.drawEquipped(slot, L.equipped.y + i * (L.equipped.h + L.equipped.gap)));
 
     const stored = OUTFIT_ITEMS.filter((it) => session.outfit[it.slot] !== it.id);
-    this.dynamic.push(txt(this, L.storedTab.x, L.storedTab.y, 'Guardado no inventário', 17, '#ffffff', { fontStyle: 'bold' }).setOrigin(0, 0.5));
+    this.dynamic.push(txt(this, L.storedTab.x, L.storedTab.y, 'Deck', 17, '#ffffff', { fontStyle: 'bold' }));
     this.dynamic.push(txt(this, L.storedHint.x, L.storedHint.y, 'Clique para vestir', 13, '#a8b4d0').setOrigin(1, 0.5));
     const S = L.stored;
     const h = Math.round(S.w / INV.slots.slot_normal.aspect);
@@ -103,7 +104,6 @@ export class WardrobeScene extends Phaser.Scene {
 
     const deck = buildDeck(session.outfit);
     this.deckLabel.setText(`Baralho: ${deck.length} cartas`);
-    this.deckDetail.setText(`8 básicas + ${deck.length - 8} das roupas`);
   }
 
   /** Peça guardada dentro da moldura (assets/ui/slot_*.png); clique veste. */
@@ -159,23 +159,23 @@ export class WardrobeScene extends Phaser.Scene {
     g.lineStyle(1, 0x5a6a98, 0.8).strokeRoundedRect(x, y, w, h, 6);
     g.fillStyle(item ? 0x1f3a6e : 0x161d38).fillRoundedRect(x + 6, y + 5, 96, h - 10, 5);
     this.dynamic.push(g);
-    this.dynamic.push(txt(this, x + 116, y + 15, SLOT_LABELS[slot], 12, '#a8b4d0').setOrigin(0, 0.5));
+    this.dynamic.push(txt(this, x + 116, y + 14, SLOT_LABELS[slot], 12, '#a8b4d0').setOrigin(0, 0.5));
     if (!item) {
       this.dynamic.push(txt(this, x + 54, mid, 'vazio', 12, '#7a86a8'));
-      this.dynamic.push(txt(this, x + 116, y + 38, 'Nada vestido. Escolha uma peça guardada abaixo.', 14, '#a8b4d0').setOrigin(0, 0.5));
+      this.dynamic.push(txt(this, x + 116, y + 35, 'Nada vestido. Escolha uma peça do deck abaixo.', 14, '#a8b4d0').setOrigin(0, 0.5));
       return;
     }
     this.dynamic.push(makeItemIcon(this, item.id, 86, h - 14).setPosition(x + 54, mid));
-    this.dynamic.push(txt(this, x + 116, y + 38, item.name, 18, '#ffffff', { fontStyle: 'bold' }).setOrigin(0, 0.5));
+    this.dynamic.push(txt(this, x + 116, y + 35, item.name, 18, '#ffffff', { fontStyle: 'bold' }).setOrigin(0, 0.5));
     item.cards.forEach((cardId, i) => {
       const cx = x + 430 + i * 62;
-      const icon = makeMiniIcon(this, cardId, 0.5).setPosition(cx, mid);
+      const icon = makeMiniIcon(this, cardId, 0.46).setPosition(cx, mid);
       const zone = this.add.zone(cx, mid, 46, 46).setInteractive();
       zone.on('pointerover', () => this.showTooltip(cardId, cx, mid));
       zone.on('pointerout', () => this.hideTooltip());
       this.dynamic.push(icon, zone);
     });
-    this.dynamic.push(makeButton(this, x + w - 62, mid, 96, 36, 'Tirar', () => this.equip(slot, null), 0xb0a0c8, 15));
+    this.dynamic.push(makeButton(this, x + w - 60, mid, 96, 32, 'Tirar', () => this.equip(slot, null), 0xb0a0c8, 15));
   }
 
   private equip(slot: OutfitSlot, id: string | null) {
