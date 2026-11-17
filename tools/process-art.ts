@@ -18,6 +18,9 @@ import type { Rarity } from '../shared/src/types.ts';
 const ROOT = new URL('..', import.meta.url).pathname;
 const RAW = join(ROOT, 'art/raw');
 const OUT = join(ROOT, 'client/public/assets/cards');
+/** Arte inteira (sem moldura de raridade), em resolução maior, para preencher a janela da carta. */
+const OUT_ART = join(ROOT, 'client/public/assets/cards/art');
+const ART_SIZE = 128;
 
 const ICON = 64;
 const W = 70;
@@ -56,6 +59,12 @@ async function processCard(id: string, file: string) {
   // Se havia moldura, tira mais um pouco para não sobrar a linha escura.
   const hadFrame = meta.width !== original.width || meta.height !== original.height;
   const inset = hadFrame ? Math.round(Math.min(meta.width ?? 0, meta.height ?? 0) * 0.02) : 0;
+  await sharp(trimmed)
+    .extract({ left: inset, top: inset, width: (meta.width ?? 0) - inset * 2, height: (meta.height ?? 0) - inset * 2 })
+    .resize(ART_SIZE, ART_SIZE, { fit: 'cover', kernel: original.width && original.width <= 64 ? 'nearest' : 'lanczos3' })
+    .png({ palette: true, colors: 64, dither: 0 })
+    .toFile(join(OUT_ART, `${id}.png`));
+
   const { data: src } = await sharp(trimmed)
     .extract({ left: inset, top: inset, width: (meta.width ?? 0) - inset * 2, height: (meta.height ?? 0) - inset * 2 })
     .resize(ICON, ICON, { fit: 'cover', kernel: 'lanczos3' })
@@ -103,6 +112,7 @@ async function processCard(id: string, file: string) {
 async function main() {
   if (!existsSync(RAW)) throw new Error(`Pasta não encontrada: ${RAW}`);
   mkdirSync(OUT, { recursive: true });
+  mkdirSync(OUT_ART, { recursive: true });
   const files = readdirSync(RAW).filter((f) => f.toLowerCase().endsWith('.png'));
   console.log(`Processando ${files.length} imagens de art/raw…`);
   for (const f of files) await processCard(basename(f, '.png'), join(RAW, f));

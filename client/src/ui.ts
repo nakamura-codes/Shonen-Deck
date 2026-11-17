@@ -154,19 +154,25 @@ function makeFramedCard(scene: Phaser.Scene, cardId: string, opts: CardOpts) {
   g.fillStyle(0x221a30).fillRect(ox + L.name.x, oy + L.name.y, L.name.w, L.name.h);
   g.fillStyle(0xf1e6cf).fillRect(ox + L.text.x, oy + L.text.y, L.text.w, L.text.h);
   g.fillStyle(0x221a30).fillRect(ox + L.type.x, oy + L.type.y, L.type.w, L.type.h);
-  g.fillStyle(COLORS.ki).fillCircle(cx(L.cost), cy(L.cost), L.cost.w / 2);
-  g.fillStyle(0x8fd0ff).fillCircle(cx(L.cost) - 5, cy(L.cost) - 6, 4);
   c.add(g);
 
-  // Arte (hexágono com a moldura de raridade) dentro da janela.
-  const key = `card_${cardId}`;
-  if (scene.textures.exists(key)) {
-    const img = scene.add.image(cx(L.art), cy(L.art), key);
+  // Arte preenchendo 100% da abertura (esticada se preciso); a moldura por cima recorta o hexágono.
+  const artKey = `cardart_${cardId}`;
+  if (scene.textures.exists(artKey)) {
+    c.add(scene.add.image(cx(L.art), cy(L.art), artKey).setDisplaySize(L.art.w + 2, L.art.h + 2));
+  } else if (scene.textures.exists(`card_${cardId}`)) {
+    const img = scene.add.image(cx(L.art), cy(L.art), `card_${cardId}`);
     img.setScale(Math.min((L.art.w - 6) / img.width, (L.art.h - 4) / img.height));
     c.add(img);
   } else {
     c.add(placeholderIcon(scene, def).setPosition(cx(L.art), cy(L.art)).setScale(0.9));
   }
+
+  // Custo de Ki (por cima da arte, dentro do círculo da moldura).
+  const orb = scene.add.graphics();
+  orb.fillStyle(COLORS.ki).fillCircle(cx(L.cost), cy(L.cost), L.cost.w / 2);
+  orb.fillStyle(0x8fd0ff).fillCircle(cx(L.cost) - 5, cy(L.cost) - 6, 4);
+  c.add(orb);
 
   c.add(scene.add.image(0, 0, `frame_${def.type}`));
 

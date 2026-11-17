@@ -13,7 +13,10 @@ export class BootScene extends Phaser.Scene {
     this.load.on('progress', (v: number) => label.setText(`Carregando… ${Math.round(v * 100)}%`));
     // Arte que faltar não quebra o jogo: cartas usam ícone provisório.
     this.load.on('loaderror', (file: Phaser.Loader.File) => console.warn('Arte não encontrada:', file.src));
-    for (const id of Object.keys(CARDS)) this.load.image(`card_${id}`, `assets/cards/${id}.png`);
+    for (const id of Object.keys(CARDS)) {
+      this.load.image(`card_${id}`, `assets/cards/${id}.png`);
+      this.load.image(`cardart_${id}`, `assets/cards/art/${id}.png`);
+    }
     for (const t of ['attack', 'skill', 'power']) this.load.image(`frame_${t}`, `assets/cards/frames/${t}.png`);
     this.load.image('card_back', 'assets/cards/frames/back.png');
     for (const a of ARENAS) this.load.image(`arena_${a.id}`, `assets/arenas/${a.id}.png`);
