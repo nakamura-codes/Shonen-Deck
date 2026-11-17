@@ -161,3 +161,13 @@ As imagens ficam em `art/raw/cards_frames/`, com as áreas de conteúdo pintadas
 - gera `client/src/cardFrames.generated.ts` com a posição de cada área (custo, arte, nome, texto e tipo).
 
 Para trocar uma moldura, basta substituir a imagem e rodar o comando de novo.
+
+### Sons
+Os efeitos sonoros são gerados na hora pelo navegador (Web Audio), no estilo retrô, sem arquivos de áudio. As receitas ficam em `client/src/sfx.ts`.
+- **Cartas e botões:** clique, carta jogada, confirmar e desfazer.
+- **Revelação e moeda.**
+- **Golpes:** feixe, explosão, corte, raio e vento, cada um ligado às cartas em `attackSound()`.
+- **Resultado do golpe:** impacto (normal e pesado), bloqueio, cura, buff e debuff.
+- **Momentos especiais:** carga, combo, atordoamento, vitória e derrota.
+
+O botão 🔊 no topo da batalha liga e desliga o som, e a escolha fica salva no navegador.

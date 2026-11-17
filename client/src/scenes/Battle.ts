@@ -10,6 +10,7 @@ import {
   type ServerMessage,
 } from '@oficina/shared';
 import { session } from '../session.ts';
+import { attackSound, isMuted, sfx, toggleMute } from '../sfx.ts';
 import {
   CARD_H,
   COLORS,
@@ -76,7 +77,10 @@ export class BattleScene extends Phaser.Scene {
     top.fillStyle(COLORS.gold).fillRect(0, 52, 1280, 3);
     this.turnText = txt(this, 90, 27, 'Turno 1', 22, '#ffe28a', { fontStyle: 'bold' }).setDepth(6);
     this.timerText = txt(this, 640, 27, '', 30, '#ffffff', { fontStyle: 'bold' }).setDepth(6);
-    this.starterText = txt(this, 1150, 27, '', 16, '#ffe28a').setDepth(6);
+    this.starterText = txt(this, 1110, 27, '', 16, '#ffe28a').setDepth(6);
+    // Som ligado/desligado.
+    const muteBtn = txt(this, 1250, 27, isMuted() ? '🔇' : '🔊', 22, '#ffffff').setDepth(7).setInteractive({ useHandCursor: true });
+    muteBtn.on('pointerdown', () => muteBtn.setText(toggleMute() ? '🔇' : '🔊'));
     this.banner = txt(this, 640, 82, '', 18, '#ffb0b0', { stroke: '#0d0a14', strokeThickness: 4 }).setDepth(30);
 
     this.readyBtn = makeButton(this, 1165, 560, 190, 60, 'Confirmar', () => this.sendReady(), COLORS.gold, 22).setDepth(25);
@@ -137,16 +141,19 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private toast(s: string) {
+    sfx('error');
     floatText(this, 640, 400, s, '#ffb0b0', 20);
   }
 
   private sendReady() {
     if (this.animating || !this.view || this.view.me.ready) return;
+    sfx('confirm');
     session.net.send({ t: 'ready' });
   }
 
   private sendUndo() {
     if (this.animating || !this.view || this.view.me.ready) return;
+    sfx('undo');
     session.net.send({ t: 'undo' });
   }
 
@@ -331,6 +338,7 @@ export class BattleScene extends Phaser.Scene {
           if (canAct && blockedReason) this.toast(blockedReason);
           return;
         }
+        sfx('card');
         session.net.send({ t: 'play', uid: c.uid });
       });
       this.hand.add(card);
@@ -365,21 +373,26 @@ export class BattleScene extends Phaser.Scene {
           // Golpe devolvido pelo Boogie Woogie: a animação sai de quem devolveu.
           const reflected = ev.source === ev.target;
           const from: Side = reflected ? (this.side(ev.target) === 0 ? 1 : 0) : this.side(ev.source);
+          if (!fast) sfx(attackSound(ev.cardId));
           await this.attackAnim(from, ev.cardId, fast);
           const t = this.side(ev.target);
           hp[t] -= ev.amount;
           this.drawHpBar(t, hp[t], max[t]);
+          sfx(ev.amount >= 15 ? 'hitHeavy' : ev.amount > 0 ? 'hit' : 'block');
+          if (ev.blocked > 0 && ev.amount > 0) sfx('block');
           this.hitAnim(t, ev.amount, ev.blocked);
           await wait(this, fast ? 60 : 220);
           lastCard = `${ev.source}:${ev.cardId}`;
           break;
         }
         case 'block':
+          sfx('block');
           this.flashAura(this.side(ev.player), COLORS.block);
           floatText(this, CHAR_X[this.side(ev.player)], BODY_Y - 60, `+${ev.amount} Bloqueio`, '#8fd0ff', 22);
           await wait(this, 320);
           break;
         case 'status': {
+          sfx(ev.status === 'strength' ? 'buff' : 'debuff');
           if (ev.cardId === 'blue' && ev.status === 'weak') await this.attackAnim(this.side(ev.player) === 0 ? 1 : 0, 'blue', false);
           const label = { strength: `Força +${ev.amount}`, weak: 'Fraco!', vulnerable: 'Vulnerável!' }[ev.status];
           floatText(this, CHAR_X[this.side(ev.player)], BODY_Y - 90, label, ev.status === 'strength' ? '#ffb070' : '#d0a0ff', 22);
@@ -387,6 +400,7 @@ export class BattleScene extends Phaser.Scene {
           break;
         }
         case 'hpLoss': {
+          sfx('debuff');
           const s = this.side(ev.player);
           hp[s] -= ev.amount;
           this.drawHpBar(s, hp[s], max[s]);
@@ -395,22 +409,27 @@ export class BattleScene extends Phaser.Scene {
           break;
         }
         case 'power':
+          sfx('powerUp');
           await this.bigShout(this.side(ev.player), getCard(POWER_CARD[ev.power]).name.toUpperCase() + '!', 0xb070ff);
           break;
         case 'chargeStart':
+          sfx('charge');
           this.flashAura(this.side(ev.player), 0x6fd0ff);
           floatText(this, CHAR_X[this.side(ev.player)], BODY_Y - 110, `Carregando ${getCard(ev.cardId).name}…`, '#8fd0ff', 20);
           await wait(this, 600);
           break;
         case 'chargeFire':
+          sfx('charge');
           await this.bigShout(this.side(ev.player), getCard(ev.cardId).name.toUpperCase() + '!', 0x6fd0ff);
           lastCard = '';
           break;
         case 'chargeCancel':
+          sfx('debuff');
           floatText(this, CHAR_X[this.side(ev.player)], BODY_Y - 110, `${getCard(ev.cardId).name} cancelada!`, '#ff8080', 22);
           await wait(this, 700);
           break;
         case 'evade': {
+          sfx('whoosh');
           const s2 = this.side(ev.player);
           const c = this.chars[s2];
           if (c) {
@@ -423,11 +442,13 @@ export class BattleScene extends Phaser.Scene {
           break;
         }
         case 'reflect':
+          sfx('swap');
           await this.swapAnim();
           floatText(this, 640, BODY_Y - 140, `Boogie Woogie! ${getCard(ev.cardId).name} voltou!`, '#e9b8ff', 22);
           await wait(this, 250);
           break;
         case 'heal': {
+          sfx('heal');
           const s2 = this.side(ev.player);
           hp[s2] += ev.amount;
           this.drawHpBar(s2, hp[s2], max[s2]);
@@ -437,6 +458,7 @@ export class BattleScene extends Phaser.Scene {
           break;
         }
         case 'stun': {
+          sfx('stun');
           const target = this.side(ev.player);
           const caster: Side = target === 0 ? 1 : 0;
           const ring = this.add.circle(CHAR_X[caster], BODY_Y, 30, 0x000000, 0).setStrokeStyle(10, 0x2a0a3a).setDepth(30);
@@ -451,6 +473,7 @@ export class BattleScene extends Phaser.Scene {
           break;
         }
         case 'combo':
+          sfx('combo');
           await this.comboAnim(this.side(ev.player));
           break;
         case 'gameOver':
@@ -470,6 +493,7 @@ export class BattleScene extends Phaser.Scene {
   /** Mostra as cartas na ordem real de resolução, com número e cor do dono (azul = você, vermelho = oponente). */
   private async showReveal(plays: Extract<BattleEvent, { type: 'play' }>[]) {
     const objs: Phaser.GameObjects.GameObject[] = [];
+    sfx('reveal');
     const title = txt(this, 640, 150, 'REVELAÇÃO!', 40, '#ffe28a', { fontStyle: 'bold', stroke: '#0d0a14', strokeThickness: 7 }).setDepth(40);
     objs.push(title);
     const spacing = Math.min(78, 640 / Math.max(1, plays.length));
@@ -549,11 +573,13 @@ export class BattleScene extends Phaser.Scene {
     const flips = 9;
     for (let i = 0; i < flips; i++) {
       const d = 70 + i * 22;
+      sfx('coin');
       await tweenPromise(this, { targets: coin, scaleX: 0, y: 330 - Math.sin(((i + 0.5) / flips) * Math.PI) * 140, duration: d, ease: 'Sine.easeIn' });
       // A face troca a cada meia volta; na última, para no nome de quem começa.
       face.setText(i === flips - 1 ? names[winner] : names[(i % 2) as PlayerIndex]);
       await tweenPromise(this, { targets: coin, scaleX: 1, duration: d, ease: 'Sine.easeOut' });
     }
+    sfx('coinLand');
     this.cameras.main.shake(120, 0.004);
     const label = txt(this, 640, 470, `${names[winner]} começa!`, 34, '#ffe28a', { fontStyle: 'bold', stroke: '#0d0a14', strokeThickness: 7 }).setDepth(82);
     label.setScale(0.4);
@@ -800,6 +826,7 @@ export class BattleScene extends Phaser.Scene {
     this.ended = true;
     session.net.token = null;
     const won = view.winner === view.you;
+    sfx(view.winner === 'draw' ? 'confirm' : won ? 'victory' : 'defeat');
     const label = view.winner === 'draw' ? 'Empate!' : won ? 'Vitória!' : 'Derrota…';
     const shade = this.add.rectangle(640, 360, 1280, 720, 0x0d0a14, 0.75).setDepth(90).setInteractive();
     const t = txt(this, 640, 280, label, 72, won ? '#ffe28a' : '#ff9090', { fontStyle: 'bold', stroke: '#0d0a14', strokeThickness: 10 }).setDepth(91);

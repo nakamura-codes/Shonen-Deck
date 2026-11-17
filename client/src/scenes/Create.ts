@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { OUTFIT_SLOTS, SLOT_LABELS, itemsForSlot, type OutfitSlot } from '@oficina/shared';
 import { session } from '../session.ts';
+import { sfx } from '../sfx.ts';
 import { COLORS, drawArena, makeButton, makeCard, makeCharacter, makeItemTile, txt, type Button } from '../ui.ts';
 
 /**
@@ -75,6 +76,7 @@ export class CreateScene extends Phaser.Scene {
   }
 
   private toggle(slot: OutfitSlot, id: string) {
+    sfx(session.outfit[slot] === id ? 'undo' : 'equip');
     session.outfit = { ...session.outfit, [slot]: session.outfit[slot] === id ? null : id };
     this.refreshPreview();
     this.drawTiles();

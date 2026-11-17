@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { figureKey, getCard, getItem, type CardDef, type Outfit } from '@oficina/shared';
 import { FRAME_LAYOUT, FRAME_SIZE } from './cardFrames.generated.ts';
+import { sfx } from './sfx.ts';
 
 export const FONT = '"Pixelify Sans", monospace';
 
@@ -91,7 +92,11 @@ export function makeButton(
   c.setInteractive({ useHandCursor: true });
   c.on('pointerover', () => ((hover = true), draw()));
   c.on('pointerout', () => ((hover = false), draw()));
-  c.on('pointerdown', () => enabled && onClick());
+  c.on('pointerdown', () => {
+    if (!enabled) return;
+    sfx('click');
+    onClick();
+  });
   c.setEnabled = (v: boolean) => {
     enabled = v;
     draw();

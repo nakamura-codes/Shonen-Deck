@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { OUTFIT_ITEMS, OUTFIT_SLOTS, SLOT_LABELS, buildDeck, getItem, type OutfitSlot, type ServerMessage } from '@oficina/shared';
 import { session } from '../session.ts';
+import { sfx } from '../sfx.ts';
 import { COLORS, drawArena, makeButton, makeCard, makeCharacter, makeItemIcon, makeItemTile, makeMiniIcon, txt } from '../ui.ts';
 
 /** Inventário: vestir e tirar peças. As peças vestidas definem o baralho. */
@@ -111,6 +112,7 @@ export class WardrobeScene extends Phaser.Scene {
   }
 
   private equip(slot: OutfitSlot, id: string | null) {
+    sfx(id ? 'equip' : 'undo');
     session.outfit = { ...session.outfit, [slot]: id };
     session.save();
     this.refresh();

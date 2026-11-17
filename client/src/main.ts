@@ -4,6 +4,11 @@ import { CreateScene } from './scenes/Create.ts';
 import { WardrobeScene } from './scenes/Wardrobe.ts';
 import { LobbyScene } from './scenes/Lobby.ts';
 import { BattleScene } from './scenes/Battle.ts';
+import { unlockAudio } from './sfx.ts';
+
+// O navegador só libera som depois de uma interação.
+window.addEventListener('pointerdown', unlockAudio);
+window.addEventListener('keydown', unlockAudio);
 
 async function start() {
   // Espera a fonte pixelada carregar (se a internet falhar, segue com a fonte padrão).
