@@ -585,7 +585,8 @@ export async function scouterFromReady() {
       layer.set(p, (y * CANVAS_W + x) * 4);
     }
   // O Uniforme Jujutsu também: a figura pronta veio com o pé direito falhado no recorte.
-  for (const body of ['none', NARUTO, LUFFY, 'uniforme_jujutsu']) {
+  // Todas as roupas: o mesmo aparelho colado na cabeça da figura limpa (fica igual em todas).
+  for (const body of ['none', ...BODIES, NARUTO, LUFFY]) {
     const target = await read(`fig_none_${body}`);
     const { dx, dy } = align(plain, target); // cabeça do alvo em relação à figura de referência
     const out = Buffer.from(target);
