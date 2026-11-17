@@ -21,6 +21,7 @@ import {
   makeCharacter,
   makeMiniIcon,
   NUM_FONT,
+  playFx,
   centerInk,
   tweenPromise,
   txt,
@@ -385,6 +386,7 @@ export class BattleScene extends Phaser.Scene {
           this.drawHpBar(t, hp[t], max[t]);
           sfx(ev.amount >= 15 ? 'hitHeavy' : ev.amount > 0 ? 'hit' : 'block');
           if (ev.blocked > 0 && ev.amount > 0) sfx('block');
+          this.impactFx(t, ev.cardId, ev.amount, ev.blocked);
           this.hitAnim(t, ev.amount, ev.blocked);
           await wait(this, fast ? 60 : 220);
           lastCard = `${ev.source}:${ev.cardId}`;
@@ -392,12 +394,15 @@ export class BattleScene extends Phaser.Scene {
         }
         case 'block':
           sfx('block');
+          playFx(this, 'barrier-block', CHAR_X[this.side(ev.player)] + (this.side(ev.player) === 0 ? 50 : -50), BODY_Y, { scale: 2.5 });
           this.flashAura(this.side(ev.player), COLORS.block);
           floatText(this, CHAR_X[this.side(ev.player)], BODY_Y - 60, `+${ev.amount} Bloqueio`, '#8fd0ff', 22);
           await wait(this, 320);
           break;
         case 'status': {
           sfx(ev.status === 'strength' ? 'buff' : 'debuff');
+          if (ev.status === 'strength') playFx(this, 'power-up-aura', CHAR_X[this.side(ev.player)], FEET_Y, { scale: 3 });
+          else playFx(this, 'curse', CHAR_X[this.side(ev.player)], BODY_Y + 10, { scale: 2, speed: 1.6 });
           if (ev.cardId === 'blue' && ev.status === 'weak') await this.attackAnim(this.side(ev.player) === 0 ? 1 : 0, 'blue', false);
           const label = { strength: `Força +${ev.amount}`, weak: 'Fraco!', vulnerable: 'Vulnerável!' }[ev.status];
           floatText(this, CHAR_X[this.side(ev.player)], BODY_Y - 90, label, ev.status === 'strength' ? '#ffb070' : '#d0a0ff', 22);
@@ -415,10 +420,12 @@ export class BattleScene extends Phaser.Scene {
         }
         case 'power':
           sfx('powerUp');
+          playFx(this, 'power-up-aura', CHAR_X[this.side(ev.player)], FEET_Y, { scale: 4 });
           await this.bigShout(this.side(ev.player), getCard(POWER_CARD[ev.power]).name.toUpperCase() + '!', 0xb070ff);
           break;
         case 'chargeStart':
           sfx('charge');
+          playFx(this, 'arcane-cast', CHAR_X[this.side(ev.player)], BODY_Y, { scale: 3 });
           this.flashAura(this.side(ev.player), 0x6fd0ff);
           floatText(this, CHAR_X[this.side(ev.player)], BODY_Y - 110, `Carregando ${getCard(ev.cardId).name}…`, '#8fd0ff', 20);
           await wait(this, 600);
@@ -435,6 +442,8 @@ export class BattleScene extends Phaser.Scene {
           break;
         case 'evade': {
           sfx('whoosh');
+          playFx(this, 'fumaca', CHAR_X[this.side(ev.player)], BODY_Y, { scale: 3, tint: 0xd8c8ff });
+          playFx(this, 'blink-dash', CHAR_X[this.side(ev.player)], BODY_Y, { scale: 2, flipX: this.side(ev.player) === 1 });
           const s2 = this.side(ev.player);
           const c = this.chars[s2];
           if (c) {
@@ -448,12 +457,15 @@ export class BattleScene extends Phaser.Scene {
         }
         case 'reflect':
           sfx('swap');
+          playFx(this, 'teleport-in', CHAR_X[0], FEET_Y, { scale: 3 });
+          playFx(this, 'teleport-in', CHAR_X[1], FEET_Y, { scale: 3 });
           await this.swapAnim();
           floatText(this, 640, BODY_Y - 140, `Boogie Woogie! ${getCard(ev.cardId).name} voltou!`, '#e9b8ff', 22);
           await wait(this, 250);
           break;
         case 'heal': {
           sfx('heal');
+          playFx(this, 'holy-heal', CHAR_X[this.side(ev.player)], FEET_Y, { scale: 2.5 });
           const s2 = this.side(ev.player);
           hp[s2] += ev.amount;
           this.drawHpBar(s2, hp[s2], max[s2]);
@@ -464,6 +476,7 @@ export class BattleScene extends Phaser.Scene {
         }
         case 'stun': {
           sfx('stun');
+          playFx(this, 'stun-stars', CHAR_X[this.side(ev.player)], BODY_Y - 110, { scale: 3 });
           const target = this.side(ev.player);
           const caster: Side = target === 0 ? 1 : 0;
           const ring = this.add.circle(CHAR_X[caster], BODY_Y, 30, 0x000000, 0).setStrokeStyle(10, 0x2a0a3a).setDepth(30);
@@ -524,6 +537,58 @@ export class BattleScene extends Phaser.Scene {
     c.add(this.add.circle(0, 0, 11, color).setStrokeStyle(2, COLORS.outline));
     c.add(centerInk(txt(this, 0, 0, String(n), 16, '#ffffff', { fontFamily: NUM_FONT }), 0, 0));
     return c;
+  }
+
+  /** Efeito no alvo quando um golpe acerta, escolhido pelo tipo de golpe. */
+  private impactFx(target: Side, cardId: string, amount: number, blocked: number) {
+    const x = CHAR_X[target];
+    const flipX = target === 0;
+    const at = (name: string, y = BODY_Y, scale = 2.5) => playFx(this, name, x, y, { scale, flipX });
+    switch (cardId) {
+      case 'golpe_basico':
+      case 'pistol':
+      case 'gatling':
+        at('punch-hit', BODY_Y, 3);
+        break;
+      case 'black_flash':
+        at('shadow-claw', BODY_Y, 3);
+        at('crit-hit', BODY_Y, 2.5);
+        break;
+      case 'getsuga':
+        at('sword-combo', BODY_Y, 2.5);
+        break;
+      case 'kunai':
+        at('dagger-slash', BODY_Y, 3);
+        break;
+      case 'chidori':
+        at('lightning-strike', FEET_Y, 2.2);
+        break;
+      case 'rasengan':
+        at('whirlwind', FEET_Y, 3);
+        break;
+      case 'cero':
+        at('fireball-impact', BODY_Y, 2.5);
+        break;
+      case 'genki_dama':
+      case 'big_bang_attack':
+        at('explosao_fogo', BODY_Y, 4.5);
+        at('big-explosion', FEET_Y + 10, 2.2);
+        break;
+      case 'hollow_purple':
+        at('void-explosion', FEET_Y + 10, 2.4);
+        break;
+      case 'kamehameha':
+      case 'ki_blast':
+      case 'red':
+      case 'galick_gun':
+        at('small-explosion', FEET_Y - 20, 3);
+        break;
+      default:
+        at('hit-spark', BODY_Y, 2.5);
+    }
+    // Golpe pesado ganha a explosão de fogo por cima; golpe todo bloqueado só faz faísca.
+    if (amount >= 15 && cardId !== 'genki_dama' && cardId !== 'big_bang_attack' && cardId !== 'hollow_purple') at('explosao_fogo', BODY_Y, 3);
+    if (amount === 0 && blocked > 0) at('hit-spark', BODY_Y, 2);
   }
 
   /** Boogie Woogie: os dois trocam de lugar num piscar e voltam. */

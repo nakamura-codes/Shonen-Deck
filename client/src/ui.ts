@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { figureKey, getCard, getItem, type CardDef, type Outfit } from '@oficina/shared';
 import { FRAME_LAYOUT, FRAME_SIZE } from './cardFrames.generated.ts';
 import { sfx } from './sfx.ts';
+import { FX } from './fx.generated.ts';
 
 export const FONT = '"GameFont", monospace';
 /** Fonte só para números (custo, dano, HP, Ki): mais nítida em tamanho pequeno. */
@@ -448,4 +449,33 @@ export function drawArena(scene: Phaser.Scene) {
     scene.tweens.add({ targets: [flame, core], scaleY: 1.15, scaleX: 0.9, yoyo: true, repeat: -1, duration: 260, ease: 'Sine.easeInOut' });
   }
   return g;
+}
+
+/**
+ * Toca um efeito visual (assets/fx) uma vez e some no fim. O ponto (x, y) é onde fica o pivô do
+ * efeito (ex.: a base de uma explosão, o centro de um impacto).
+ */
+export function playFx(
+  scene: Phaser.Scene,
+  name: string,
+  x: number,
+  y: number,
+  opts: { scale?: number; tint?: number; flipX?: boolean; depth?: number; speed?: number } = {},
+): Promise<void> {
+  const info = FX[name];
+  if (!info || !scene.textures.exists(`fx_${name}`)) return Promise.resolve();
+  const sprite = scene.add
+    .sprite(x, y, `fx_${name}`, 0)
+    .setOrigin(info.pivotX, info.pivotY)
+    .setScale(opts.scale ?? 2.5)
+    .setFlipX(!!opts.flipX)
+    .setDepth(opts.depth ?? 36);
+  if (opts.tint !== undefined) sprite.setTint(opts.tint);
+  return new Promise((resolve) => {
+    sprite.once(Phaser.Animations.Events.ANIMATION_COMPLETE, () => {
+      sprite.destroy();
+      resolve();
+    });
+    sprite.play({ key: `fx_${name}`, timeScale: opts.speed ?? 1 });
+  });
 }

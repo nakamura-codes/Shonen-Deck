@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { ARENAS, CARDS, OUTFIT_ITEMS, itemsForSlot } from '@oficina/shared';
 import { session } from '../session.ts';
 import { txt } from '../ui.ts';
+import { FX } from '../fx.generated.ts';
 
 export class BootScene extends Phaser.Scene {
   constructor() {
@@ -19,6 +20,7 @@ export class BootScene extends Phaser.Scene {
     }
     for (const t of ['attack', 'skill', 'power']) this.load.image(`frame_${t}`, `assets/cards/frames/${t}.png`);
     this.load.image('card_back', 'assets/cards/frames/back.png');
+    for (const [name, f] of Object.entries(FX)) this.load.spritesheet(`fx_${name}`, `assets/fx/${name}.png`, { frameWidth: f.w, frameHeight: f.h });
     for (const a of ARENAS) this.load.image(`arena_${a.id}`, `assets/arenas/${a.id}.png`);
     for (const item of OUTFIT_ITEMS) this.load.image(`item_${item.id}`, `assets/items/${item.id}.png`);
     const heads = ['none', ...itemsForSlot('head').map((i) => i.id)];
@@ -27,6 +29,16 @@ export class BootScene extends Phaser.Scene {
   }
 
   create() {
+    // Animações dos efeitos visuais (uma por efeito, tocadas uma vez).
+    for (const [name, f] of Object.entries(FX)) {
+      if (!this.textures.exists(`fx_${name}`)) continue;
+      this.anims.create({
+        key: `fx_${name}`,
+        frames: this.anims.generateFrameNumbers(`fx_${name}`, { start: 0, end: f.frames - 1 }),
+        frameRate: f.frames / (f.durationMs / 1000),
+        repeat: 0,
+      });
+    }
     if (new URLSearchParams(location.search).has('galeria')) this.scene.start('Gallery');
     else this.scene.start(session.created ? 'Wardrobe' : 'Create');
   }

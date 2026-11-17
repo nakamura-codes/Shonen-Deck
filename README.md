@@ -31,6 +31,7 @@ Outros comandos:
 | `npm run art` | Processa a arte das cartas (veja abaixo) |
 | `npm run art:character` | Processa as figuras do personagem e os ícones das roupas |
 | `npm run art:arenas` | Processa as arenas |
+| `npm run art:fx` | Processa os efeitos visuais (golpes, buffs, explosões) |
 | `npm run art:frames` | Processa as molduras das cartas (ataque, técnica, poder e verso) |
 | `npm run build` | Gera a versão de produção do cliente em `client/dist` |
 
@@ -172,3 +173,6 @@ Os efeitos sonoros são gerados na hora pelo navegador (Web Audio), no estilo re
 - **Momentos especiais:** carga, combo, atordoamento, vitória e derrota.
 
 O botão 🔊 no topo da batalha liga e desliga o som, e a escolha fica salva no navegador.
+
+### Efeitos visuais
+Os efeitos (impactos, cortes, raios, escudo, cura, auras, atordoamento, explosões) ficam em `art/raw/fx/`; `npm run art:fx` gera as tiras de quadros em `client/public/assets/fx/` e a lista `client/src/fx.generated.ts`. Qual efeito toca em cada golpe fica em `impactFx()` em `client/src/scenes/Battle.ts`. Licenças em `art/raw/fx/LICENCAS.md`.

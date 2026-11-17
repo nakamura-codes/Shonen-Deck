@@ -15,7 +15,8 @@
     "art": "tsx tools/process-art.ts",
     "art:character": "tsx tools/process-character.ts",
     "art:arenas": "tsx tools/process-arenas.ts",
-    "art:frames": "tsx tools/process-frames.ts"
+    "art:frames": "tsx tools/process-frames.ts",
+    "art:fx": "tsx tools/process-fx.ts"
   },
   "devDependencies": {
     "concurrently": "^9.1.0",
