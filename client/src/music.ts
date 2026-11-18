@@ -9,7 +9,7 @@ import { MENU_MUSIC, MUSIC, type Track } from './music.generated.ts';
  */
 const KEY = 'shonen.music';
 /** Volumes (0 a 1) sobre faixas já equalizadas em -20 LUFS. */
-const VOLUME = { menu: 0.144, battle: 0.1 };
+const VOLUME = { menu: 0.1152, battle: 0.08 };
 
 type Mode = 'menu' | 'battle' | null;
 let audio: HTMLAudioElement | null = null;
