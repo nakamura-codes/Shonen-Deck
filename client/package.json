@@ -4,9 +4,11 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "predev": "tsx ../tools/process-menu-backgrounds.ts",
     "dev": "vite --host",
     "build": "vite build",
-    "preview": "vite preview --host"
+    "preview": "vite preview --host",
+    "prebuild": "tsx ../tools/process-menu-backgrounds.ts"
   },
   "dependencies": {
     "@oficina/shared": "*",

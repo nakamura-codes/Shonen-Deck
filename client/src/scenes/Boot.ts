@@ -26,7 +26,14 @@ export class BootScene extends Phaser.Scene {
     for (const [name, f] of Object.entries(FX)) this.load.spritesheet(`fx_${name}`, `assets/fx/${name}.png`, { frameWidth: f.w, frameHeight: f.h });
     for (const k of ['hud', 'btn_normal', 'btn_hover', 'btn_disabled', 'inventario', 'slot_normal', 'slot_selected', 'colecao', 'trofeu']) this.load.image(k, `assets/ui/${k}.png`);
     this.load.image('fundo_preparacao', 'assets/ui/fundo_preparacao.webp');
-    for (const k of MENU_KEYS) this.load.image(k, `assets/menu/${k}.png`);
+    for (const k of MENU_KEYS) {
+      // Os fundos originais são 2560×1440; o build prepara versões 1920×1080.
+      // Mantemos as chaves existentes para não alterar as coordenadas das cenas.
+      const path = k === 'fundos_fundo_login_2560x1440' || k === 'fundos_fundo_menu_principal_2560x1440'
+        ? `assets/menu/fullhd/${k.replace('_2560x1440', '_1920x1080')}.png`
+        : `assets/menu/${k}.png`;
+      this.load.image(k, path);
+    }
     for (const a of ARENAS) this.load.image(`arena_${a.id}`, `assets/arenas/${a.id}.png`);
     for (const item of OUTFIT_ITEMS) this.load.image(`item_${item.id}`, `assets/items/${item.id}.png`);
     const heads = ['none', ...itemsForSlot('head').map((i) => i.id)];
