@@ -1,66 +1,92 @@
 import Phaser from 'phaser';
 import { startMenuMusic } from '../music.ts';
-import { OUTFIT_ITEMS, OUTFIT_SLOTS, SLOT_LABELS, buildDeck, getItem, type BotLevel, type OutfitSlot, type ServerMessage } from '@oficina/shared';
+import { OUTFIT_SLOTS, SLOT_LABELS, buildDeck, getItem, itemsForSlot, type BotLevel, type OutfitSlot, type ServerMessage } from '@oficina/shared';
 import { VIEW_H, VIEW_W } from '../render.ts';
 import { session } from '../session.ts';
 import { sfx } from '../sfx.ts';
-import { ITEM_NAME, COLORS, drawArena, fitText, floatText, makeButton, makeCard, makeCharacter, makeItemIcon, makeMiniIcon, txt, fullBackground, fullShade } from '../ui.ts';
-import { INV } from '../inventory.generated.ts';
+import { COLORS, fitText, makeButton, makeCard, makeCharacter, makeItemIcon, makeMiniIcon, txt, fullBackground } from '../ui.ts';
+import { menuButton, placeImage } from '../menuUi.ts';
 
-/**
- * Posições da tela (1280×720), casadas com o fundo art/raw/ui/inventario.png.
- * Título e plaquinha do nome vêm medidos do magenta (INV); o resto foi medido no desenho do fundo.
- */
-const L = {
-  pedestal: { x: 217, y: 528 },
-  deckLabel: { x: 217, y: 624 },
-  // Centro da aba (depois do losango).
-  equippedTab: { x: 503, y: 147 },
-  // Caixa do "Vestindo" no fundo: x 406–1197, y 148–281 (a aba ocupa o topo até ~162).
-  equipped: { x: 412, y: 166, w: 780, h: 35, gap: 3 },
-  storedTab: { x: 503, y: 309 },
-  storedHint: { x: 1196, y: 294 },
-  stored: { x0: 404, y0: 334, cols: 9, w: 84, gapX: 5, gapY: 6 },
-  buttonsY: 610,
-};
+const LABELS: Record<OutfitSlot, string> = { head: 'Acessórios', body: 'Roupas', hand: 'Armas' };
+const LEFT = { x: 54, y: 96, w: 334, h: 556 };
+const RIGHT = { x: 404, y: 96, w: 822, h: 556 };
+const GRID = { x: 424, y: 142, stepY: 151, w: 146, h: 119, gap: 10, cols: 5 };
+const SECONDARY = 'botoes_botao_secundario';
+const PRIMARY = 'botoes_botao_principal';
 
-/** Inventário: vestir e tirar peças. As peças vestidas definem o baralho. */
+/** Bordas chanfradas em camadas, usando as cores do título Shonen Deck. */
+function bevel(g: Phaser.GameObjects.Graphics, x: number, y: number, w: number, h: number, cut: number, color: number, alpha = 1) {
+  g.fillStyle(color, alpha);
+  g.beginPath();
+  g.moveTo(x + cut, y);
+  g.lineTo(x + w - cut, y);
+  g.lineTo(x + w, y + cut);
+  g.lineTo(x + w, y + h - cut);
+  g.lineTo(x + w - cut, y + h);
+  g.lineTo(x + cut, y + h);
+  g.lineTo(x, y + h - cut);
+  g.lineTo(x, y + cut);
+  g.closePath();
+  g.fillPath();
+}
+
+function panel(scene: Phaser.Scene, x: number, y: number, w: number, h: number) {
+  const g = scene.add.graphics();
+  bevel(g, x - 3, y + 3, w + 6, h + 6, 16, 0x180e1e, 0.95);
+  bevel(g, x, y, w, h, 14, 0x9e2610);
+  bevel(g, x, y, w, h - 7, 14, 0xff9b18);
+  bevel(g, x + 4, y + 3, w - 8, h - 13, 10, 0xffdb54);
+  bevel(g, x + 8, y + 8, w - 16, h - 20, 8, 0x1c132a, 0.98);
+  bevel(g, x + 11, y + 11, w - 22, h - 26, 6, 0x302342, 0.98);
+  return g;
+}
+
 export class WardrobeScene extends Phaser.Scene {
   private preview?: Phaser.GameObjects.Container;
   private dynamic: Phaser.GameObjects.GameObject[] = [];
   private tooltip?: Phaser.GameObjects.Container;
   private deckLabel!: Phaser.GameObjects.Text;
+  private pages: Record<OutfitSlot, number> = { head: 0, body: 0, hand: 0 };
 
-  constructor() {
-    super('Wardrobe');
-  }
+  constructor() { super('Wardrobe'); }
 
   create() {
+    // O cenário é independente de todos os componentes da HUD.
+    this.dynamic = [];
+    this.preview = undefined;
+    this.tooltip = undefined;
+    this.pages = { head: 0, body: 0, hand: 0 };
     startMenuMusic();
-    if (this.textures.exists('inventario')) {
-      fullBackground(this, 'inventario', -10, true);
-    } else {
-      drawArena(this);
-      fullShade(this, 0.5);
-    }
+    fullBackground(this, this.textures.exists('fundo_preparacao') ? 'fundo_preparacao' : 'fundos_fundo_menu_principal_2560x1440', -11);
+    this.add.rectangle(640, 360, VIEW_W + 4, VIEW_H + 4, 0x170d23, 0.22).setDepth(-10);
 
-    const t = INV.title;
-    txt(this, t.x + t.w / 2, t.y + t.h / 2, 'Inventário', 36, '#ffffff', { fontStyle: 'bold', stroke: '#0d0a14', strokeThickness: 6 });
+    panel(this, LEFT.x, LEFT.y, LEFT.w, LEFT.h);
+    panel(this, RIGHT.x, RIGHT.y, RIGHT.w, RIGHT.h);
+    placeImage(this, ['molduras_moldura_titulo', 440, 13, 400, 73]);
+    fitText(txt(this, 640, 44, 'Preparação', 32, '#ffffff', { fontStyle: 'bold', stroke: '#21101d', strokeThickness: 5 }), 335);
+    menuButton(this, SECONDARY, ['', 54, 24, 145, 53], 'Menu', () => this.scene.start('MainMenu'), 19);
 
-    // Nome editável na plaquinha do painel do personagem.
-    const n = INV.name;
-    // Nome da conta na plaquinha (troca de nome = trocar de conta, no login).
-    txt(this, n.x + n.w / 2, n.y + n.h / 2, session.name, 17, '#ffffff', { fontStyle: 'bold', stroke: '#0d0a14', strokeThickness: 4 });
-    makeButton(this, 70, 30, 110, 34, '◀ Menu', () => this.scene.start('MainMenu'), 0xb0a0c8, 15);
+    const plaque = this.add.graphics();
+    bevel(plaque, 77, 116, 288, 47, 8, 0x110e1c);
+    bevel(plaque, 80, 119, 282, 39, 6, 0xb77d33);
+    bevel(plaque, 84, 122, 274, 32, 4, 0x3e2e50);
+    fitText(txt(this, 221, 139, session.name, 24, '#fff1cb', { fontStyle: 'bold' }), 256);
 
-    this.deckLabel = txt(this, L.deckLabel.x, L.deckLabel.y, '', 17, '#ffffff', { fontStyle: 'bold', stroke: '#0d0a14', strokeThickness: 4 });
-    // Centralizados no painel da direita (x 406–1197, centro 801).
-    makeButton(this, 801 - 130, L.buttonsY, 244, 46, 'Procurar oponente', () => this.go(false), COLORS.gold, 20);
-    makeButton(this, 801 + 130, L.buttonsY, 244, 46, 'Treinar com bot', () => this.chooseBot(), 0x7fc8a9, 20);
+    // Pedestal independente da arte de fundo e do sprite do personagem.
+    this.add.ellipse(221, 452, 232, 36, 0x110d18, 0.55);
+    const base = this.add.graphics();
+    bevel(base, 119, 420, 204, 46, 12, 0x170f23);
+    bevel(base, 123, 421, 196, 39, 10, 0x63516f);
+    bevel(base, 123, 421, 196, 24, 10, 0xa99ab7);
+    bevel(base, 137, 425, 168, 14, 5, 0x8c799d);
+    this.deckLabel = txt(this, 221, 489, '', 21, '#ffe28a', { fontStyle: 'bold', stroke: '#1a1025', strokeThickness: 3 });
+    txt(this, 221, 519, 'Equipamento atual', 16, '#e4d4f1', { fontStyle: 'bold' });
+    txt(this, 815, 115, 'Clique para vestir ou trocar a peça', 15, '#e4d4f1');
 
+    menuButton(this, PRIMARY, ['', 430, 580, 371, 60], 'Procurar oponente', () => this.go(false), 22);
+    menuButton(this, SECONDARY, ['', 816, 580, 384, 60], 'Treinar com bot', () => this.chooseBot(), 22);
     this.refresh();
 
-    // Se a página recarregou no meio de uma partida, o servidor manda "match" e voltamos para ela.
     const off = session.net.on((msg: ServerMessage) => {
       if (msg.t === 'match') {
         session.match = { you: msg.you, opponentName: msg.opponentName };
@@ -69,7 +95,12 @@ export class WardrobeScene extends Phaser.Scene {
         session.net.token = null;
       }
     });
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, off);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      off();
+      this.dynamic = [];
+      this.preview = undefined;
+      this.tooltip = undefined;
+    });
   }
 
   /** Janela para escolher o nível do bot de treino. */
@@ -101,137 +132,119 @@ export class WardrobeScene extends Phaser.Scene {
     this.scene.start('Lobby', { vsBot, botLevel });
   }
 
+
   private refresh() {
     this.preview?.destroy();
-    this.preview = makeCharacter(this, session.outfit, 4.5).setPosition(L.pedestal.x, L.pedestal.y);
     for (const o of this.dynamic) o.destroy();
     this.dynamic = [];
     this.hideTooltip();
 
-    this.dynamic.push(txt(this, L.equippedTab.x, L.equippedTab.y, 'Vestindo', 17, '#ffffff', { fontStyle: 'bold' }));
-    OUTFIT_SLOTS.forEach((slot, i) => this.drawEquipped(slot, L.equipped.y + i * (L.equipped.h + L.equipped.gap)));
+    // Pés ancorados no pedestal, escala idêntica para todas as combinações.
+    this.preview = makeCharacter(this, session.outfit, 3.6).setPosition(221, 433);
+    this.deckLabel.setText('Baralho: ' + buildDeck(session.outfit).length + ' cartas');
 
-    // O Deck mostra TODAS as peças; as vestidas aparecem com a moldura destacada.
-    const stored = [...OUTFIT_ITEMS].sort((a, b) => OUTFIT_SLOTS.indexOf(a.slot) - OUTFIT_SLOTS.indexOf(b.slot));
-    this.dynamic.push(txt(this, L.storedTab.x, L.storedTab.y, 'Deck', 17, '#ffffff', { fontStyle: 'bold' }));
-    this.dynamic.push(txt(this, L.storedHint.x, L.storedHint.y, 'Clique para vestir · tire a peça antes de trocar', 13, '#a8b4d0').setOrigin(1, 0.5));
-    const S = L.stored;
-    const h = Math.round(S.w / INV.slots.slot_normal.aspect);
-    stored.forEach((item, i) => {
-      const x = S.x0 + S.w / 2 + (i % S.cols) * (S.w + S.gapX);
-      const y = S.y0 + h / 2 + Math.floor(i / S.cols) * (h + S.gapY);
-      this.dynamic.push(this.itemSlot(item.id, x, y, S.w, h));
+    OUTFIT_SLOTS.forEach((slot, row) => {
+      const entries = itemsForSlot(slot);
+      const pageCount = Math.max(1, Math.ceil(entries.length / GRID.cols));
+      const page = this.pages[slot] = Phaser.Math.Clamp(this.pages[slot], 0, pageCount - 1);
+      const y = GRID.y + row * GRID.stepY;
+      const label = txt(this, GRID.x, y - 10, LABELS[slot], 19, '#ffd369', { fontStyle: 'bold' }).setOrigin(0, 0.5);
+      this.dynamic.push(label);
+      if (pageCount > 1) {
+        const prev = makeButton(this, 1070, y - 10, 32, 20, '‹', () => { this.pages[slot] = Math.max(0, page - 1); this.refresh(); }, COLORS.gold, 15);
+        const next = makeButton(this, 1180, y - 10, 32, 20, '›', () => { this.pages[slot] = Math.min(pageCount - 1, page + 1); this.refresh(); }, COLORS.gold, 15);
+        prev.setEnabled(page > 0);
+        next.setEnabled(page + 1 < pageCount);
+        this.dynamic.push(prev, next, txt(this, 1125, y - 10, (page + 1) + '/' + pageCount, 13, '#e4d4f1'));
+      }
+      entries.slice(page * GRID.cols, (page + 1) * GRID.cols).forEach((item, i) => {
+        this.dynamic.push(this.itemSlot(item.id, GRID.x + GRID.w / 2 + i * (GRID.w + GRID.gap), y + GRID.h / 2));
+      });
+      this.dynamic.push(this.equippedSlot(slot, 125 + row * 96, 575));
     });
-
-    const deck = buildDeck(session.outfit);
-    this.deckLabel.setText(`Baralho: ${deck.length} cartas`);
   }
 
-  /**
-   * Peça do Deck dentro da moldura (assets/ui/slot_*.png).
-   * Vestida: moldura destacada; clicar tira. Espaço já ocupado por outra peça: apagada e bloqueada
-   * (é preciso tirar a anterior primeiro). Livre: clicar veste.
-   */
-  private itemSlot(itemId: string, x: number, y: number, w: number, h: number) {
+  private itemSlot(itemId: string, x: number, y: number) {
     const item = getItem(itemId)!;
     const worn = session.outfit[item.slot] === item.id;
-    const blocked = !worn && session.outfit[item.slot] !== null;
+    const { w, h } = GRID;
     const c = this.add.container(x, y);
-    const fr = INV.slots.slot_normal.inner;
-    const ix = -w / 2 + fr.x * w, iy = -h / 2 + fr.y * h, iw = fr.w * w, ih = fr.h * h;
-    const fill = this.add.graphics();
-    const paint = (hover: boolean) =>
-      fill.clear().fillStyle(worn ? 0x2c5aa0 : hover && !blocked ? 0x2c4f8f : 0x1f3a6e).fillRect(ix, iy, iw, ih);
+    const frame = this.add.graphics();
+    const paint = (hover: boolean) => {
+      frame.clear();
+      bevel(frame, -w / 2, -h / 2 + 3, w, h, 9, 0x120e20);
+      bevel(frame, -w / 2, -h / 2, w, h, 9, worn ? 0xffb821 : hover ? 0xe9c788 : 0x9d82be);
+      bevel(frame, -w / 2 + 3, -h / 2 + 3, w - 6, h - 7, 7, worn ? 0xb35519 : 0x4f3b69);
+      bevel(frame, -w / 2 + 6, -h / 2 + 6, w - 12, h - 13, 5, hover || worn ? 0x514069 : 0x382b50);
+    };
     paint(false);
-    const key = worn && this.textures.exists('slot_selected') ? 'slot_selected' : 'slot_normal';
-    const frame = this.add.image(0, 0, this.textures.exists(key) ? key : '__DEFAULT').setDisplaySize(worn ? w * 1.04 : w, worn ? h * 1.04 : h);
-    c.add([fill, frame]);
-    c.add(txt(this, 0, -h / 2 + h * 0.075, worn ? 'Vestindo' : SLOT_LABELS[item.slot], 10, worn ? '#7fe0ff' : '#ffe28a', { fontStyle: 'bold' }));
-    // Nome do item: uma linha; nomes compridos quebram em duas (sem diminuir a fonte) e o ícone
-    // fica um pouco menor para os dois caberem entre a faixa de cima e as habilidades.
-    const nm = txt(this, 0, 0, item.name, ITEM_NAME.size, '#ffffff', { ...ITEM_NAME.style, stroke: '#0d0a14', strokeThickness: 3, align: 'center', lineSpacing: -4 });
-    if (nm.width > iw - 4 && item.name.includes(' ')) nm.setWordWrapWidth(iw - 4);
-    fitText(nm, iw - 4);
-    const twoLines = nm.height > ITEM_NAME.size * 1.9;
-    const iconH = ih * (twoLines ? 0.3 : 0.4);
-    const iconY = iy + ih * (twoLines ? 0.21 : 0.28);
-    nm.setY(iy + ih * (twoLines ? 0.535 : 0.58));
-    const ic = makeItemIcon(this, itemId, iw - 6, iconH).setPosition(0, iconY);
-    if (ic instanceof Phaser.GameObjects.Image) {
-      const k = Math.min((iw - 8) / ic.width, iconH / ic.height);
-      ic.setScale(k >= 1 ? Math.floor(k) : k);
-    }
-    c.add([ic, nm]);
-    item.cards.forEach((cardId, k) => {
-      const cx = (k - 1) * (iw / 3);
-      const cy = iy + ih * 0.82;
-      const icon = makeMiniIcon(this, cardId, 0.33).setPosition(cx, cy);
-      const zone = this.add.zone(cx, cy, iw / 3, ih * 0.3).setInteractive();
-      zone.on('pointerover', () => this.showTooltip(cardId, x + cx, y + cy));
-      zone.on('pointerout', () => this.hideTooltip());
-      c.add([icon, zone]);
-    });
-    if (blocked) c.setAlpha(0.45);
-    const hit = this.add.zone(0, -h * 0.12, w, h * 0.72).setInteractive({ useHandCursor: !blocked });
+    c.add(frame);
+    const hit = this.add.zone(0, -15, w - 4, h - 38).setInteractive({ useHandCursor: true });
     hit.on('pointerover', () => paint(true));
     hit.on('pointerout', () => paint(false));
-    hit.on('pointerdown', () => {
-      if (worn) return this.equip(item.slot, null);
-      if (blocked) {
-        sfx('error');
-        floatText(this, x, y - h / 2 - 6, `Tire a peça de ${SLOT_LABELS[item.slot].toLowerCase()} antes`, '#ffb0b0', 16);
-        return;
-      }
-      this.equip(item.slot, item.id);
+    hit.on('pointerdown', () => this.equip(item.slot, worn ? null : item.id));
+    c.add(hit);
+    const icon = makeItemIcon(this, itemId, 102, 49);
+    if (icon instanceof Phaser.GameObjects.Image) icon.setScale(Math.min(102 / icon.width, 49 / icon.height));
+    icon.setPosition(0, -26);
+    c.add(icon);
+    c.add(fitText(txt(this, 0, 8, item.name, 18, '#fff5df', { fontStyle: 'bold', stroke: '#1b1428', strokeThickness: 3 }), w - 14));
+    item.cards.forEach((cardId, i) => {
+      const cx = (i - (item.cards.length - 1) / 2) * 34;
+      const cy = 37;
+      const mini = makeMiniIcon(this, cardId, 0.36).setPosition(cx, cy);
+      const zone = this.add.zone(cx, cy, 32, 32).setInteractive({ useHandCursor: true });
+      zone.on('pointerover', () => this.showTooltip(cardId, x + cx, y + cy));
+      zone.on('pointerout', () => this.hideTooltip());
+      zone.on('pointerdown', () => this.showTooltip(cardId, x + cx, y + cy));
+      c.add([mini, zone]);
     });
-    c.addAt(hit, 2);
+    if (worn) {
+      const badge = this.add.graphics();
+      bevel(badge, w / 2 - 23, -h / 2 + 5, 17, 17, 3, 0xffc34a);
+      c.add(badge);
+      c.add(txt(this, w / 2 - 14, -h / 2 + 13, '✓', 13, '#432012', { fontStyle: 'bold' }));
+    }
     return c;
   }
 
-  /** Linha compacta de uma peça vestida (3 linhas cabem na caixa "Vestindo"). */
-  private drawEquipped(slot: OutfitSlot, y: number) {
+  private equippedSlot(slot: OutfitSlot, x: number, y: number) {
     const item = getItem(session.outfit[slot]);
-    const { x, w, h } = L.equipped;
-    const mid = y + h / 2;
+    const c = this.add.container(x, y);
     const g = this.add.graphics();
-    g.fillStyle(0x0d1328, 0.55).fillRoundedRect(x, y, w, h, 5);
-    g.lineStyle(1, 0x5a6a98, 0.8).strokeRoundedRect(x, y, w, h, 5);
-    g.fillStyle(item ? 0x1f3a6e : 0x161d38).fillRoundedRect(x + 4, y + 3, 64, h - 6, 4);
-    this.dynamic.push(g);
-    this.dynamic.push(txt(this, x + 80, mid, SLOT_LABELS[slot], 12, '#a8b4d0').setOrigin(0, 0.5));
-    if (!item) {
-      this.dynamic.push(txt(this, x + 36, mid, 'vazio', 11, '#7a86a8'));
-      this.dynamic.push(txt(this, x + 150, mid, 'Nada vestido. Escolha uma peça do deck abaixo.', 13, '#a8b4d0').setOrigin(0, 0.5));
-      return;
+    bevel(g, -44, -36, 88, 76, 7, item ? 0xe6a12f : 0x80669d);
+    bevel(g, -41, -33, 82, 70, 5, 0x241a35);
+    c.add(g);
+    c.add(txt(this, 0, -25, slot === 'hand' ? 'Arma' : SLOT_LABELS[slot], 13, '#ffe3af'));
+    if (item) {
+      const icon = makeItemIcon(this, item.id, 62, 36);
+      if (icon instanceof Phaser.GameObjects.Image) icon.setScale(Math.min(62 / icon.width, 36 / icon.height));
+      c.add(icon.setPosition(0, 1));
+      c.add(txt(this, 0, 29, 'Tirar', 12, '#f6d5aa'));
+      const zone = this.add.zone(0, 6, 84, 62).setInteractive({ useHandCursor: true });
+      zone.on('pointerdown', () => this.equip(slot, null));
+      c.add(zone);
+    } else {
+      c.add(txt(this, 0, 4, '—', 22, '#b39fc7'));
+      c.add(txt(this, 0, 29, 'Vazio', 12, '#b39fc7'));
     }
-    this.dynamic.push(makeItemIcon(this, item.id, 56, h - 8).setPosition(x + 36, mid));
-    this.dynamic.push(txt(this, x + 150, mid, item.name, ITEM_NAME.size, '#ffffff', ITEM_NAME.style).setOrigin(0, 0.5));
-    item.cards.forEach((cardId, i) => {
-      const cx = x + 470 + i * 46;
-      const icon = makeMiniIcon(this, cardId, 0.32).setPosition(cx, mid);
-      const zone = this.add.zone(cx, mid, 40, 34).setInteractive();
-      zone.on('pointerover', () => this.showTooltip(cardId, cx, mid));
-      zone.on('pointerout', () => this.hideTooltip());
-      this.dynamic.push(icon, zone);
-    });
-    this.dynamic.push(makeButton(this, x + w - 50, mid, 84, 26, 'Tirar', () => this.equip(slot, null), 0xb0a0c8, 14));
+    return c;
   }
 
   private equip(slot: OutfitSlot, id: string | null) {
-    // Garantia: só veste se o espaço estiver livre (é preciso tirar a peça anterior).
-    if (id !== null && session.outfit[slot] !== null && session.outfit[slot] !== id) return;
+    // Troca direta apenas de interface: mesma validação de slot e mesma montagem do baralho.
+    if (id !== null && getItem(id)?.slot !== slot) return;
     sfx(id ? 'equip' : 'undo');
     session.outfit = { ...session.outfit, [slot]: id };
     session.save();
     this.refresh();
   }
 
-  private showTooltip(cardId: string | null, x: number, y: number) {
+  private showTooltip(cardId: string, x: number, y: number) {
     this.hideTooltip();
-    if (!cardId) return;
     this.tooltip = makeCard(this, cardId)
       .setDepth(100)
-      .setPosition(Phaser.Math.Clamp(x, 100, 1180), y > 360 ? y - 150 : y + 140);
+      .setPosition(Phaser.Math.Clamp(x, 130, 1150), y > 360 ? y - 150 : y + 140);
   }
 
   private hideTooltip() {
