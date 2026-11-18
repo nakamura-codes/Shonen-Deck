@@ -1,11 +1,10 @@
 import Phaser from 'phaser';
-import { UI_SCALE } from '../render.ts';
 import { startMenuMusic } from '../music.ts';
 import { auth } from '../session.ts';
 import { sfx } from '../sfx.ts';
 import { txt, fullBackground } from '../ui.ts';
 import { SCREENS } from '../menu.generated.ts';
-import { menuButton, placeImage, type Box } from '../menuUi.ts';
+import { MENU_HUD, menuButton, placeImage, shrink, type Box } from '../menuUi.ts';
 
 const L = SCREENS.login;
 const find = (k: string, n = 0) => L.filter((b) => b[0] === k)[n] as Box;
@@ -26,27 +25,24 @@ export class LoginScene extends Phaser.Scene {
     this.busy = false;
     fullBackground(this, 'fundos_fundo_login_2560x1440');
     const logo = placeImage(this, find('logo_shonen_deck_transparente'));
-    // O título não encolhe com a escala da interface.
-    const h0 = logo.displayHeight;
-    logo.setScale(logo.scaleX / UI_SCALE, logo.scaleY / UI_SCALE);
-    logo.y -= (logo.displayHeight - h0) / 2; // cresce para cima, sem cobrir os botões
     this.tweens.add({ targets: logo, y: logo.y + 6, yoyo: true, repeat: -1, duration: 1800, ease: 'Sine.easeInOut' });
-    const panel = find('molduras_painel_login');
+    // A HUD (painel, campos e botões) fica 15% menor; o título continua do tamanho original.
+    const panel = shrink(find('molduras_painel_login'));
     placeImage(this, panel);
 
-    this.userEl = this.field(find('campos_campo_login_normal', 0), 'Nome de jogador', 'text');
-    this.passEl = this.field(find('campos_campo_login_normal', 1), 'Senha', 'password');
+    this.userEl = this.field(shrink(find('campos_campo_login_normal', 0)), 'Nome de jogador', 'text');
+    this.passEl = this.field(shrink(find('campos_campo_login_normal', 1)), 'Senha', 'password');
 
-    menuButton(this, 'botoes_botao_login', find('botoes_botao_login_normal'), 'Entrar', () => this.submit(false), 32);
-    menuButton(this, 'botoes_botao_secundario', find('botoes_botao_secundario_normal', 0), 'Criar conta', () => this.submit(true), 24);
-    menuButton(this, 'botoes_botao_secundario', find('botoes_botao_secundario_normal', 1), 'Entrar como convidado', () => {
+    menuButton(this, 'botoes_botao_login', shrink(find('botoes_botao_login_normal')), 'Entrar', () => this.submit(false), 27);
+    menuButton(this, 'botoes_botao_secundario', shrink(find('botoes_botao_secundario_normal', 0)), 'Criar conta', () => this.submit(true), 20);
+    menuButton(this, 'botoes_botao_secundario', shrink(find('botoes_botao_secundario_normal', 1)), 'Entrar como convidado', () => {
       auth.guest();
       this.scene.start('MainMenu');
-    }, 24);
+    }, 20);
 
     // Mensagens de erro no topo do painel, acima dos campos.
     const [, , py] = panel;
-    this.errorText = txt(this, 640, py + 52, '', 15, '#ffb0b0', { stroke: '#0d0a14', strokeThickness: 4 });
+    this.errorText = txt(this, 640, py + 44, '', 14, '#ffb0b0', { stroke: '#0d0a14', strokeThickness: 4 });
     txt(this, 640, 706, 'Por enquanto as contas ficam salvas só neste navegador.', 12, '#ffffff', { stroke: '#0d0a14', strokeThickness: 3 });
     setTimeout(() => this.userEl.focus(), 50);
   }
@@ -60,8 +56,9 @@ export class LoginScene extends Phaser.Scene {
     el.type = type;
     el.placeholder = placeholder;
     el.maxLength = type === 'password' ? 64 : 16;
-    el.style.width = `${w - 70}px`;
-    el.style.height = `${h - 22}px`;
+    el.style.width = `${w - 60}px`;
+    el.style.height = `${h - 18}px`;
+    el.style.fontSize = `${Math.round(20 * MENU_HUD)}px`;
     this.add.dom(x + w / 2, y + h / 2, el).setOrigin(0.5);
     el.addEventListener('focus', () => bg.setTexture('campos_campo_login_foco').setDisplaySize(w, h));
     el.addEventListener('blur', () => bg.setTexture('campos_campo_login_normal').setDisplaySize(w, h));

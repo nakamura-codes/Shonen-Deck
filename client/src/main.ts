@@ -13,8 +13,6 @@ import { unlockAudio } from './sfx.ts';
 window.addEventListener('pointerdown', unlockAudio);
 window.addEventListener('keydown', unlockAudio);
 
-const FULL_SIZE_SCENES = ['Battle', 'Wardrobe', 'Lobby'];
-
 async function start() {
   // Espera a fonte pixelada carregar (se a internet falhar, segue com a fonte padrão).
   try {
@@ -46,12 +44,20 @@ async function start() {
   });
   game.events.once(Phaser.Core.Events.READY, () => {
     for (const scene of game.scene.scenes) {
-      // Batalha, inventário e fila ficam no tamanho original (1280×720 preenchendo a tela);
-      // os menus usam a escala de interface menor.
-      const full = FULL_SIZE_SCENES.includes(scene.sys.settings.key);
-      const zoom = full ? RENDER_SCALE * Math.min(VIEW_W / 1280, VIEW_H / 720) : RENDER_SCALE;
-      scene.sys.events.on(Phaser.Scenes.Events.START, () => scene.cameras.main.setZoom(zoom).centerOn(640, 360));
+      scene.sys.events.on(Phaser.Scenes.Events.START, () => scene.cameras.main.setZoom(RENDER_SCALE).centerOn(640, 360));
     }
+  });
+  // Janela mudou de formato (ex.: tela cheia): recarrega para preencher sem barras.
+  // Fora da batalha, para não interromper uma partida.
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  window.addEventListener('resize', () => {
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+      const a = window.innerWidth / window.innerHeight;
+      if (Math.abs(a - VIEW_W / VIEW_H) < 0.03) return;
+      if (game.scene.isActive('Battle') || game.scene.isActive('Lobby')) return;
+      window.location.reload();
+    }, 500);
   });
 }
 

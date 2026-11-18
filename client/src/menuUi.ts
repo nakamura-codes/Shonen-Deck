@@ -5,6 +5,16 @@ import { centerInk, fitText, txt } from './ui.ts';
 export type Box = readonly [string, number, number, number, number];
 
 /** Imagem do pacote de menu ocupando exatamente a caixa [chave, x, y, w, h]. */
+/** Escala da HUD do login e do menu (o título e os fundos não encolhem). */
+export const MENU_HUD = 0.85;
+
+/** Caixa encolhida em volta do centro da tela (640, 360). */
+export function shrink([k, x, y, w, h]: Box, f = MENU_HUD): Box {
+  const cx = x + w / 2, cy = y + h / 2;
+  const nw = w * f, nh = h * f;
+  return [k, 640 + (cx - 640) * f - nw / 2, 360 + (cy - 360) * f - nh / 2, nw, nh];
+}
+
 export function placeImage(scene: Phaser.Scene, [k, x, y, w, h]: Box) {
   return scene.add.image(x + w / 2, y + h / 2, k).setDisplaySize(w, h);
 }

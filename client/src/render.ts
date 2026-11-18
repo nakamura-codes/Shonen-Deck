@@ -1,26 +1,25 @@
 /**
  * Tamanho da tela do jogo.
  *
- * O layout é pensado em 1280×720 (todas as posições usam essas coordenadas). UI_SCALE < 1 mostra mais
- * espaço em volta desse layout, deixando tudo menor na tela; as bordas extras são preenchidas pelos
- * fundos (ver extendBackground). RENDER_SCALE é quantos pixels reais cada unidade do layout ocupa.
+ * O layout é pensado em 1280×720 (todas as posições usam essas coordenadas) e aparece sempre no
+ * mesmo tamanho em todas as telas. Se a janela não for 16:9, a área visível cresce para os lados
+ * (ou para cima e para baixo) e essas bordas extras são preenchidas pelos fundos: sem barras pretas.
+ * RENDER_SCALE é quantos pixels reais cada unidade do layout ocupa.
  */
-const UI_KEY = 'shonen.uiScale';
-
-function loadUiScale(): number {
+function aspect(): number {
   try {
-    const v = Number(window.localStorage.getItem(UI_KEY));
-    if (v >= 0.7 && v <= 1) return v;
+    const a = window.innerWidth / window.innerHeight;
+    if (Number.isFinite(a) && a > 0) return Math.min(2.6, Math.max(1, a));
   } catch {
     /* ignora */
   }
-  return 0.85;
+  return 16 / 9;
 }
 
-export const UI_SCALE = loadUiScale();
+export const ASPECT = aspect();
 /** Área visível, em coordenadas do layout (centrada em 640, 360). */
-export const VIEW_W = Math.round(1280 / UI_SCALE);
-export const VIEW_H = Math.round(720 / UI_SCALE);
+export const VIEW_W = ASPECT >= 16 / 9 ? Math.round(720 * ASPECT) : 1280;
+export const VIEW_H = ASPECT >= 16 / 9 ? 720 : Math.round(1280 / ASPECT);
 /** Margens visíveis além do layout 1280×720, de cada lado. */
 export const MARGIN_X = (VIEW_W - 1280) / 2;
 export const MARGIN_Y = (VIEW_H - 720) / 2;
@@ -36,11 +35,3 @@ function pick(): number {
 }
 
 export const RENDER_SCALE = pick();
-
-export function setUiScale(v: number) {
-  try {
-    window.localStorage.setItem(UI_KEY, String(v));
-  } catch {
-    /* ignora */
-  }
-}

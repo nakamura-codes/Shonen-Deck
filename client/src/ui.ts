@@ -597,9 +597,33 @@ export function makeSlotButton(
 export function fullBackground(scene: Phaser.Scene, key: string, depth = -11, framed = false) {
   const cover = Math.max(VIEW_W / 1280, VIEW_H / 720);
   if (!framed) return scene.add.image(640, 360, key).setDisplaySize(1280 * cover, 720 * cover).setDepth(depth);
-  // Arte com painéis no lugar certo: fica exata em 1280×720 e as bordas extras recebem a mesma arte escurecida.
-  if (MARGIN_X > 0 || MARGIN_Y > 0) scene.add.image(640, 360, key).setDisplaySize(1280 * cover, 720 * cover).setDepth(depth - 1).setTint(0x262033);
-  return scene.add.image(0, 0, key).setOrigin(0).setDisplaySize(1280, 720).setDepth(depth);
+  // Arte com painéis no lugar certo: fica exata em 1280×720 e as bordas extras recebem a própria borda
+  // da arte espelhada (continua o céu/fundo sem repetir os painéis).
+  const tex = scene.textures.get(key);
+  const src = tex.getSourceImage() as { width: number; height: number };
+  const kx = src.width / 1280, ky = src.height / 720;
+  const edge = (name: string, x: number, y: number, w: number, h: number) => {
+    const fname = `${name}_${Math.round(w)}x${Math.round(h)}`;
+    if (!tex.has(fname)) tex.add(fname, 0, x * kx, y * ky, Math.max(1, w * kx), Math.max(1, h * ky));
+    return fname;
+  };
+  if (MARGIN_X > 0) {
+    const w = Math.min(MARGIN_X + 1, 640);
+    scene.add.image(0, 0, key, edge('edgeL', 0, 0, w, 720)).setOrigin(1, 0).setDisplaySize(w, 720).setFlipX(true).setDepth(depth - 1);
+    scene.add.image(1280, 0, key, edge('edgeR', 1280 - w, 0, w, 720)).setOrigin(0, 0).setDisplaySize(w, 720).setFlipX(true).setDepth(depth - 1);
+  }
+  if (MARGIN_Y > 0) {
+    // Em cima e embaixo: a cor do canto da arte (telas mais altas que 16:9 são raras).
+    const at = (x: number, y: number) => {
+      const c = scene.textures.getPixel(Math.round(x * kx), Math.round(y * ky), key, '__BASE');
+      return c ? c.color : 0x16121f;
+    };
+    const g = scene.add.graphics().setDepth(depth - 1);
+    g.fillStyle(at(4, 4)).fillRect(-MARGIN_X - 2, -MARGIN_Y - 2, VIEW_W + 4, MARGIN_Y + 3);
+    g.fillStyle(at(4, 716)).fillRect(-MARGIN_X - 2, 719, VIEW_W + 4, MARGIN_Y + 3);
+  }
+  // '__BASE' = a imagem inteira (sem isso o Phaser usaria o primeiro recorte criado acima).
+  return scene.add.image(0, 0, key, '__BASE').setOrigin(0).setDisplaySize(1280, 720).setDepth(depth);
 }
 
 /** Retângulo escurecido cobrindo a tela inteira (inclusive as bordas extras). */

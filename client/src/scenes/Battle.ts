@@ -87,6 +87,12 @@ export class BattleScene extends Phaser.Scene {
     this.hasHudArt = this.textures.exists('hud');
     if (this.hasHudArt) this.add.image(HUD.panel.x, HUD.panel.y, 'hud').setOrigin(0).setDisplaySize(HUD.panel.w, HUD.panel.h).setDepth(-8);
     else this.add.rectangle(640, 600, 1280, 240, 0x141820).setDepth(-8);
+    // Telas que não são 16:9: a faixa da HUD continua até as bordas.
+    if (MARGIN_X > 0 || MARGIN_Y > 0) {
+      const side = this.add.graphics().setDepth(-8.6);
+      side.fillStyle(0x1c1a3a).fillRect(-MARGIN_X, HUD.panel.y + 22, VIEW_W, HUD.panel.h - 22 + MARGIN_Y);
+      side.fillStyle(0xf0a830).fillRect(-MARGIN_X, HUD.panel.y + 22, VIEW_W, 3);
+    }
     this.hud = this.add.container(0, 0).setDepth(5);
     this.hand = this.add.container(0, 0).setDepth(20);
 
@@ -210,7 +216,14 @@ export class BattleScene extends Phaser.Scene {
     if (!this.arenaImage) {
       const key = `arena_${view.arena}`;
       if (this.textures.exists(key)) {
-        this.arenaImage = this.add.image(0, 0, key).setOrigin(0).setDisplaySize(1280, 720).setDepth(-10);
+        // Arena cobrindo a tela inteira; a escala é feita a partir da linha dos pés, para o chão
+        // continuar exatamente onde os personagens pisam.
+        const f = Math.max(VIEW_W / 1280, VIEW_H / 720, (FEET_Y + MARGIN_Y) / FEET_Y, (720 + MARGIN_Y - FEET_Y) / (720 - FEET_Y));
+        this.arenaImage = this.add
+          .image(640, FEET_Y, key)
+          .setOrigin(0.5, FEET_Y / 720)
+          .setDisplaySize(1280 * f, 720 * f)
+          .setDepth(-10);
       }
     }
     this.turnText.setText(`Turno ${view.turn}`);
