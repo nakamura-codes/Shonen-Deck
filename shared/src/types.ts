@@ -240,3 +240,6 @@ export interface BattleView {
   };
   opponent: FighterPublicView & { queue: QueuedCard[] | null };
 }
+
+/** Nível do bot de treino. */
+export type BotLevel = 'iniciante' | 'competitivo' | 'deus';

@@ -28,6 +28,20 @@ export class MainMenuScene extends Phaser.Scene {
     placeImage(this, [pk, px, py, pw, ph]);
     centerInk(fitText(txt(this, 0, 0, session.name, 22, '#ffffff', { fontStyle: 'bold', stroke: '#0d0a14', strokeThickness: 4 }), pw * 0.5), px + pw * 0.63, py + ph * 0.36);
 
+    // Vitórias e derrotas da conta (contra jogadores), logo abaixo do perfil.
+    const record = txt(this, px + 12, py + ph + 14, '', 15, '#ffe28a', { stroke: '#0d0a14', strokeThickness: 4 }).setOrigin(0, 0.5);
+    const showStats = () => {
+      const st = auth.stats;
+      record.setText(auth.isGuest ? 'Convidado: crie uma conta para o ranking' : st ? `Vitórias ${st.wins}  ·  Derrotas ${st.losses}` : '');
+      fitText(record, 380);
+    };
+    showStats();
+    const offStats = session.net.on((m) => {
+      if (m.t === 'stats' || m.t === 'authOk') showStats();
+    });
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, offStats);
+    session.net.send({ t: 'stats' });
+
     const logo = placeImage(this, find('logo_shonen_deck_transparente'));
     // O título fica 10% menor que o original, um pouco mais para cima.
     logo.setScale(logo.scaleX * 0.9, logo.scaleY * 0.9);

@@ -9,6 +9,7 @@
 import { DurableObject } from 'cloudflare:workers';
 import { Hub } from '../server/src/hub.ts';
 import type { Sock } from '../server/src/rooms.ts';
+import { SqlStore } from '../server/src/store.ts';
 
 interface Env {
   GAME: DurableObjectNamespace<GameServer>;
@@ -32,7 +33,13 @@ class CfSock implements Sock {
 }
 
 export class GameServer extends DurableObject<Env> {
-  private hub = new Hub();
+  // Contas, vitórias e chat ficam no SQLite do próprio Durable Object (salvo para sempre).
+  private hub: Hub;
+
+  constructor(ctx: DurableObjectState, env: Env) {
+    super(ctx, env);
+    this.hub = new Hub(new SqlStore(ctx.storage.sql));
+  }
 
   async fetch(request: Request): Promise<Response> {
     if (request.headers.get('Upgrade') !== 'websocket') return new Response('Esperava WebSocket', { status: 426 });

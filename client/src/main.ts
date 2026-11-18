@@ -8,6 +8,10 @@ import { LobbyScene } from './scenes/Lobby.ts';
 import { BattleScene } from './scenes/Battle.ts';
 import { GalleryScene } from './scenes/Gallery.ts';
 import { unlockAudio } from './sfx.ts';
+import { setChatVisible } from './chat.ts';
+
+/** Telas com o chat global no canto (fora do login e da batalha). */
+const CHAT_SCENES = ['MainMenu', 'Wardrobe', 'Lobby', 'Gallery'];
 
 // O navegador só libera som depois de uma interação.
 window.addEventListener('pointerdown', unlockAudio);
@@ -44,7 +48,10 @@ async function start() {
   });
   game.events.once(Phaser.Core.Events.READY, () => {
     for (const scene of game.scene.scenes) {
-      scene.sys.events.on(Phaser.Scenes.Events.START, () => scene.cameras.main.setZoom(RENDER_SCALE).centerOn(640, 360));
+      scene.sys.events.on(Phaser.Scenes.Events.START, () => {
+        scene.cameras.main.setZoom(RENDER_SCALE).centerOn(640, 360);
+        setChatVisible(CHAT_SCENES.includes(scene.sys.settings.key));
+      });
     }
   });
   // Janela mudou de formato (ex.: tela cheia): recarrega para preencher sem barras.

@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { startMenuMusic } from '../music.ts';
-import type { ServerMessage } from '@oficina/shared';
+import type { BotLevel, ServerMessage } from '@oficina/shared';
 import { session } from '../session.ts';
 import { COLORS, drawArena, makeButton, makeCharacter, txt, fullShade } from '../ui.ts';
 
@@ -10,7 +10,7 @@ export class LobbyScene extends Phaser.Scene {
     super('Lobby');
   }
 
-  create(data: { vsBot?: boolean }) {
+  create(data: { vsBot?: boolean; botLevel?: BotLevel }) {
     startMenuMusic();
     drawArena(this);
     fullShade(this, 0.5);
@@ -43,6 +43,6 @@ export class LobbyScene extends Phaser.Scene {
     });
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, off);
 
-    session.net.send({ t: 'join', name: session.name, outfit: session.outfit, vsBot: !!data.vsBot });
+    session.net.send({ t: 'join', name: session.name, outfit: session.outfit, vsBot: !!data.vsBot, botLevel: data.botLevel });
   }
 }

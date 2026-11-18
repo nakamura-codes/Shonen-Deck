@@ -31,6 +31,7 @@ import {
   viewFor,
   type BattleEvent,
   type BattleState,
+  type BotLevel,
   type Outfit,
   type PlayerIndex,
   type ServerMessage,
@@ -41,13 +42,16 @@ export interface Lobbyist {
   ws: Sock;
   name: string;
   outfit: Outfit;
+  /** Conta logada (chave em minúsculas) ou null para convidado. */
+  account?: string | null;
 }
 
-interface Seat {
+export interface Seat {
   ws: Sock | null;
   name: string;
   token: string;
   isBot: boolean;
+  account: string | null;
   reconnectTimer: ReturnType<typeof setTimeout> | null;
 }
 
@@ -56,6 +60,33 @@ export function send(ws: Sock | null, msg: ServerMessage) {
 }
 
 const COIN_MS = 3500;
+
+const BOT_NAMES: Record<BotLevel, string> = {
+  iniciante: 'Bot Iniciante',
+  competitivo: 'Bot Competitivo',
+  deus: 'Deus das Cartas',
+};
+
+const pick = <T>(a: T[]): T => a[randomInt(a.length)];
+
+/** Roupa do bot conforme o nível (as do Deus das Cartas são as que mais punem quem joga no automático). */
+function botOutfitFor(level: BotLevel): Outfit {
+  const ids = (slot: 'head' | 'body' | 'hand') => itemsForSlot(slot).map((i) => i.id);
+  if (level === 'iniciante') return { head: pick(ids('head')), body: pick(ids('body')), hand: pick(ids('hand')) };
+  if (level === 'deus') {
+    return pick<Outfit>([
+      { head: 'venda_olhos', body: 'uniforme_jujutsu', hand: 'kunai_ninja' },
+      { head: 'bandana_ninja', body: 'uniforme_jujutsu', hand: 'kunai_ninja' },
+      { head: 'venda_olhos', body: 'uniforme_naruto', hand: 'kunai_ninja' },
+    ]);
+  }
+  return pick<Outfit>([
+    { head: 'bandana_ninja', body: 'gi_laranja', hand: 'espada_trunks' },
+    { head: 'chapeu_palha', body: 'gi_laranja', hand: 'pistola_pirata' },
+    { head: 'mascara_hollow', body: 'shihakusho', hand: 'espada_trunks' },
+    { head: 'venda_olhos', body: 'shihakusho', hand: pick(ids('hand')) },
+  ]);
+}
 
 /** Tempo extra para o cliente animar a revelação antes do relógio voltar a correr. */
 function animationBuffer(events: BattleEvent[]): number {
@@ -76,11 +107,10 @@ export class Match {
     a: Lobbyist,
     b: Lobbyist | 'bot',
     private onFinish: (m: Match) => void,
+    readonly botLevel: BotLevel = 'competitivo',
   ) {
-    const botName = 'Bot Treinador';
-    // O bot usa uma arma diferente a cada partida.
-    const weapons = itemsForSlot('hand');
-    const botOutfit: Outfit = { head: 'venda_olhos', body: 'shihakusho', hand: weapons[randomInt(weapons.length)]?.id ?? null };
+    const botName = BOT_NAMES[botLevel];
+    const botOutfit = botOutfitFor(botLevel);
     // SEED fixa o embaralhamento e a moeda (útil para testes).
     const seed = Match.seed !== undefined ? Match.seed : randomInt(2 ** 31);
     this.state = createBattle(seed, [
@@ -89,10 +119,10 @@ export class Match {
     ]);
     const token = () => randomHex(16);
     this.seats = [
-      { ws: a.ws, name: a.name, token: token(), isBot: false, reconnectTimer: null },
+      { ws: a.ws, name: a.name, token: token(), isBot: false, account: a.account ?? null, reconnectTimer: null },
       b === 'bot'
-        ? { ws: null, name: botName, token: token(), isBot: true, reconnectTimer: null }
-        : { ws: b.ws, name: b.name, token: token(), isBot: false, reconnectTimer: null },
+        ? { ws: null, name: botName, token: token(), isBot: true, account: null, reconnectTimer: null }
+        : { ws: b.ws, name: b.name, token: token(), isBot: false, account: b.account ?? null, reconnectTimer: null },
     ];
   }
 
@@ -121,15 +151,17 @@ export class Match {
     this.deadline = Date.now() + TURN_SECONDS * 1000 + extraMs;
     this.turnTimer = setTimeout(() => this.onTimeout(), this.deadline - Date.now());
     for (const p of [0, 1] as PlayerIndex[]) {
-      if (this.seats[p].isBot) {
-        this.botTimer = setTimeout(() => this.runBot(p), extraMs + 1500 + Math.random() * 2500);
-      }
+      if (!this.seats[p].isBot) continue;
+      // O Deus das Cartas espera a jogada do oponente (ou os últimos segundos do turno) para reagir a ela.
+      const delay = this.botLevel === 'deus' ? this.deadline - Date.now() - 3000 : extraMs + 1500 + Math.random() * 2500;
+      this.botTimer = setTimeout(() => this.runBot(p), Math.max(500, delay));
     }
   }
 
   private runBot(p: PlayerIndex) {
     if (this.finished || this.state.phase !== 'planning') return;
-    this.state = botPlays(this.state, p);
+    if (this.state.fighters[p].ready) return;
+    this.state = botPlays(this.state, p, this.botLevel);
     const r = setReady(this.state, p);
     if (r.ok) this.state = r.state;
     this.afterAction();
@@ -169,8 +201,18 @@ export class Match {
   }
 
   private afterAction() {
-    if (bothReady(this.state)) this.resolve();
-    else this.broadcastState();
+    if (bothReady(this.state)) return this.resolve();
+    this.broadcastState();
+    // Deus das Cartas: assim que o oponente confirma, responde (com uma pausa para parecer que pensa).
+    if (this.botLevel === 'deus') {
+      for (const p of [0, 1] as PlayerIndex[]) {
+        const opp: PlayerIndex = p === 0 ? 1 : 0;
+        if (this.seats[p].isBot && !this.state.fighters[p].ready && this.state.fighters[opp].ready) {
+          if (this.botTimer) clearTimeout(this.botTimer);
+          this.botTimer = setTimeout(() => this.runBot(p), 900 + Math.random() * 900);
+        }
+      }
+    }
   }
 
   private resolve() {
@@ -251,10 +293,14 @@ export class Matchmaker {
   private waiting: Lobbyist | null = null;
   private byWs = new Map<Sock, Match>();
   private byToken = new Map<string, { match: Match; seat: PlayerIndex }>();
+  /** Chamado quando uma partida termina (para gravar vitórias e derrotas). */
+  onResult: ((m: Match) => void) | null = null;
 
-  join(l: Lobbyist, vsBot: boolean) {
+  join(l: Lobbyist, vsBot: boolean, level: BotLevel = 'competitivo') {
+    // Partida que já acabou não prende o jogador: pode começar outra na hora.
+    if (this.byWs.get(l.ws)?.finished) this.byWs.delete(l.ws);
     if (this.byWs.has(l.ws)) return;
-    if (vsBot) return this.startMatch(new Match(l, 'bot', (m) => this.cleanup(m)));
+    if (vsBot) return this.startMatch(new Match(l, 'bot', (m) => this.cleanup(m), level));
     if (this.waiting && this.waiting.ws !== l.ws && this.waiting.ws.readyState === this.waiting.ws.OPEN) {
       const other = this.waiting;
       this.waiting = null;
@@ -303,6 +349,11 @@ export class Matchmaker {
   }
 
   private cleanup(m: Match) {
+    try {
+      this.onResult?.(m);
+    } catch {
+      /* gravar o resultado nunca derruba o servidor */
+    }
     // Mantém os tokens um pouco para quem recarregar a página ver o resultado; depois limpa.
     setTimeout(() => {
       for (const s of m.seats) {

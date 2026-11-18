@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { startMenuMusic } from '../music.ts';
-import { OUTFIT_ITEMS, OUTFIT_SLOTS, SLOT_LABELS, buildDeck, getItem, type OutfitSlot, type ServerMessage } from '@oficina/shared';
+import { OUTFIT_ITEMS, OUTFIT_SLOTS, SLOT_LABELS, buildDeck, getItem, type BotLevel, type OutfitSlot, type ServerMessage } from '@oficina/shared';
+import { VIEW_H, VIEW_W } from '../render.ts';
 import { session } from '../session.ts';
 import { sfx } from '../sfx.ts';
 import { ITEM_NAME, COLORS, drawArena, fitText, floatText, makeButton, makeCard, makeCharacter, makeItemIcon, makeMiniIcon, txt, fullBackground, fullShade } from '../ui.ts';
@@ -55,7 +56,7 @@ export class WardrobeScene extends Phaser.Scene {
     this.deckLabel = txt(this, L.deckLabel.x, L.deckLabel.y, '', 17, '#ffffff', { fontStyle: 'bold', stroke: '#0d0a14', strokeThickness: 4 });
     // Centralizados no painel da direita (x 406–1197, centro 801).
     makeButton(this, 801 - 130, L.buttonsY, 244, 46, 'Procurar oponente', () => this.go(false), COLORS.gold, 20);
-    makeButton(this, 801 + 130, L.buttonsY, 244, 46, 'Treinar com bot', () => this.go(true), 0x7fc8a9, 20);
+    makeButton(this, 801 + 130, L.buttonsY, 244, 46, 'Treinar com bot', () => this.chooseBot(), 0x7fc8a9, 20);
 
     this.refresh();
 
@@ -71,9 +72,33 @@ export class WardrobeScene extends Phaser.Scene {
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, off);
   }
 
-  private go(vsBot: boolean) {
+  /** Janela para escolher o nível do bot de treino. */
+  private chooseBot() {
+    const objs: Phaser.GameObjects.GameObject[] = [];
+    const close = () => objs.forEach((o) => o.destroy());
+    const shade = this.add.rectangle(640, 360, VIEW_W + 4, VIEW_H + 4, 0x0d0a14, 0.7).setDepth(200).setInteractive();
+    shade.on('pointerdown', close);
+    objs.push(shade);
+    const g = this.add.graphics().setDepth(201);
+    g.fillStyle(0xf0a830).fillRoundedRect(640 - 304, 360 - 194, 608, 388, 14);
+    g.fillStyle(0x1c1a3a).fillRoundedRect(640 - 300, 360 - 190, 600, 380, 12);
+    objs.push(g);
+    objs.push(txt(this, 640, 205, 'Escolha o nível do bot', 26, '#ffe28a', { fontStyle: 'bold', stroke: '#0d0a14', strokeThickness: 5 }).setDepth(202));
+    const levels: [BotLevel, string, string, number][] = [
+      ['iniciante', 'Iniciante', 'Joga sem estratégia. Bom para aprender as cartas.', 0x7fc8a9],
+      ['competitivo', 'Competitivo', 'Calcula as melhores jogadas e usa combos. Um bom desafio.', COLORS.gold],
+      ['deus', 'Deus das Cartas', 'Conhece todas as combinações e se adapta a cada jogada sua. Quase invencível.', 0xc04848],
+    ];
+    levels.forEach(([lvl, label, desc, color], i) => {
+      const y = 270 + i * 88;
+      objs.push(makeButton(this, 640, y, 300, 46, label, () => (close(), this.go(true, lvl)), color, 20).setDepth(202));
+      objs.push(txt(this, 640, y + 34, desc, 13, '#c8d0e8', { stroke: '#0d0a14', strokeThickness: 3 }).setDepth(202));
+    });
+  }
+
+  private go(vsBot: boolean, botLevel?: BotLevel) {
     session.save();
-    this.scene.start('Lobby', { vsBot });
+    this.scene.start('Lobby', { vsBot, botLevel });
   }
 
   private refresh() {

@@ -1,4 +1,4 @@
-import { EMPTY_OUTFIT, sanitizeOutfit, type BattleView, type Outfit, type PlayerIndex } from '@oficina/shared';
+import { EMPTY_OUTFIT, sanitizeOutfit, type BattleView, type ClientMessage, type Outfit, type PlayerIndex, type PlayerStats, type ServerMessage } from '@oficina/shared';
 import { Net, defaultServerUrl } from './net.ts';
 
 const PROFILE_KEY = 'oficina.profile';
@@ -49,126 +49,135 @@ export const session = {
   },
 };
 
-// ───────────────────────── Contas (por enquanto, só neste navegador) ─────────────────────────
-// Até termos servidor com banco de dados, as contas ficam no localStorage: nome + hash da senha +
-// roupas. Serve para testes; não é segurança de verdade.
+// ───────────────────────── Contas (guardadas no servidor) ─────────────────────────
+// A conta (nome, senha, roupas, vitórias e derrotas) fica no banco do servidor. O navegador guarda só
+// a "sessão" (um código para não precisar digitar a senha toda vez). Convidados ficam só no navegador.
 
-const ACCOUNTS_KEY = 'shonen.accounts';
+const SESSION_KEY = 'shonen.session';
 const CURRENT_KEY = 'shonen.current';
+/** Contas antigas, de quando tudo ficava no navegador (usadas só para migrar para o servidor). */
+const OLD_ACCOUNTS_KEY = 'shonen.accounts';
 
-interface Account {
-  name: string;
-  passHash: string | null;
-  outfit: Outfit;
-}
-
-function loadAccounts(): Record<string, Account> {
+function read(key: string): string | null {
   try {
-    return JSON.parse(window.localStorage.getItem(ACCOUNTS_KEY) ?? '{}');
+    return window.localStorage.getItem(key);
   } catch {
-    return {};
+    return null;
   }
 }
-
-function storeAccounts(a: Record<string, Account>) {
+function write(key: string, v: string | null) {
   try {
-    window.localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(a));
+    if (v === null) window.localStorage.removeItem(key);
+    else window.localStorage.setItem(key, v);
   } catch {
     /* ignora */
   }
 }
 
-async function hash(text: string): Promise<string> {
+async function oldHash(text: string): Promise<string> {
   try {
     const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`shonen-deck:${text}`));
     return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
   } catch {
-    return text; // sem crypto.subtle (http sem https): guarda como veio
+    return text;
   }
 }
 
 const cleanName = (n: string) => n.replace(/[^\p{L}\p{N} _-]/gu, '').trim().slice(0, 16);
 
 export const auth = {
+  /** Vitórias e derrotas da conta (null para convidado ou antes do servidor responder). */
+  stats: null as PlayerStats | null,
   get loggedIn(): boolean {
-    try {
-      return !!window.localStorage.getItem(CURRENT_KEY);
-    } catch {
-      return false;
-    }
+    return !!read(CURRENT_KEY);
+  },
+  get isGuest(): boolean {
+    return (read(CURRENT_KEY) ?? '').startsWith('guest:');
   },
   /** Entra (ou cria a conta, com `create`). Devolve a mensagem de erro, ou null se deu certo. */
   async login(rawName: string, password: string, create: boolean): Promise<string | null> {
     const name = cleanName(rawName);
     if (name.length < 3) return 'O nome precisa ter pelo menos 3 letras.';
     if (password.length < 4) return 'A senha precisa ter pelo menos 4 caracteres.';
-    const accounts = loadAccounts();
-    const key = name.toLowerCase();
-    const h = await hash(password);
-    const acc = accounts[key];
-    if (create) {
-      if (acc) return 'Esse nome já tem conta neste navegador. Use Entrar.';
-      accounts[key] = { name, passHash: h, outfit: { ...EMPTY_OUTFIT } };
-    } else {
-      if (!acc) return 'Conta não encontrada. Use Criar conta.';
-      if (acc.passHash !== h) return 'Senha incorreta.';
+    let res = await request({ t: create ? 'register' : 'login', name, pass: password });
+    // Conta antiga, que existia só neste navegador: cria no servidor com a mesma senha.
+    if (!create && res.t === 'authError' && res.message.startsWith('Conta não encontrada')) {
+      try {
+        const old = JSON.parse(read(OLD_ACCOUNTS_KEY) ?? '{}')[name.toLowerCase()];
+        if (old?.passHash && old.passHash === (await oldHash(password))) {
+          res = await request({ t: 'register', name, pass: password });
+          if (res.t === 'authOk') session.net.send({ t: 'saveOutfit', outfit: sanitizeOutfit(old.outfit) });
+        }
+      } catch {
+        /* sem conta antiga */
+      }
     }
-    storeAccounts(accounts);
-    this.enter(accounts[key]);
+    if (res.t === 'authError') return res.message;
     return null;
   },
-  /** Entra como convidado (nome aleatório, sem senha). */
+  /** Entra como convidado (nome aleatório, sem senha; nada vai para o ranking). */
   guest() {
-    const accounts = loadAccounts();
-    let name = '';
-    do name = `Convidado${Math.floor(Math.random() * 9000 + 1000)}`;
-    while (accounts[name.toLowerCase()]);
-    accounts[name.toLowerCase()] = { name, passHash: null, outfit: { ...EMPTY_OUTFIT } };
-    storeAccounts(accounts);
-    this.enter(accounts[name.toLowerCase()]);
-  },
-  enter(acc: Account) {
-    session.name = acc.name;
-    session.outfit = sanitizeOutfit(acc.outfit);
-    try {
-      window.localStorage.setItem(CURRENT_KEY, acc.name.toLowerCase());
-    } catch {
-      /* ignora */
-    }
+    const name = `Convidado${Math.floor(Math.random() * 9000 + 1000)}`;
+    write(SESSION_KEY, null);
+    write(CURRENT_KEY, `guest:${name}`);
+    session.name = name;
+    auth.stats = null;
+    session.net.send({ t: 'hello', name });
   },
   logout() {
-    try {
-      window.localStorage.removeItem(CURRENT_KEY);
-    } catch {
-      /* ignora */
-    }
+    session.net.send({ t: 'logout' });
+    write(SESSION_KEY, null);
+    write(CURRENT_KEY, null);
+    auth.stats = null;
   },
-  /** Guarda as roupas (e o nome) na conta atual. */
+  /** Guarda as roupas na conta (no servidor). */
   saveCurrent() {
-    try {
-      const key = window.localStorage.getItem(CURRENT_KEY);
-      if (!key) return;
-      const accounts = loadAccounts();
-      if (!accounts[key]) return;
-      accounts[key].outfit = session.outfit;
-      storeAccounts(accounts);
-    } catch {
-      /* ignora */
-    }
+    if (read(SESSION_KEY)) session.net.send({ t: 'saveOutfit', outfit: session.outfit });
   },
 };
 
-// Ao abrir o jogo já logado, carrega as roupas da conta.
-try {
-  const key = window.localStorage.getItem(CURRENT_KEY);
-  const acc = key ? loadAccounts()[key] : undefined;
-  if (acc) {
-    session.name = acc.name;
-    session.outfit = sanitizeOutfit(acc.outfit);
-  }
-} catch {
-  /* ignora */
+type AuthReply = Extract<ServerMessage, { t: 'authOk' } | { t: 'authError' }>;
+
+/** Manda um pedido de login/cadastro e espera a resposta do servidor. */
+function request(msg: ClientMessage): Promise<AuthReply> {
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => (off(), resolve({ t: 'authError', message: 'Sem conexão com o servidor. Tente de novo.' })), 10_000);
+    const off = session.net.on((m) => {
+      if (m.t !== 'authOk' && m.t !== 'authError') return;
+      if (m.t === 'authError' && m.silent) return;
+      clearTimeout(timer);
+      off();
+      resolve(m);
+    });
+    session.net.send(msg);
+  });
 }
+
+// Respostas do servidor sobre a conta.
+session.net.on((msg) => {
+  if (msg.t === 'authOk') {
+    write(SESSION_KEY, msg.session);
+    write(CURRENT_KEY, msg.name.toLowerCase());
+    session.name = msg.name;
+    session.outfit = sanitizeOutfit(msg.outfit);
+    auth.stats = msg.stats;
+  } else if (msg.t === 'authError' && msg.silent) {
+    // Sessão expirou: volta a pedir login na próxima vez.
+    write(SESSION_KEY, null);
+    write(CURRENT_KEY, null);
+  } else if (msg.t === 'stats') {
+    auth.stats = msg.stats;
+  }
+});
+
+// Ao abrir (e a cada reconexão): apresenta-se para o chat e retoma a conta.
+session.net.onOpen(() => {
+  const current = read(CURRENT_KEY);
+  if (current?.startsWith('guest:')) session.name = current.slice(6);
+  session.net.send({ t: 'hello', name: session.name });
+  const token = read(SESSION_KEY);
+  if (token) session.net.send({ t: 'resume', session: token });
+});
 
 session.net.on((msg) => {
   if (msg.t === 'match') session.lastView = null;

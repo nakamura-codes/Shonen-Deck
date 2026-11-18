@@ -17,6 +17,7 @@ export class Net {
   private ws: WebSocket | null = null;
   private listeners = new Set<Listener>();
   private outbox: ClientMessage[] = [];
+  private openListeners = new Set<() => void>();
   connected = false;
 
   constructor(private url: string) {
@@ -28,6 +29,7 @@ export class Net {
     this.ws = ws;
     ws.onopen = () => {
       this.connected = true;
+      for (const l of [...this.openListeners]) l();
       const token = this.token;
       if (token) ws.send(JSON.stringify({ t: 'rejoin', token } satisfies ClientMessage));
       for (const m of this.outbox.splice(0)) ws.send(JSON.stringify(m));
@@ -51,6 +53,13 @@ export class Net {
   send(msg: ClientMessage) {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) this.ws.send(JSON.stringify(msg));
     else this.outbox.push(msg);
+  }
+
+  /** Chamado a cada conexão (inclusive reconexões), antes das mensagens pendentes. */
+  onOpen(l: () => void): () => void {
+    this.openListeners.add(l);
+    if (this.connected) l();
+    return () => this.openListeners.delete(l);
   }
 
   on(l: Listener): () => void {
