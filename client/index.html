@@ -11,7 +11,8 @@
       /* GameNum: Jersey 10 inteira, para números sozinhos (custo, HP, Ki, tempo). */
       @font-face { font-family: 'GameNum'; src: url('fonts/jersey10.woff2') format('woff2'); font-display: block; }
       html, body { margin: 0; height: 100%; background: #120f1c; overflow: hidden; }
-      #game { width: 100vw; height: 100vh; }
+      #game { width: 100vw; height: 100vh; height: 100dvh; }
+      #game canvas { image-rendering: pixelated; }
       input.name-input {
         font-family: 'GameFont', monospace; font-size: 18px; width: 220px; padding: 6px 10px;
         background: #1f1a2e; color: #f4ecd8; border: 3px solid #f0a830; border-radius: 4px; outline: none;

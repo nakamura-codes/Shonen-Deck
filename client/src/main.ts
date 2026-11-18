@@ -36,8 +36,8 @@ async function start() {
   const game = new Phaser.Game({
     type: Phaser.AUTO,
     parent: 'game',
-    // O jogo é pensado em 1280×720 e desenhado com RENDER_SCALE (1× a 2×, conforme a tela),
-    // com o mesmo zoom nas câmeras: nítido sem pesar à toa em telas menores.
+    // Canvas fixo em Full HD: o FIT do Phaser ajusta somente a apresentação.
+    // A cena, câmera, conexão e estado da partida sobrevivem ao resize.
     width: Math.round(VIEW_W * RENDER_SCALE),
     height: Math.round(VIEW_H * RENDER_SCALE),
     backgroundColor: '#16121f',
@@ -54,17 +54,12 @@ async function start() {
       });
     }
   });
-  // Janela mudou de formato (ex.: tela cheia): recarrega para preencher sem barras.
-  // Fora da batalha, para não interromper uma partida.
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  window.addEventListener('resize', () => {
-    clearTimeout(timer);
-    timer = setTimeout(() => {
-      const a = window.innerWidth / window.innerHeight;
-      if (Math.abs(a - VIEW_W / VIEW_H) < 0.03) return;
-      if (game.scene.isActive('Battle') || game.scene.isActive('Lobby')) return;
-      window.location.reload();
-    }, 500);
+  // O Scale Manager (FIT) reage a resize sem destruir cenas ou recarregar a página.
+  // Também atualiza o canvas ao entrar/sair de fullscreen pela API do navegador.
+  const refreshFullscreen = () => game.scale.refresh();
+  document.addEventListener('fullscreenchange', refreshFullscreen);
+  game.events.once(Phaser.Core.Events.DESTROY, () => {
+    document.removeEventListener('fullscreenchange', refreshFullscreen);
   });
 }
 

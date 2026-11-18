@@ -57,7 +57,15 @@ export class WardrobeScene extends Phaser.Scene {
     this.tooltip = undefined;
     this.pages = { head: 0, body: 0, hand: 0 };
     startMenuMusic();
-    fullBackground(this, this.textures.exists('fundo_preparacao') ? 'fundo_preparacao' : 'fundos_fundo_menu_principal_2560x1440', -11);
+    // Nunca amplia uma miniatura de 192×108 para tela cheia.
+    // Até o dojo Full HD ser enviado, usa o cenário de login em 2560×1440.
+    const dojo = this.textures.exists('fundo_preparacao')
+      ? this.textures.get('fundo_preparacao').getSourceImage() as { width: number; height: number }
+      : null;
+    const background = dojo && dojo.width >= 1920 && dojo.height >= 1080
+      ? 'fundo_preparacao'
+      : 'fundos_fundo_login_2560x1440';
+    fullBackground(this, background, -11);
     this.add.rectangle(640, 360, VIEW_W + 4, VIEW_H + 4, 0x170d23, 0.22).setDepth(-10);
 
     panel(this, LEFT.x, LEFT.y, LEFT.w, LEFT.h);
