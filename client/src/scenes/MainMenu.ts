@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { auth, session } from '../session.ts';
 import { isMuted, toggleMute } from '../sfx.ts';
-import { fitText, txt } from '../ui.ts';
+import { centerInk, fitText, txt } from '../ui.ts';
 import { SCREENS } from '../menu.generated.ts';
 import { menuButton, placeImage, type Box } from '../menuUi.ts';
 
@@ -21,7 +21,7 @@ export class MainMenuScene extends Phaser.Scene {
     const prof = find('molduras_painel_perfil');
     placeImage(this, prof);
     const [, px, py, pw, ph] = prof;
-    fitText(txt(this, px + pw * 0.55, py + ph * 0.4, session.name, 22, '#ffffff', { fontStyle: 'bold', stroke: '#0d0a14', strokeThickness: 4 }), pw * 0.6);
+    centerInk(fitText(txt(this, 0, 0, session.name, 26, '#ffffff', { fontStyle: 'bold', stroke: '#0d0a14', strokeThickness: 4 }), pw * 0.55), px + pw * 0.6, py + ph * 0.36);
 
     const logo = placeImage(this, find('logo_shonen_deck_transparente'));
     this.tweens.add({ targets: logo, y: logo.y + 6, yoyo: true, repeat: -1, duration: 1800, ease: 'Sine.easeInOut' });
