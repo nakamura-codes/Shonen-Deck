@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { figureKey, getCard, getItem, type CardDef, type Outfit } from '@oficina/shared';
 import { FRAME_LAYOUT, FRAME_SIZE } from './cardFrames.generated.ts';
 import { sfx } from './sfx.ts';
+import { RENDER_SCALE } from './render.ts';
 import { FX } from './fx.generated.ts';
 
 export const FONT = '"GameFont", monospace';
@@ -48,7 +49,7 @@ export function txt(
 ) {
   return scene.add
     // resolution 2: o texto é desenhado com o dobro de pixels, para ficar nítido (o jogo roda em 2x).
-    .text(x, y, s, { fontFamily: FONT, fontSize: `${size}px`, color, resolution: 2, ...style })
+    .text(x, y, s, { fontFamily: FONT, fontSize: `${size}px`, color, resolution: Math.max(2, Math.ceil(RENDER_SCALE)), ...style })
     .setOrigin(0.5);
 }
 

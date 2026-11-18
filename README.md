@@ -51,6 +51,7 @@ Para testar com embaralhamento e moeda fixos: `SEED=13 npm run dev`.
   2. **Golpes carregados** que disparam no turno.
   3. **O resto, na ordem em que cada um jogou**, alternando: 1ª de quem começa, 1ª do outro, depois as 2ªs… Buff e debuff só valem para o que vem *depois* deles.
 - A partida acaba na hora em que alguém chega a 0 HP; as cartas restantes não resolvem.
+- **Travar carta:** o cadeado acima de uma carta da mão faz ela não ser descartada no fim do turno. Só uma por turno, e a mesma carta não pode ficar travada dois turnos seguidos.
 - **Bloqueio** some no início do turno.
 - **Força** soma dano em cada golpe.
 - **Fraco** reduz o dano em 25%.

@@ -37,11 +37,12 @@ export class Hub {
         return;
       case 'play':
       case 'moveFirst':
+      case 'keep':
       case 'undo':
       case 'ready': {
         const found = mm.matchOf(ws);
         if (!found) return send(ws, { t: 'error', message: 'Você não está em uma partida.' });
-        if ((msg.t === 'play' || msg.t === 'moveFirst') && typeof msg.uid !== 'string') return send(ws, { t: 'error', message: 'Carta inválida.' });
+        if ((msg.t === 'play' || msg.t === 'moveFirst' || msg.t === 'keep') && typeof msg.uid !== 'string') return send(ws, { t: 'error', message: 'Carta inválida.' });
         found.match.handle(found.seat, msg);
         return;
       }

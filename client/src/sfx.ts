@@ -4,7 +4,10 @@
  * Para ajustar um som, mude a receita em SOUNDS.
  */
 
-const PREFS_KEY = 'oficina.sfx';
+// Chave nova: o volume padrão caiu (o antigo, 0.5, era alto demais com as amostras).
+const PREFS_KEY = 'shonen.sfx';
+/** Volume geral padrão (0 a 1). */
+const DEFAULT_VOLUME = 0.22;
 
 let ctx: AudioContext | null = null;
 let master: GainNode | null = null;
@@ -15,12 +18,12 @@ function loadPrefs(): { muted: boolean; volume: number } {
     const raw = window.localStorage.getItem(PREFS_KEY);
     if (raw) {
       const p = JSON.parse(raw);
-      return { muted: p.muted === true, volume: typeof p.volume === 'number' ? p.volume : 0.5 };
+      return { muted: p.muted === true, volume: typeof p.volume === 'number' ? p.volume : DEFAULT_VOLUME };
     }
   } catch {
     /* sem armazenamento */
   }
-  return { muted: false, volume: 0.5 };
+  return { muted: false, volume: DEFAULT_VOLUME };
 }
 
 const prefs = loadPrefs();
@@ -100,7 +103,8 @@ function playSample(name: string): boolean {
   const src = ctx.createBufferSource();
   src.buffer = buffers.get(ready[Math.floor(Math.random() * ready.length)])!;
   const g = ctx.createGain();
-  g.gain.value = 0.8;
+  // As amostras são bem mais fortes que os sons sintetizados.
+  g.gain.value = 0.5;
   src.connect(g).connect(master);
   src.start();
   return true;

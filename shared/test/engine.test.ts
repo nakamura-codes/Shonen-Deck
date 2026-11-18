@@ -10,6 +10,7 @@ import {
   createBattle,
   moveToFront,
   playCard,
+  toggleKeep,
   previewCardDamage,
   resolveTurn,
   sanitizeOutfit,
@@ -795,5 +796,52 @@ describe('Galick Gun → Big Bang Attack', () => {
     const f = r.state.fighters[0];
     expect([...f.hand, ...f.drawPile, ...f.discard].some((c) => c.id === 'big_bang_attack')).toBe(false);
     expect(f.drawPile.some((c) => c.id === 'galick_gun') || f.hand.some((c) => c.id === 'galick_gun')).toBe(true);
+  });
+});
+
+describe('travar carta', () => {
+  it('a carta travada fica na mão no próximo turno; só uma por turno', () => {
+    let s = newBattle();
+    giveHand(s, 0, ['red', 'pistol', 'golpe_basico']);
+    const red = s.fighters[0].hand[0].uid;
+    const pistol = s.fighters[0].hand[1].uid;
+    let r = toggleKeep(s, 0, red);
+    if (!r.ok) throw new Error(r.error);
+    // Travar outra troca a trava (continua uma só).
+    r = toggleKeep(r.state, 0, pistol);
+    if (!r.ok) throw new Error(r.error);
+    expect(r.state.fighters[0].keepUid).toBe(pistol);
+    r = toggleKeep(r.state, 0, red);
+    if (!r.ok) throw new Error(r.error);
+    s = readyAndResolve(r.state).state;
+    expect(s.fighters[0].hand.some((c) => c.uid === red)).toBe(true);
+    expect(s.fighters[0].hand.some((c) => c.uid === pistol)).toBe(false);
+    expect(s.fighters[0].hand).toHaveLength(RULES.drawPerTurn + 1);
+  });
+
+  it('a mesma carta não pode ser travada dois turnos seguidos', () => {
+    let s = newBattle();
+    giveHand(s, 0, ['red']);
+    const red = s.fighters[0].hand[0].uid;
+    const r = toggleKeep(s, 0, red);
+    if (!r.ok) throw new Error(r.error);
+    s = readyAndResolve(r.state).state;
+    expect(toggleKeep(s, 0, red)).toEqual({ ok: false, error: 'Essa carta já ficou travada no turno passado.' });
+    s = readyAndResolve(s).state;
+    // Depois de um turno sem trava, a carta (se estiver na mão) pode ser travada de novo.
+    giveHand(s, 0, ['red']);
+    expect(toggleKeep(s, 0, s.fighters[0].hand[0].uid).ok).toBe(true);
+  });
+
+  it('jogar a carta travada tira a trava; carta etérea não pode ser travada', () => {
+    let s = newBattle();
+    giveHand(s, 0, ['pistol']);
+    const r = toggleKeep(s, 0, s.fighters[0].hand[0].uid);
+    if (!r.ok) throw new Error(r.error);
+    s = play(r.state, 0, 'pistol');
+    expect(s.fighters[0].keepUid).toBeNull();
+    s = newBattle();
+    s.fighters[0].hand = [{ uid: 'hp', id: 'hollow_purple' }];
+    expect(toggleKeep(s, 0, 'hp').ok).toBe(false);
   });
 });

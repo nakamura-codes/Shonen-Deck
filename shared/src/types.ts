@@ -146,6 +146,10 @@ export interface Fighter {
   sageDraw: number;
   /** Cartas que chegam na mão no próximo turno (evolução). */
   pendingCards: string[];
+  /** Carta travada neste turno: não é descartada no fim do turno (uma por turno). */
+  keepUid: string | null;
+  /** Carta que ficou travada no turno anterior: não pode ser travada de novo agora. */
+  lastKeptUid: string | null;
 }
 
 export interface BattleState {
@@ -225,6 +229,8 @@ export interface BattleView {
     comboLock: boolean;
     /** Leitura de Poder na fila: pode escolher qual carta resolve primeiro. */
     canReorder: boolean;
+    keepUid: string | null;
+    lastKeptUid: string | null;
   };
   opponent: FighterPublicView & { queue: QueuedCard[] | null };
 }

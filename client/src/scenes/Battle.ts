@@ -13,6 +13,7 @@ import {
 import { session } from '../session.ts';
 import { attackSound, isMuted, sfx, toggleMute } from '../sfx.ts';
 import { HUD } from '../hud.generated.ts';
+import { mergeRepeats } from '../events.ts';
 import {
   CARD_H,
   CARD_W,
@@ -331,7 +332,7 @@ export class BattleScene extends Phaser.Scene {
 
     // Minha fila.
     const mq = view.me.queue;
-    this.hud.add(txt(this, 640, 262, mq.length ? 'Sua jogada' : 'Clique nas cartas da mão para jogar', 16, '#ffffff', { stroke: '#0d0a14', strokeThickness: 4 }));
+    this.hud.add(txt(this, 640, 262, mq.length ? 'Sua jogada' : 'Clique nas cartas da mão para jogar · o cadeado guarda 1 carta para o próximo turno', 16, '#ffffff', { stroke: '#0d0a14', strokeThickness: 4 }));
     mq.forEach((q, i) => {
       const x = 640 - (mq.length - 1) * 40 + i * 80;
       const icon = makeMiniIcon(this, q.card.id, 0.85).setPosition(x, 330);
@@ -399,8 +400,53 @@ export class BattleScene extends Phaser.Scene {
         sfx('card');
         session.net.send({ t: 'play', uid: c.uid });
       });
+      if (c.uid === view.me.keepUid) {
+        card.add(this.add.rectangle(0, 0, CARD_W + 10, CARD_H + 10).setStrokeStyle(5, 0xffd040));
+      }
       this.hand.add(card);
+      this.hand.add(this.lockButton(view, c.uid, c.id, x, y - (CARD_H * handScale) / 2 - 12, canAct));
     });
+  }
+
+  /**
+   * Cadeado acima da carta: trava a carta para ela não ser descartada no fim do turno (1 por turno).
+   * Dourado = travada; apagado = foi travada no turno passado e não pode de novo.
+   */
+  private lockButton(view: BattleView, uid: string, cardId: string, x: number, y: number, canAct: boolean) {
+    const c = this.add.container(x, y);
+    const kept = view.me.keepUid === uid;
+    const blocked = view.me.lastKeptUid === uid;
+    const def = getCard(cardId);
+    const unavailable = blocked || !!def.ethereal || !!def.retain;
+    const g = this.add.graphics();
+    const draw = (hover: boolean) => {
+      g.clear();
+      const body = kept ? 0xffd040 : unavailable ? 0x4a4f5c : hover ? 0xe8ecf4 : 0xb8c0d0;
+      g.fillStyle(0x0d0a14).fillRoundedRect(-13, -12, 26, 26, 6);
+      g.lineStyle(3, body).beginPath().arc(0, -2, 6, Math.PI, kept ? 0 : -0.3).strokePath();
+      g.fillStyle(body).fillRoundedRect(-8, -2, 16, 12, 2);
+      g.fillStyle(0x0d0a14).fillRect(-1, 2, 2, 4);
+    };
+    draw(false);
+    c.add(g);
+    if (!canAct || unavailable) {
+      c.setAlpha(canAct ? 0.55 : kept ? 1 : 0.4);
+      if (blocked && canAct) {
+        const z = this.add.zone(0, 0, 28, 28).setInteractive();
+        z.on('pointerdown', () => this.toast('Essa carta já ficou travada no turno passado.'));
+        c.add(z);
+      }
+      return c;
+    }
+    const z = this.add.zone(0, 0, 30, 30).setInteractive({ useHandCursor: true });
+    z.on('pointerover', () => draw(true));
+    z.on('pointerout', () => draw(false));
+    z.on('pointerdown', () => {
+      sfx('click');
+      session.net.send({ t: 'keep', uid });
+    });
+    c.add(z);
+    return c;
   }
 
   // ───────────────────────── Animações da revelação ─────────────────────────
@@ -424,7 +470,7 @@ export class BattleScene extends Phaser.Scene {
     if (plays.length) await this.showReveal(plays);
 
     let lastCard = '';
-    for (const ev of events) {
+    for (const ev of mergeRepeats(events)) {
       switch (ev.type) {
         case 'damage': {
           const fast = lastCard === `${ev.source}:${ev.cardId}`;
@@ -825,34 +871,43 @@ export class BattleScene extends Phaser.Scene {
     const y = BODY_Y;
     const dist = Math.abs(tx - sx);
     const depth = 30;
+    /**
+     * Feixe que sai de quem ataca e vai até o alvo. Criado já com o tamanho final e esticado com
+     * scaleX (crescer a largura de 0 ignora a origem e fazia o feixe sair sempre para a direita).
+     */
+    const beam = (yy: number, length: number, thick: number, color: number, alpha = 1) =>
+      this.add.rectangle(sx, yy, length, thick, color, alpha).setOrigin(from === 0 ? 0 : 1, 0.5).setScale(0, 1).setDepth(depth);
 
     switch (cardId) {
       case 'cero': {
         // Rajada vermelha (efeito genérico de energia).
-        const orb = this.add.circle(sx, y, 16, 0xffd0d0).setDepth(depth);
-        const beam = this.add.rectangle(sx, y, 0, 30, 0xe0203a).setOrigin(from === 0 ? 0 : 1, 0.5).setDepth(depth);
-        const core = this.add.rectangle(sx, y, 0, 10, 0xffffff).setOrigin(from === 0 ? 0 : 1, 0.5).setDepth(depth);
-        await tweenPromise(this, { targets: orb, scale: 1.8, duration: 180 });
-        await tweenPromise(this, { targets: [beam, core], width: dist, duration: 200, ease: 'Cubic.easeOut' });
-        this.cameras.main.shake(200, 0.01);
-        await tweenPromise(this, { targets: [beam, core, orb], alpha: 0, scaleY: 0.2, duration: 240 });
-        [orb, beam, core].forEach((o) => o.destroy());
+        const orb = this.add.circle(sx, y, 30, 0xffd0d0).setDepth(depth + 1).setStrokeStyle(6, 0xe0203a);
+        const glow = beam(y, dist + 40, 78, 0xff6070, 0.35);
+        const ray = beam(y, dist + 40, 54, 0xe0203a);
+        const core = beam(y, dist + 40, 18, 0xffffff);
+        await tweenPromise(this, { targets: orb, scale: 1.8, duration: 200 });
+        await tweenPromise(this, { targets: [glow, ray, core], scaleX: 1, duration: 220, ease: 'Cubic.easeOut' });
+        this.cameras.main.shake(220, 0.012);
+        await tweenPromise(this, { targets: [glow, ray, core, orb], alpha: 0, scaleY: 0.2, duration: 260 });
+        [orb, glow, ray, core].forEach((o) => o.destroy());
         return;
       }
       case 'big_bang_attack':
       case 'kamehameha': {
-        const orb = this.add.circle(sx, y, 18, 0xbfefff).setDepth(depth);
-        const beam = this.add.rectangle(sx, y, 0, 34, 0x4fb8ff).setOrigin(from === 0 ? 0 : 1, 0.5).setDepth(depth);
-        const core = this.add.rectangle(sx, y, 0, 14, 0xffffff).setOrigin(from === 0 ? 0 : 1, 0.5).setDepth(depth);
-        await tweenPromise(this, { targets: orb, scale: 1.6, duration: 200 });
-        await tweenPromise(this, { targets: [beam, core], width: dist, duration: 240, ease: 'Cubic.easeOut' });
-        this.cameras.main.shake(200, 0.008);
-        await tweenPromise(this, { targets: [beam, core, orb], alpha: 0, scaleY: 0.2, duration: 260 });
-        [orb, beam, core].forEach((o) => o.destroy());
+        const big = cardId === 'big_bang_attack';
+        const orb = this.add.circle(sx, y, big ? 40 : 32, 0xbfefff).setDepth(depth + 1).setStrokeStyle(6, 0x4fb8ff);
+        const glow = beam(y, dist + 40, big ? 110 : 84, 0x8fd0ff, 0.35);
+        const ray = beam(y, dist + 40, big ? 80 : 60, 0x4fb8ff);
+        const core = beam(y, dist + 40, big ? 30 : 22, 0xffffff);
+        await tweenPromise(this, { targets: orb, scale: 1.6, duration: 220 });
+        await tweenPromise(this, { targets: [glow, ray, core], scaleX: 1, duration: 260, ease: 'Cubic.easeOut' });
+        this.cameras.main.shake(big ? 380 : 220, big ? 0.02 : 0.01);
+        await tweenPromise(this, { targets: [glow, ray, core, orb], alpha: 0, scaleY: 0.2, duration: 280 });
+        [orb, glow, ray, core].forEach((o) => o.destroy());
         return;
       }
       case 'genki_dama': {
-        const ball = this.add.circle(CHAR_X[from], 90, 30, 0xe8f8ff).setDepth(depth).setStrokeStyle(8, 0x6fd0ff);
+        const ball = this.add.circle(CHAR_X[from], 90, 44, 0xe8f8ff).setDepth(depth).setStrokeStyle(8, 0x6fd0ff);
         await tweenPromise(this, { targets: ball, scale: 2.6, duration: 450, ease: 'Sine.easeOut' });
         await tweenPromise(this, { targets: ball, x: tx, y, duration: 420, ease: 'Quad.easeIn' });
         this.cameras.main.flash(250, 220, 240, 255);
@@ -863,8 +918,8 @@ export class BattleScene extends Phaser.Scene {
       }
       case 'getsuga': {
         const g = this.add.graphics().setDepth(depth).setPosition(sx, y);
-        g.lineStyle(26, 0xc8323a).beginPath().arc(0, 0, 70, -1.1, 1.1).strokePath();
-        g.lineStyle(16, 0x0d0a14).beginPath().arc(-4, 0, 70, -1.0, 1.0).strokePath();
+        g.lineStyle(44, 0xc8323a).beginPath().arc(0, 0, 120, -1.1, 1.1).strokePath();
+        g.lineStyle(26, 0x0d0a14).beginPath().arc(-8, 0, 120, -1.0, 1.0).strokePath();
         g.setScale(dir, 1);
         await tweenPromise(this, { targets: g, x: tx, duration: 300, ease: 'Quad.easeIn' });
         this.cameras.main.shake(180, 0.01);
@@ -873,14 +928,14 @@ export class BattleScene extends Phaser.Scene {
         return;
       }
       case 'pistol': {
-        const arm = this.add.rectangle(sx, y, 0, 16, 0xf5c9a0).setOrigin(from === 0 ? 0 : 1, 0.5).setDepth(depth).setStrokeStyle(3, 0x1a1420);
-        const fist = this.add.circle(sx, y, 18, 0xf5c9a0).setDepth(depth).setStrokeStyle(3, 0x1a1420);
+        const arm = beam(y, dist, 26, 0xf5c9a0).setStrokeStyle(3, 0x1a1420);
+        const fist = this.add.circle(sx, y, 30, 0xf5c9a0).setDepth(depth + 1).setStrokeStyle(4, 0x1a1420);
         await Promise.all([
-          tweenPromise(this, { targets: arm, width: dist, duration: 170, ease: 'Quad.easeOut' }),
+          tweenPromise(this, { targets: arm, scaleX: 1, duration: 170, ease: 'Quad.easeOut' }),
           tweenPromise(this, { targets: fist, x: tx, duration: 170, ease: 'Quad.easeOut' }),
         ]);
         await Promise.all([
-          tweenPromise(this, { targets: arm, width: 0, duration: 140 }),
+          tweenPromise(this, { targets: arm, scaleX: 0, duration: 140 }),
           tweenPromise(this, { targets: fist, x: sx, duration: 140 }),
         ]);
         arm.destroy();
@@ -890,15 +945,15 @@ export class BattleScene extends Phaser.Scene {
       case 'gatling': {
         const fists = Array.from({ length: fast ? 2 : 4 }, () => {
           const yy = y + Phaser.Math.Between(-60, 60);
-          return this.add.circle(sx, yy, 15, 0xf5c9a0).setDepth(depth).setStrokeStyle(3, 0x1a1420);
+          return this.add.circle(sx, yy, 26, 0xf5c9a0).setDepth(depth).setStrokeStyle(3, 0x1a1420);
         });
         await tweenPromise(this, { targets: fists, x: tx, duration: fast ? 90 : 140, delay: this.tweens.stagger(25, {}) });
         fists.forEach((f) => f.destroy());
         return;
       }
       case 'rasengan': {
-        const ball = this.add.circle(sx, y, 22, 0x6fc8ff).setDepth(depth).setStrokeStyle(5, 0xffffff);
-        const swirl = this.add.arc(sx, y, 14, 0, 270, false, 0xffffff, 0).setDepth(depth).setStrokeStyle(3, 0xffffff);
+        const ball = this.add.circle(sx, y, 38, 0x6fc8ff).setDepth(depth).setStrokeStyle(7, 0xffffff);
+        const swirl = this.add.arc(sx, y, 24, 0, 270, false, 0xffffff, 0).setDepth(depth).setStrokeStyle(5, 0xffffff);
         this.tweens.add({ targets: swirl, angle: 720, duration: 400 });
         await tweenPromise(this, { targets: [ball, swirl], x: tx, duration: 360, ease: 'Quad.easeIn' });
         this.cameras.main.shake(150, 0.01);
@@ -930,7 +985,7 @@ export class BattleScene extends Phaser.Scene {
       }
       case 'kunai': {
         // Lâmina arremessada girando.
-        const blade = this.add.triangle(sx, y, 0, 0, 26, 5, 0, 10, 0xb8c0d0).setDepth(depth).setStrokeStyle(2, 0x1a1420);
+        const blade = this.add.triangle(sx, y, 0, 0, 46, 9, 0, 18, 0xb8c0d0).setDepth(depth).setStrokeStyle(3, 0x1a1420);
         blade.setScale(dir, 1);
         this.tweens.add({ targets: blade, angle: 720 * dir, duration: 260 });
         await tweenPromise(this, { targets: blade, x: tx, duration: 260, ease: 'Quad.easeIn' });
@@ -938,14 +993,14 @@ export class BattleScene extends Phaser.Scene {
         return;
       }
       case 'ki_blast': {
-        const orb = this.add.circle(sx, y + Phaser.Math.Between(-20, 20), 10, 0x8fe0ff).setDepth(depth).setStrokeStyle(3, 0xffffff);
+        const orb = this.add.circle(sx, y + Phaser.Math.Between(-20, 20), 18, 0x8fe0ff).setDepth(depth).setStrokeStyle(4, 0xffffff);
         await tweenPromise(this, { targets: orb, x: tx, duration: fast ? 140 : 220, ease: 'Quad.easeIn' });
         await tweenPromise(this, { targets: orb, scale: 2, alpha: 0, duration: 120 });
         orb.destroy();
         return;
       }
       case 'red': {
-        const orb = this.add.circle(sx, y, 16, 0xff3040).setDepth(depth).setStrokeStyle(4, 0xffd0d0);
+        const orb = this.add.circle(sx, y, 30, 0xff3040).setDepth(depth).setStrokeStyle(6, 0xffd0d0);
         await tweenPromise(this, { targets: orb, scale: 1.5, duration: 160 });
         await tweenPromise(this, { targets: orb, x: tx, duration: 220, ease: 'Quad.easeIn' });
         const target = this.chars[from === 0 ? 1 : 0];
@@ -957,7 +1012,7 @@ export class BattleScene extends Phaser.Scene {
       }
       case 'blue': {
         // Atração: a esfera aparece no oponente e puxa partículas para dentro.
-        const orb = this.add.circle(tx, y, 10, 0x2f7fff).setDepth(depth).setStrokeStyle(4, 0xbfe0ff);
+        const orb = this.add.circle(tx, y, 18, 0x2f7fff).setDepth(depth).setStrokeStyle(6, 0xbfe0ff);
         const bits = Array.from({ length: 8 }, (_, k) => {
           const a = (k / 8) * Math.PI * 2;
           return this.add.rectangle(tx + Math.cos(a) * 90, y + Math.sin(a) * 90, 6, 6, 0x8fd0ff).setDepth(depth);
@@ -971,13 +1026,13 @@ export class BattleScene extends Phaser.Scene {
         return;
       }
       case 'hollow_purple': {
-        const ball = this.add.circle(sx, y - 20, 40, 0x9a30ff).setDepth(depth).setStrokeStyle(10, 0xe9b8ff);
-        const core = this.add.circle(sx, y - 20, 18, 0xffffff).setDepth(depth);
+        const ball = this.add.circle(sx, y - 20, 56, 0x9a30ff).setDepth(depth + 1).setStrokeStyle(12, 0xe9b8ff);
+        const core = this.add.circle(sx, y - 20, 26, 0xffffff).setDepth(depth + 1);
         await tweenPromise(this, { targets: [ball, core], scale: 1.6, duration: 300 });
-        const trail = this.add.rectangle(sx, y - 20, 0, 110, 0x6a2aa8, 0.5).setOrigin(from === 0 ? 0 : 1, 0.5).setDepth(depth - 1);
+        const trail = beam(y - 20, Math.abs(tx + dir * 200 - sx), 160, 0x6a2aa8, 0.5);
         await Promise.all([
           tweenPromise(this, { targets: [ball, core], x: tx + dir * 200, duration: 420, ease: 'Quad.easeIn' }),
-          tweenPromise(this, { targets: trail, width: Math.abs(tx + dir * 200 - sx), duration: 420, ease: 'Quad.easeIn' }),
+          tweenPromise(this, { targets: trail, scaleX: 1, duration: 420, ease: 'Quad.easeIn' }),
         ]);
         this.cameras.main.flash(300, 210, 150, 255);
         this.cameras.main.shake(450, 0.025);
@@ -989,7 +1044,7 @@ export class BattleScene extends Phaser.Scene {
         const g = this.add.graphics().setDepth(depth);
         for (let k = 0; k < 3; k++) {
           g.clear();
-          g.lineStyle(5, 0xe0f4ff);
+          g.lineStyle(10, 0xe0f4ff);
           g.beginPath();
           g.moveTo(sx, y);
           const steps = 8;

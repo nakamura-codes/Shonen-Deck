@@ -22,6 +22,7 @@ import {
   bothReady,
   createBattle,
   moveToFront,
+  toggleKeep,
   playCard,
   resolveTurn,
   setReady,
@@ -142,13 +143,15 @@ export class Match {
     this.resolve();
   }
 
-  handle(p: PlayerIndex, msg: { t: 'play'; uid: string } | { t: 'undo' } | { t: 'ready' } | { t: 'moveFirst'; uid: string }) {
+  handle(p: PlayerIndex, msg: { t: 'play'; uid: string } | { t: 'undo' } | { t: 'ready' } | { t: 'moveFirst'; uid: string } | { t: 'keep'; uid: string }) {
     if (this.finished) return;
     const r =
       msg.t === 'play'
         ? playCard(this.state, p, msg.uid)
         : msg.t === 'moveFirst'
           ? moveToFront(this.state, p, msg.uid)
+          : msg.t === 'keep'
+            ? toggleKeep(this.state, p, msg.uid)
         : msg.t === 'undo'
           ? undoLastCard(this.state, p)
           : setReady(this.state, p);

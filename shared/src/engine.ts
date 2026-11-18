@@ -78,6 +78,8 @@ function newFighter(setup: PlayerSetup, cards: CardInstance[]): Fighter {
     sageStrength: 0,
     sageDraw: 0,
     pendingCards: [],
+    keepUid: null,
+    lastKeptUid: null,
   };
 }
 
@@ -247,6 +249,7 @@ export function playCard(state: BattleState, player: PlayerIndex, cardUid: strin
   const [card] = nf.hand.splice(idx, 1);
   nf.ki -= cost;
   const isClone = def.effects.some((e) => e.kind === 'clone');
+  if (nf.keepUid === card.uid) nf.keepUid = null; // jogar a carta tira a trava
   nf.queue.push({ card, doubled: nf.cloneNext && !isClone, paid: cost, powered });
   recomputeQueueFlags(nf);
   return { ok: true, state: next };
@@ -268,6 +271,27 @@ export function undoLastCard(state: BattleState, player: PlayerIndex): ActionRes
 }
 
 /** Leitura de Poder: coloca uma carta da sua jogada como a primeira a resolver. */
+/**
+ * Trava (ou destrava) uma carta da mão: ela não é descartada no fim do turno.
+ * Uma por turno; a carta que ficou travada no turno anterior não pode ser travada de novo.
+ */
+export function toggleKeep(state: BattleState, player: PlayerIndex, cardUid: string): ActionResult {
+  if (state.phase !== 'planning') return { ok: false, error: 'A partida não está na fase de escolha.' };
+  const f = state.fighters[player];
+  if (f.ready) return { ok: false, error: 'Você já confirmou este turno.' };
+  const card = f.hand.find((c) => c.uid === cardUid);
+  if (!card) return { ok: false, error: 'Essa carta não está na sua mão.' };
+  if (f.keepUid !== cardUid) {
+    if (cardUid === f.lastKeptUid) return { ok: false, error: 'Essa carta já ficou travada no turno passado.' };
+    const def = getCard(card.id);
+    if (def.ethereal || def.retain) return { ok: false, error: 'Essa carta não pode ser travada.' };
+  }
+  const next = clone(state);
+  const nf = next.fighters[player];
+  nf.keepUid = nf.keepUid === cardUid ? null : cardUid;
+  return { ok: true, state: next };
+}
+
 export function moveToFront(state: BattleState, player: PlayerIndex, cardUid: string): ActionResult {
   if (state.phase !== 'planning') return { ok: false, error: 'A partida não está na fase de escolha.' };
   const f = state.fighters[player];
@@ -574,10 +598,12 @@ export function resolveTurn(state: BattleState): { state: BattleState; events: B
     const kept: CardInstance[] = [];
     for (const c of f.hand) {
       const d = getCard(c.id);
-      if (d.retain) kept.push(c);
+      if (d.retain || c.uid === f.keepUid) kept.push(c);
       else (d.ethereal ? f.exhausted : f.discard).push(c);
     }
     f.hand = kept;
+    f.lastKeptUid = f.keepUid;
+    f.keepUid = null;
     f.queue = [];
     if (f.decayWeak) f.weak = Math.max(0, f.weak - 1);
     if (f.decayVulnerable) f.vulnerable = Math.max(0, f.vulnerable - 1);
@@ -641,6 +667,8 @@ export function viewFor(state: BattleState, player: PlayerIndex): BattleView {
       revealing: me.revealing,
       comboLock: hasComboLock(me),
       canReorder: canReorder(me),
+      keepUid: me.keepUid,
+      lastKeptUid: me.lastKeptUid,
     },
     // O oponente não fica sabendo quantas cartas você escolheu (só com Sharingan).
     opponent: { ...publicView(opp), queueCount: me.revealing ? opp.queue.length : 0, queue: me.revealing ? opp.queue : null },
