@@ -1,42 +1,114 @@
 // Gerado por tools/process-menus.ts — não edite à mão.
-// Áreas do painel de login, em pixels da tela (1280×720).
-export const LOGIN = {
-  "title": {
-    "x": 438,
-    "y": 91,
-    "w": 406,
-    "h": 53
-  },
-  "user": {
-    "x": 473,
-    "y": 269,
-    "w": 336,
-    "h": 39
-  },
-  "pass": {
-    "x": 473,
-    "y": 348,
-    "w": 336,
-    "h": 39
-  },
-  "enter": {
-    "x": 490,
-    "y": 464,
-    "w": 302,
-    "h": 42
-  },
-  "small": [
-    {
-      "x": 445,
-      "y": 560,
-      "w": 152,
-      "h": 34
-    },
-    {
-      "x": 686,
-      "y": 560,
-      "w": 151,
-      "h": 34
-    }
+// Camadas de cada tela: [textura, x, y, w, h] na tela do jogo (1280×720), na ordem de desenho.
+export const MENU_KEYS = ["botoes_botao_login_desativado","botoes_botao_login_hover","botoes_botao_login_normal","botoes_botao_login_pressionado","botoes_botao_principal_desativado","botoes_botao_principal_hover","botoes_botao_principal_normal","botoes_botao_principal_pressionado","botoes_botao_secundario_desativado","botoes_botao_secundario_hover","botoes_botao_secundario_normal","botoes_botao_secundario_pressionado","campos_campo_login_foco","campos_campo_login_normal","fundos_fundo_login_2560x1440","fundos_fundo_menu_principal_2560x1440","logo_shonen_deck_transparente","molduras_contador_gemas","molduras_contador_moedas","molduras_etiqueta_secao","molduras_moldura_titulo","molduras_painel_login","molduras_painel_menu_principal_opcional","molduras_painel_perfil"] as const;
+export const SCREENS = {
+  "menu_principal": [
+    [
+      "molduras_painel_perfil",
+      30,
+      26,
+      315,
+      101.5
+    ],
+    [
+      "molduras_contador_moedas",
+      866,
+      26,
+      197.5,
+      45
+    ],
+    [
+      "molduras_contador_gemas",
+      1075,
+      26,
+      197.5,
+      45
+    ],
+    [
+      "logo_shonen_deck_transparente",
+      385,
+      62.5,
+      520,
+      267.5
+    ],
+    [
+      "botoes_botao_principal_normal",
+      415,
+      327.5,
+      450,
+      85
+    ],
+    [
+      "botoes_botao_secundario_normal",
+      432.5,
+      424,
+      415,
+      70
+    ],
+    [
+      "botoes_botao_secundario_normal",
+      432.5,
+      500,
+      415,
+      70
+    ],
+    [
+      "botoes_botao_secundario_normal",
+      432.5,
+      576,
+      415,
+      70
+    ]
+  ],
+  "login": [
+    [
+      "logo_shonen_deck_transparente",
+      427.5,
+      15,
+      425,
+      222.5
+    ],
+    [
+      "molduras_painel_login",
+      325,
+      250,
+      630,
+      342.5
+    ],
+    [
+      "campos_campo_login_normal",
+      390,
+      330,
+      500,
+      65
+    ],
+    [
+      "campos_campo_login_normal",
+      390,
+      405,
+      500,
+      65
+    ],
+    [
+      "botoes_botao_login_normal",
+      380,
+      492.5,
+      520,
+      86
+    ],
+    [
+      "botoes_botao_secundario_normal",
+      213,
+      606,
+      415,
+      70
+    ],
+    [
+      "botoes_botao_secundario_normal",
+      652,
+      606,
+      415,
+      70
+    ]
   ]
 } as const;

@@ -1,0 +1,216 @@
+{
+  "base_resolucao": [
+    2560,
+    1440
+  ],
+  "assets_dimensoes": {
+    "botoes/botao_principal_normal.png": [
+      900,
+      172
+    ],
+    "botoes/botao_secundario_normal.png": [
+      832,
+      140
+    ],
+    "botoes/botao_login_normal.png": [
+      1040,
+      172
+    ],
+    "botoes/botao_principal_hover.png": [
+      900,
+      172
+    ],
+    "botoes/botao_secundario_hover.png": [
+      832,
+      140
+    ],
+    "botoes/botao_login_hover.png": [
+      1040,
+      172
+    ],
+    "botoes/botao_principal_pressionado.png": [
+      900,
+      172
+    ],
+    "botoes/botao_secundario_pressionado.png": [
+      832,
+      140
+    ],
+    "botoes/botao_login_pressionado.png": [
+      1040,
+      172
+    ],
+    "botoes/botao_principal_desativado.png": [
+      900,
+      172
+    ],
+    "botoes/botao_secundario_desativado.png": [
+      832,
+      140
+    ],
+    "botoes/botao_login_desativado.png": [
+      1040,
+      172
+    ],
+    "molduras/painel_login.png": [
+      1260,
+      688
+    ],
+    "molduras/painel_menu_principal_opcional.png": [
+      1160,
+      960
+    ],
+    "molduras/moldura_titulo.png": [
+      1072,
+      216
+    ],
+    "molduras/painel_perfil.png": [
+      632,
+      204
+    ],
+    "molduras/contador_moedas.png": [
+      396,
+      92
+    ],
+    "molduras/contador_gemas.png": [
+      396,
+      92
+    ],
+    "molduras/etiqueta_secao.png": [
+      800,
+      92
+    ],
+    "campos/campo_login_normal.png": [
+      1000,
+      132
+    ],
+    "campos/campo_login_foco.png": [
+      1000,
+      132
+    ]
+  },
+  "telas": {
+    "menu_principal": {
+      "resolucao": [
+        2560,
+        1440
+      ],
+      "camadas": [
+        [
+          "molduras/painel_perfil.png",
+          60,
+          52,
+          630,
+          203
+        ],
+        [
+          "molduras/contador_moedas.png",
+          1732,
+          52,
+          395,
+          90
+        ],
+        [
+          "molduras/contador_gemas.png",
+          2150,
+          52,
+          395,
+          90
+        ],
+        [
+          "logo/shonen_deck_transparente.png",
+          770,
+          125,
+          1040,
+          535
+        ],
+        [
+          "botoes/botao_principal_normal.png",
+          830,
+          655,
+          900,
+          170
+        ],
+        [
+          "botoes/botao_secundario_normal.png",
+          865,
+          848,
+          830,
+          140
+        ],
+        [
+          "botoes/botao_secundario_normal.png",
+          865,
+          1000,
+          830,
+          140
+        ],
+        [
+          "botoes/botao_secundario_normal.png",
+          865,
+          1152,
+          830,
+          140
+        ]
+      ]
+    },
+    "login": {
+      "resolucao": [
+        2560,
+        1440
+      ],
+      "camadas": [
+        [
+          "logo/shonen_deck_transparente.png",
+          855,
+          30,
+          850,
+          445
+        ],
+        [
+          "molduras/painel_login.png",
+          650,
+          500,
+          1260,
+          685
+        ],
+        [
+          "campos/campo_login_normal.png",
+          780,
+          660,
+          1000,
+          130
+        ],
+        [
+          "campos/campo_login_normal.png",
+          780,
+          810,
+          1000,
+          130
+        ],
+        [
+          "botoes/botao_login_normal.png",
+          760,
+          985,
+          1040,
+          172
+        ],
+        [
+          "botoes/botao_secundario_normal.png",
+          426,
+          1212,
+          830,
+          140
+        ],
+        [
+          "botoes/botao_secundario_normal.png",
+          1304,
+          1212,
+          830,
+          140
+        ]
+      ]
+    }
+  },
+  "observacoes": "PNGs sem textos; transparência fora dos componentes. Campos com preenchimento escuro para receber HTML/input acima. Use nearest-neighbor para redimensionar. Botões possuem interior colorido opaco e fundo externo transparente."
+}

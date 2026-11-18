@@ -2,13 +2,17 @@ import Phaser from 'phaser';
 import { auth } from '../session.ts';
 import { sfx } from '../sfx.ts';
 import { txt } from '../ui.ts';
-import { LOGIN } from '../menu.generated.ts';
+import { SCREENS } from '../menu.generated.ts';
+import { menuButton, placeImage, type Box } from '../menuUi.ts';
 
-type R = { x: number; y: number; w: number; h: number };
+const L = SCREENS.login;
+const find = (k: string, n = 0) => L.filter((b) => b[0] === k)[n] as Box;
 
 /** Tela de login: nome + senha, criar conta ou entrar como convidado. */
 export class LoginScene extends Phaser.Scene {
   private errorText!: Phaser.GameObjects.Text;
+  private userEl!: HTMLInputElement;
+  private passEl!: HTMLInputElement;
   private busy = false;
 
   constructor() {
@@ -17,67 +21,47 @@ export class LoginScene extends Phaser.Scene {
 
   create() {
     this.busy = false;
-    if (this.textures.exists('login_bg')) this.add.image(0, 0, 'login_bg').setOrigin(0).setDisplaySize(1280, 720);
-    else this.cameras.main.setBackgroundColor('#2a6fd0');
+    this.add.image(0, 0, 'fundos_fundo_login_2560x1440').setOrigin(0).setDisplaySize(1280, 720);
+    const logo = placeImage(this, find('logo_shonen_deck_transparente'));
+    this.tweens.add({ targets: logo, y: logo.y + 6, yoyo: true, repeat: -1, duration: 1800, ease: 'Sine.easeInOut' });
+    const panel = find('molduras_painel_login');
+    placeImage(this, panel);
 
-    // Cores dentro das áreas vazadas do painel (desenhadas por baixo dele).
-    const g = this.add.graphics();
-    const fillR = (r: R, color: number) => g.fillStyle(color).fillRect(r.x - 2, r.y - 2, r.w + 4, r.h + 4);
-    fillR(LOGIN.title, 0x1b2438);
-    fillR(LOGIN.user, 0x111a2e);
-    fillR(LOGIN.pass, 0x111a2e);
-    fillR(LOGIN.enter, 0x2f6fb0);
-    LOGIN.small.forEach((r) => fillR(r, 0x3a4a66));
-    if (this.textures.exists('login_painel')) this.add.image(0, 0, 'login_painel').setOrigin(0).setDisplaySize(1280, 720);
+    this.userEl = this.field(find('campos_campo_login_normal', 0), 'Nome de jogador', 'text');
+    this.passEl = this.field(find('campos_campo_login_normal', 1), 'Senha', 'password');
 
-    const center = (r: R) => ({ x: r.x + r.w / 2, y: r.y + r.h / 2 });
-    const t = center(LOGIN.title);
-    txt(this, t.x, t.y, 'Shonen Deck', 26, '#ffffff', { fontStyle: 'bold', stroke: '#0d0a14', strokeThickness: 5 });
-
-    const field = (r: R, placeholder: string, type: string) => {
-      const el = document.createElement('input');
-      el.className = 'field-input';
-      el.type = type;
-      el.placeholder = placeholder;
-      el.maxLength = type === 'password' ? 64 : 16;
-      el.style.width = `${r.w - 24}px`;
-      el.style.height = `${r.h - 8}px`;
-      const c = center(r);
-      this.add.dom(c.x, c.y, el).setOrigin(0.5);
-      el.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') void this.submit(false);
-      });
-      return el;
-    };
-    this.userEl = field(LOGIN.user, 'Nome de jogador', 'text');
-    this.passEl = field(LOGIN.pass, 'Senha', 'password');
-
-    this.areaButton(LOGIN.enter, 'Entrar', 20, () => this.submit(false));
-    this.areaButton(LOGIN.small[0], 'Criar conta', 14, () => this.submit(true));
-    this.areaButton(LOGIN.small[1], 'Convidado', 14, () => {
+    menuButton(this, 'botoes_botao_login', find('botoes_botao_login_normal'), 'Entrar', () => this.submit(false), 24);
+    menuButton(this, 'botoes_botao_secundario', find('botoes_botao_secundario_normal', 0), 'Criar conta', () => this.submit(true), 20);
+    menuButton(this, 'botoes_botao_secundario', find('botoes_botao_secundario_normal', 1), 'Entrar como convidado', () => {
       auth.guest();
       this.scene.start('MainMenu');
-    });
+    }, 20);
 
-    this.errorText = txt(this, 640, (LOGIN.enter.y + LOGIN.enter.h + LOGIN.small[0].y) / 2, '', 13, '#ffb0b0', { stroke: '#0d0a14', strokeThickness: 3 });
-    txt(this, 640, 700, 'Por enquanto as contas ficam salvas só neste navegador.', 12, '#ffffff', { stroke: '#0d0a14', strokeThickness: 3 });
+    // Mensagens de erro no topo do painel, acima dos campos.
+    const [, , py] = panel;
+    this.errorText = txt(this, 640, py + 52, '', 15, '#ffb0b0', { stroke: '#0d0a14', strokeThickness: 4 });
+    txt(this, 640, 706, 'Por enquanto as contas ficam salvas só neste navegador.', 12, '#ffffff', { stroke: '#0d0a14', strokeThickness: 3 });
     setTimeout(() => this.userEl.focus(), 50);
   }
 
-  private userEl!: HTMLInputElement;
-  private passEl!: HTMLInputElement;
-
-  /** Botão invisível sobre uma área do painel, com o texto e um brilho ao passar o mouse. */
-  private areaButton(r: R, label: string, size: number, onClick: () => void) {
-    const glow = this.add.rectangle(r.x + r.w / 2, r.y + r.h / 2, r.w, r.h, 0xffffff, 0);
-    txt(this, r.x + r.w / 2, r.y + r.h / 2 - 1, label, size, '#ffffff', { fontStyle: 'bold', stroke: '#0d0a14', strokeThickness: 4 });
-    const z = this.add.zone(r.x + r.w / 2, r.y + r.h / 2, r.w, r.h).setInteractive({ useHandCursor: true });
-    z.on('pointerover', () => glow.setFillStyle(0xffffff, 0.12));
-    z.on('pointerout', () => glow.setFillStyle(0xffffff, 0));
-    z.on('pointerdown', () => {
-      sfx('click');
-      onClick();
+  /** Campo de texto sobre a arte do campo (troca para a versão "foco" ao digitar). */
+  private field(box: Box, placeholder: string, type: string) {
+    const [, x, y, w, h] = box;
+    const bg = placeImage(this, box);
+    const el = document.createElement('input');
+    el.className = 'field-input';
+    el.type = type;
+    el.placeholder = placeholder;
+    el.maxLength = type === 'password' ? 64 : 16;
+    el.style.width = `${w - 70}px`;
+    el.style.height = `${h - 22}px`;
+    this.add.dom(x + w / 2, y + h / 2, el).setOrigin(0.5);
+    el.addEventListener('focus', () => bg.setTexture('campos_campo_login_foco').setDisplaySize(w, h));
+    el.addEventListener('blur', () => bg.setTexture('campos_campo_login_normal').setDisplaySize(w, h));
+    el.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') void this.submit(false);
     });
+    return el;
   }
 
   private async submit(create: boolean) {

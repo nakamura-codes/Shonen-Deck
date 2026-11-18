@@ -1,0 +1,12 @@
+SHONEN DECK — ASSETS DE MENU SEPARADOS
+
+FUNDOS: cenários limpos, 2560x1440.
+MOLDURAS: painel_login, painel opcional do menu principal, moldura_titulo, perfil, contadores e etiqueta.
+CAMPOS: entrada de login normal e com foco, sem texto.
+BOTOES: botões principal, secundário e login nos quatro estados: normal, hover, pressionado, desativado.
+LOGO: Shonen Deck separado em PNG transparente.
+LAYOUTS: overlays completos com transparência externa, para posicionamento rápido.
+PREVIEWS: exemplos de montagem.
+
+Todos os elementos de interface são PNG RGBA com transparência externa real. Não possuem textos/ícones embutidos. As fontes e demais interações devem ser implementadas no jogo.
+Ajuste os elementos com as coordenadas de posicoes_sugeridas.json.

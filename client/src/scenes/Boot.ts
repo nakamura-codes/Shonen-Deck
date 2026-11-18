@@ -3,6 +3,7 @@ import { ARENAS, CARDS, OUTFIT_ITEMS, itemsForSlot } from '@oficina/shared';
 import { auth } from '../session.ts';
 import { txt } from '../ui.ts';
 import { FX } from '../fx.generated.ts';
+import { MENU_KEYS } from '../menu.generated.ts';
 
 export class BootScene extends Phaser.Scene {
   constructor() {
@@ -22,7 +23,7 @@ export class BootScene extends Phaser.Scene {
     this.load.image('card_back', 'assets/cards/frames/back.png');
     for (const [name, f] of Object.entries(FX)) this.load.spritesheet(`fx_${name}`, `assets/fx/${name}.png`, { frameWidth: f.w, frameHeight: f.h });
     for (const k of ['hud', 'btn_normal', 'btn_hover', 'btn_disabled', 'inventario', 'slot_normal', 'slot_selected']) this.load.image(k, `assets/ui/${k}.png`);
-    for (const k of ['menu_bg', 'logo', 'login_bg', 'login_painel', 'botao_principal', 'botao_normal', 'botao_hover', 'botao_pressionado', 'botao_desativado']) this.load.image(k, `assets/menu/${k}.png`);
+    for (const k of MENU_KEYS) this.load.image(k, `assets/menu/${k}.png`);
     for (const a of ARENAS) this.load.image(`arena_${a.id}`, `assets/arenas/${a.id}.png`);
     for (const item of OUTFIT_ITEMS) this.load.image(`item_${item.id}`, `assets/items/${item.id}.png`);
     const heads = ['none', ...itemsForSlot('head').map((i) => i.id)];
