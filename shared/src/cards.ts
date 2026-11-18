@@ -26,7 +26,7 @@ export const CARDS: Record<string, CardDef> = {
     effects: [{ kind: 'damage', amount: 3, times: 4 }],
   },
   gear_second: {
-    id: 'gear_second', name: 'Gear Second', cost: 1, type: 'power', rarity: 'power',
+    id: 'gear_second', name: 'Gear Second', cost: 2, type: 'power', rarity: 'power',
     text: 'Poder: no início de cada turno, +1 Ki e perde 2 HP.',
     effects: [{ kind: 'power', power: 'gearSecond' }],
   },
@@ -83,11 +83,11 @@ export const CARDS: Record<string, CardDef> = {
   },
   haki: {
     id: 'haki', name: 'Busoshoku Haki', cost: 1, type: 'skill', rarity: 'common',
-    text: 'Ganha 8 de Bloqueio e 1 de Força.',
-    effects: [{ kind: 'block', amount: 8 }, { kind: 'strength', amount: 1 }],
+    text: 'Ganha 8 de Bloqueio e 1 de Força neste turno.',
+    effects: [{ kind: 'block', amount: 8 }, { kind: 'strength', amount: 1, temporary: true }],
   },
   red: {
-    id: 'red', name: 'Red', cost: 3, type: 'attack', rarity: 'rare',
+    id: 'red', name: 'Red', cost: 2, type: 'attack', rarity: 'rare',
     text: 'Causa 14 de dano. Com Blue no turno: Hollow Purple.',
     effects: [{ kind: 'damage', amount: 14 }],
   },

@@ -170,7 +170,9 @@ describe('resolução', () => {
     s = play(s, 1, 'haki');
     const { state } = readyAndResolve(s);
     expect(state.fighters[1].block).toBe(0);
-    expect(state.fighters[1].strength).toBe(1);
+    // A Força do Busoshoku Haki dura só o turno.
+    expect(state.fighters[1].strength).toBe(0);
+    expect(state.fighters[1].tempStrength).toBe(0);
   });
 
   it('Chidori ignora o bloqueio', () => {
