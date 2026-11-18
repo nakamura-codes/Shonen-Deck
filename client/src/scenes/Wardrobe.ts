@@ -83,8 +83,8 @@ export class WardrobeScene extends Phaser.Scene {
     txt(this, 221, 519, 'Equipamento atual', 16, '#e4d4f1', { fontStyle: 'bold' });
     txt(this, 815, 115, 'Clique para vestir ou trocar a peça', 15, '#e4d4f1');
 
-    menuButton(this, PRIMARY, ['', 430, 606, 371, 54], 'Procurar oponente', () => this.go(false), 22);
-    menuButton(this, SECONDARY, ['', 816, 606, 384, 54], 'Treinar com bot', () => this.chooseBot(), 22);
+    menuButton(this, PRIMARY, ['', 430, 580, 371, 60], 'Procurar oponente', () => this.go(false), 22);
+    menuButton(this, SECONDARY, ['', 816, 580, 384, 60], 'Treinar com bot', () => this.chooseBot(), 22);
     this.refresh();
 
     const off = session.net.on((msg: ServerMessage) => {
