@@ -36,30 +36,43 @@ async function start() {
   const game = new Phaser.Game({
     type: Phaser.AUTO,
     parent: 'game',
-    // Canvas fixo em Full HD: o FIT do Phaser ajusta somente a apresentação.
+    // Full HD como área segura; EXPAND aumenta a área visível sem distorcer a HUD.
     // A cena, câmera, conexão e estado da partida sobrevivem ao resize.
     width: Math.round(VIEW_W * RENDER_SCALE),
     height: Math.round(VIEW_H * RENDER_SCALE),
     backgroundColor: '#16121f',
     pixelArt: true,
     dom: { createContainer: true },
-    scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
+    scale: { mode: Phaser.Scale.EXPAND, autoCenter: Phaser.Scale.CENTER_BOTH },
     scene: [BootScene, LoginScene, MainMenuScene, WardrobeScene, LobbyScene, BattleScene, GalleryScene],
   });
+  const centerScene = (scene: Phaser.Scene) => {
+    const { width, height } = game.scale.gameSize;
+    const camera = scene.cameras.main;
+    // EXPAND preserva a escala base e acrescenta pixels ao eixo excedente.
+    if (camera && width > 0 && height > 0) {
+      camera.setViewport(0, 0, width, height).setZoom(RENDER_SCALE).centerOn(640, 360);
+    }
+  };
+  const recenter = () => {
+    for (const scene of game.scene.getScenes(true)) centerScene(scene);
+  };
   game.events.once(Phaser.Core.Events.READY, () => {
     for (const scene of game.scene.scenes) {
       scene.sys.events.on(Phaser.Scenes.Events.START, () => {
-        scene.cameras.main.setZoom(RENDER_SCALE).centerOn(640, 360);
+        centerScene(scene);
         setChatVisible(CHAT_SCENES.includes(scene.sys.settings.key));
       });
     }
+    game.scale.on(Phaser.Scale.Events.RESIZE, recenter);
   });
-  // O Scale Manager (FIT) reage a resize sem destruir cenas ou recarregar a página.
+  // EXPAND reage a resize sem destruir cenas ou recarregar a página.
   // Também atualiza o canvas ao entrar/sair de fullscreen pela API do navegador.
   const refreshFullscreen = () => game.scale.refresh();
   document.addEventListener('fullscreenchange', refreshFullscreen);
   game.events.once(Phaser.Core.Events.DESTROY, () => {
     document.removeEventListener('fullscreenchange', refreshFullscreen);
+    game.scale.off(Phaser.Scale.Events.RESIZE, recenter);
   });
 }
 

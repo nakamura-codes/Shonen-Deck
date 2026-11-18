@@ -1,10 +1,9 @@
 import Phaser from 'phaser';
 import { startMenuMusic } from '../music.ts';
 import { OUTFIT_SLOTS, SLOT_LABELS, buildDeck, getItem, itemsForSlot, type BotLevel, type OutfitSlot, type ServerMessage } from '@oficina/shared';
-import { VIEW_H, VIEW_W } from '../render.ts';
 import { session } from '../session.ts';
 import { sfx } from '../sfx.ts';
-import { COLORS, fitText, makeButton, makeCard, makeCharacter, makeItemIcon, makeMiniIcon, txt, fullBackground } from '../ui.ts';
+import { COLORS, fitText, makeButton, makeCard, makeCharacter, makeItemIcon, makeMiniIcon, txt, fullBackground, viewportRect } from '../ui.ts';
 import { menuButton, placeImage } from '../menuUi.ts';
 
 const LABELS: Record<OutfitSlot, string> = { head: 'Acessórios', body: 'Roupas', hand: 'Armas' };
@@ -66,7 +65,7 @@ export class WardrobeScene extends Phaser.Scene {
       ? 'fundo_preparacao'
       : 'fundos_fundo_login_2560x1440';
     fullBackground(this, background, -11);
-    this.add.rectangle(640, 360, VIEW_W + 4, VIEW_H + 4, 0x170d23, 0.22).setDepth(-10);
+    viewportRect(this, 0x170d23, 0.22).setDepth(-10);
 
     panel(this, LEFT.x, LEFT.y, LEFT.w, LEFT.h);
     panel(this, RIGHT.x, RIGHT.y, RIGHT.w, RIGHT.h);
@@ -115,7 +114,7 @@ export class WardrobeScene extends Phaser.Scene {
   private chooseBot() {
     const objs: Phaser.GameObjects.GameObject[] = [];
     const close = () => objs.forEach((o) => o.destroy());
-    const shade = this.add.rectangle(640, 360, VIEW_W + 4, VIEW_H + 4, 0x0d0a14, 0.7).setDepth(200).setInteractive();
+    const shade = viewportRect(this, 0x0d0a14, 0.7).setDepth(200).setInteractive();
     shade.on('pointerdown', close);
     objs.push(shade);
     const g = this.add.graphics().setDepth(201);

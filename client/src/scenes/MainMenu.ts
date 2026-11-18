@@ -1,9 +1,9 @@
 import Phaser from 'phaser';
-import { MARGIN_X, MARGIN_Y, VIEW_H, VIEW_W } from '../render.ts';
+import { MARGIN_X, MARGIN_Y } from '../render.ts';
 import { auth, session } from '../session.ts';
 import { isMuted, sfx, toggleMute } from '../sfx.ts';
 import { isMusicMuted, startMenuMusic, toggleMusic } from '../music.ts';
-import { centerInk, fitText, txt, fullBackground } from '../ui.ts';
+import { centerInk, fitText, txt, fullBackground, viewportRect } from '../ui.ts';
 import { SCREENS } from '../menu.generated.ts';
 import { menuButton, placeImage, shrink, type Box } from '../menuUi.ts';
 
@@ -84,7 +84,7 @@ export class MainMenuScene extends Phaser.Scene {
       off();
       objs.forEach((o) => o.destroy());
     };
-    const shade = this.add.rectangle(640, 360, VIEW_W + 4, VIEW_H + 4, 0x0d0a14, 0.75).setDepth(200).setInteractive();
+    const shade = viewportRect(this, 0x0d0a14, 0.75).setDepth(200).setInteractive();
     shade.on('pointerdown', close);
     const W = 560, H = 600, x0 = 640 - W / 2, y0 = 360 - H / 2;
     const g = this.add.graphics().setDepth(201);

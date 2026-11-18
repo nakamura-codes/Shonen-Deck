@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { figureKey, getCard, getItem, type CardDef, type Outfit } from '@oficina/shared';
 import { FRAME_LAYOUT, FRAME_SIZE } from './cardFrames.generated.ts';
 import { sfx } from './sfx.ts';
-import { MARGIN_X, MARGIN_Y, RENDER_SCALE, VIEW_H, VIEW_W } from './render.ts';
+import { RENDER_SCALE, VIEW_H, VIEW_W, viewportBounds } from './render.ts';
 import { FX } from './fx.generated.ts';
 
 export const FONT = '"GameFont", monospace';
@@ -442,8 +442,14 @@ export function floatText(scene: Phaser.Scene, x: number, y: number, s: string, 
 export function drawArena(scene: Phaser.Scene) {
   const W = 1280;
   const H = 720;
+  const backdrop = scene.add.graphics().setDepth(-11);
+  onViewportResize(scene, backdrop, () => {
+    const { w, h, mx, my } = viewportBounds(scene.scale);
+    backdrop.clear();
+    backdrop.fillGradientStyle(0x1d2340, 0x1d2340, 0x2a1d3a, 0x2a1d3a).fillRect(-mx - 1, -my - 1, w + 2, h + 2);
+    backdrop.fillStyle(0x2a2440).fillRect(-mx - 1, 430, w + 2, 290 + my + 1);
+  });
   const g = scene.add.graphics().setDepth(-10);
-  g.fillGradientStyle(0x1d2340, 0x1d2340, 0x2a1d3a, 0x2a1d3a).fillRect(-MARGIN_X, -MARGIN_Y, VIEW_W, VIEW_H);
   // Pilares.
   for (const x of [120, 400, 880, 1160]) {
     g.fillStyle(0x161a30).fillRect(x - 40, 60, 80, 400);
@@ -600,43 +606,40 @@ export function makeSlotButton(
   return c;
 }
 
-/**
- * Fundo de tela cheia: a imagem fica no lugar do layout (1280×720) e uma cópia ampliada por trás cobre as
- * bordas extras da tela (quando a interface está em escala menor que 100%).
- */
-export function fullBackground(scene: Phaser.Scene, key: string, depth = -11, framed = false) {
-  const cover = Math.max(VIEW_W / 1280, VIEW_H / 720);
-  if (!framed) return scene.add.image(640, 360, key).setDisplaySize(1280 * cover, 720 * cover).setDepth(depth);
-  // Arte com painéis no lugar certo: fica exata em 1280×720 e as bordas extras recebem a própria borda
-  // da arte espelhada (continua o céu/fundo sem repetir os painéis).
-  const tex = scene.textures.get(key);
-  const src = tex.getSourceImage() as { width: number; height: number };
-  const kx = src.width / 1280, ky = src.height / 720;
-  const edge = (name: string, x: number, y: number, w: number, h: number) => {
-    const fname = `${name}_${Math.round(w)}x${Math.round(h)}`;
-    if (!tex.has(fname)) tex.add(fname, 0, x * kx, y * ky, Math.max(1, w * kx), Math.max(1, h * ky));
-    return fname;
-  };
-  if (MARGIN_X > 0) {
-    const w = Math.min(MARGIN_X + 1, 640);
-    scene.add.image(0, 0, key, edge('edgeL', 0, 0, w, 720)).setOrigin(1, 0).setDisplaySize(w, 720).setFlipX(true).setDepth(depth - 1);
-    scene.add.image(1280, 0, key, edge('edgeR', 1280 - w, 0, w, 720)).setOrigin(0, 0).setDisplaySize(w, 720).setFlipX(true).setDepth(depth - 1);
-  }
-  if (MARGIN_Y > 0) {
-    // Em cima e embaixo: a cor do canto da arte (telas mais altas que 16:9 são raras).
-    const at = (x: number, y: number) => {
-      const c = scene.textures.getPixel(Math.round(x * kx), Math.round(y * ky), key, '__BASE');
-      return c ? c.color : 0x16121f;
-    };
-    const g = scene.add.graphics().setDepth(depth - 1);
-    g.fillStyle(at(4, 4)).fillRect(-MARGIN_X - 2, -MARGIN_Y - 2, VIEW_W + 4, MARGIN_Y + 3);
-    g.fillStyle(at(4, 716)).fillRect(-MARGIN_X - 2, 719, VIEW_W + 4, MARGIN_Y + 3);
-  }
-  // '__BASE' = a imagem inteira (sem isso o Phaser usaria o primeiro recorte criado acima).
-  return scene.add.image(0, 0, key, '__BASE').setOrigin(0).setDisplaySize(1280, 720).setDepth(depth);
+/** Atualiza objetos responsivos enquanto existirem, sem acumular listeners ao trocar de cena. */
+export function onViewportResize(scene: Phaser.Scene, owner: Phaser.GameObjects.GameObject, update: () => void) {
+  update();
+  const scale = scene.scale;
+  scale.on(Phaser.Scale.Events.RESIZE, update);
+  owner.once(Phaser.GameObjects.Events.DESTROY, () => scale.off(Phaser.Scale.Events.RESIZE, update));
 }
 
-/** Retângulo escurecido cobrindo a tela inteira (inclusive as bordas extras). */
+/** Fundo proporcional: preenche a janela inteira, cortando apenas a arte excedente. */
+export function fullBackground(scene: Phaser.Scene, key: string, depth = -11, framed = false) {
+  const image = scene.add.image(640, 360, key).setDepth(depth);
+  if (framed) {
+    // Painéis embutidos ficam alinhados; uma cópia de fundo cobre a área extra.
+    fullBackground(scene, key, depth - 1);
+    return image.setDisplaySize(VIEW_W, VIEW_H);
+  }
+  onViewportResize(scene, image, () => {
+    const { w, h } = viewportBounds(scene.scale);
+    const f = Math.max((w + 2) / image.width, (h + 2) / image.height);
+    image.setDisplaySize(image.width * f, image.height * f);
+  });
+  return image;
+}
+
+/** Retângulo de cor que acompanha toda a área visível. */
+export function viewportRect(scene: Phaser.Scene, color: number, alpha = 1) {
+  const rect = scene.add.rectangle(640, 360, VIEW_W + 4, VIEW_H + 4, color, alpha);
+  onViewportResize(scene, rect, () => {
+    const { w, h } = viewportBounds(scene.scale);
+    rect.setSize(w + 4, h + 4);
+  });
+  return rect;
+}
+
 export function fullShade(scene: Phaser.Scene, alpha: number) {
-  return scene.add.rectangle(640, 360, VIEW_W + 4, VIEW_H + 4, 0x0d0a14, alpha);
+  return viewportRect(scene, 0x0d0a14, alpha);
 }
