@@ -28,6 +28,8 @@ export const RULES = {
   hollowStrength: 3,
   /** HP que Hollowficação e Gear Second custam em cada turno ativo. */
   powerHpCost: 5,
+  /** HP que o Gear Second custa em cada turno ativo. */
+  gearSecondHpCost: 4,
 } as const;
 
 export interface PlayerSetup {
@@ -99,7 +101,7 @@ function powerTick(state: BattleState, p: PlayerIndex, power: PowerId, events: B
   const f = state.fighters[p];
   if (power === 'gearSecond') {
     f.ki = Math.min(f.kiCap, f.ki + 1);
-    loseHp(f, p, RULES.powerHpCost, 'Gear Second', events);
+    loseHp(f, p, RULES.gearSecondHpCost, 'Gear Second', events);
   } else if (power === 'hollow') {
     loseHp(f, p, RULES.powerHpCost, 'Hollowficação', events);
   } else if (power === 'domain') {

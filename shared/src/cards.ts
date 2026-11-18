@@ -27,7 +27,7 @@ export const CARDS: Record<string, CardDef> = {
   },
   gear_second: {
     id: 'gear_second', name: 'Gear Second', cost: 2, type: 'power', rarity: 'power',
-    text: 'Poder (2 turnos): +1 Ki e perde 5 HP em cada um desses turnos.',
+    text: 'Poder (2 turnos): +1 Ki e perde 4 HP em cada um desses turnos.',
     effects: [{ kind: 'power', power: 'gearSecond', turns: 2 }],
   },
   kamehameha: {

@@ -303,17 +303,17 @@ describe('poderes', () => {
     expect(r.state.fighters[1].hp).toBe(60 - 9);
   });
 
-  it('Gear Second dura 2 turnos: +1 Ki e perde 5 HP em cada um', () => {
+  it('Gear Second dura 2 turnos: +1 Ki e perde 4 HP em cada um', () => {
     let s = newBattle();
     giveHand(s, 0, ['gear_second']);
     s = play(s, 0, 'gear_second');
     let r = readyAndResolve(s);
-    // 5 HP ao ser jogado + 5 no início do turno seguinte; Ki limitado a 5.
+    // 4 HP ao ser jogado + 4 no início do turno seguinte; Ki limitado a 5.
     expect(r.state.fighters[0].ki).toBe(5);
-    expect(r.state.fighters[0].hp).toBe(50);
+    expect(r.state.fighters[0].hp).toBe(52);
     r = readyAndResolve(r.state);
     expect(r.state.fighters[0].powers).toEqual([]);
-    expect(r.state.fighters[0].hp).toBe(50);
+    expect(r.state.fighters[0].hp).toBe(52);
   });
 
   it('Domain Expansion aplica Fraco no oponente a cada turno', () => {
