@@ -664,7 +664,7 @@ describe('Máscara Hollow', () => {
     expect(powers(r.state)).toEqual([0, 0]);
   });
 
-  it('Sonído dá 4 de Bloqueio e +3 só no próximo ataque, em todos os golpes dele', () => {
+  it('Sonído dá 3 de Bloqueio e +3 só no próximo ataque, em todos os golpes dele', () => {
     let s = newBattle();
     giveHand(s, 0, ['sonido', 'ki_blast', 'golpe_basico']);
     s = play(s, 0, 'sonido');
@@ -675,8 +675,8 @@ describe('Máscara Hollow', () => {
     const { state } = readyAndResolve(s);
     // Ki Blast: (3+3)×2 = 12; Golpe Básico: 6 sem bônus.
     expect(state.fighters[1].hp).toBe(60 - 12 - 6);
-    // Bloqueio de 4 absorve parte do golpe de 6.
-    expect(state.fighters[0].hp).toBe(58);
+    // Bloqueio de 3 absorve parte do golpe de 6.
+    expect(state.fighters[0].hp).toBe(57);
   });
 });
 
