@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { sfx } from './sfx.ts';
-import { txt } from './ui.ts';
+import { fitText, txt } from './ui.ts';
 
 export type Box = readonly [string, number, number, number, number];
 
@@ -23,7 +23,7 @@ export function menuButton(
 ) {
   const [, x, y, w, h] = box;
   const img = scene.add.image(x + w / 2, y + h / 2, `${base}_normal`).setDisplaySize(w, h);
-  const t = txt(scene, x + w / 2, y + h / 2 - 3, label, size, '#ffffff', { fontStyle: 'bold', stroke: '#0d0a14', strokeThickness: 5 });
+  const t = fitText(txt(scene, x + w / 2, y + h / 2 - 3, label, size, '#ffffff', { fontStyle: 'bold', stroke: '#0d0a14', strokeThickness: 5 }), w * 0.82);
   let enabled = true;
   const set = (state: string) => img.setTexture(`${base}_${state}`).setDisplaySize(w, h);
   img.setInteractive({ useHandCursor: true, pixelPerfect: true, alphaTolerance: 10 });

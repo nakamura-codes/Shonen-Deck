@@ -30,12 +30,12 @@ export class LoginScene extends Phaser.Scene {
     this.userEl = this.field(find('campos_campo_login_normal', 0), 'Nome de jogador', 'text');
     this.passEl = this.field(find('campos_campo_login_normal', 1), 'Senha', 'password');
 
-    menuButton(this, 'botoes_botao_login', find('botoes_botao_login_normal'), 'Entrar', () => this.submit(false), 24);
-    menuButton(this, 'botoes_botao_secundario', find('botoes_botao_secundario_normal', 0), 'Criar conta', () => this.submit(true), 20);
+    menuButton(this, 'botoes_botao_login', find('botoes_botao_login_normal'), 'Entrar', () => this.submit(false), 32);
+    menuButton(this, 'botoes_botao_secundario', find('botoes_botao_secundario_normal', 0), 'Criar conta', () => this.submit(true), 24);
     menuButton(this, 'botoes_botao_secundario', find('botoes_botao_secundario_normal', 1), 'Entrar como convidado', () => {
       auth.guest();
       this.scene.start('MainMenu');
-    }, 20);
+    }, 24);
 
     // Mensagens de erro no topo do painel, acima dos campos.
     const [, , py] = panel;

@@ -42,7 +42,7 @@ export class WardrobeScene extends Phaser.Scene {
     }
 
     const t = INV.title;
-    txt(this, t.x + t.w / 2, t.y + t.h / 2, 'Inventário', 32, '#ffffff', { fontStyle: 'bold', stroke: '#0d0a14', strokeThickness: 6 });
+    txt(this, t.x + t.w / 2, t.y + t.h / 2, 'Inventário', 36, '#ffffff', { fontStyle: 'bold', stroke: '#0d0a14', strokeThickness: 6 });
 
     // Nome editável na plaquinha do painel do personagem.
     const n = INV.name;

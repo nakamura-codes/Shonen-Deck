@@ -26,14 +26,14 @@ export class MainMenuScene extends Phaser.Scene {
     const logo = placeImage(this, find('logo_shonen_deck_transparente'));
     this.tweens.add({ targets: logo, y: logo.y + 6, yoyo: true, repeat: -1, duration: 1800, ease: 'Sine.easeInOut' });
 
-    menuButton(this, 'botoes_botao_principal', find('botoes_botao_principal_normal'), 'Jogar', () => this.scene.start('Wardrobe'), 28);
-    menuButton(this, 'botoes_botao_secundario', find('botoes_botao_secundario_normal', 0), 'Coleção de cartas', () => this.scene.start('Gallery'), 21);
+    menuButton(this, 'botoes_botao_principal', find('botoes_botao_principal_normal'), 'Jogar', () => this.scene.start('Wardrobe'), 32);
+    menuButton(this, 'botoes_botao_secundario', find('botoes_botao_secundario_normal', 0), 'Coleção de cartas', () => this.scene.start('Gallery'), 24);
     const som = menuButton(this, 'botoes_botao_secundario', find('botoes_botao_secundario_normal', 1), isMuted() ? 'Som: desligado' : 'Som: ligado', () => {
       som.setLabel(toggleMute() ? 'Som: desligado' : 'Som: ligado');
-    }, 21);
+    }, 24);
     menuButton(this, 'botoes_botao_secundario', find('botoes_botao_secundario_normal', 2), 'Sair da conta', () => {
       auth.logout();
       this.scene.start('Login');
-    }, 21);
+    }, 24);
   }
 }
