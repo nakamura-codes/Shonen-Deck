@@ -1,5 +1,4 @@
 import Phaser from 'phaser';
-import { WEAPONS, WEAPON_RES } from './weapons.generated.ts';
 import { figureKey, getCard, getItem, type CardDef, type Outfit } from '@oficina/shared';
 import { FRAME_LAYOUT, FRAME_SIZE } from './cardFrames.generated.ts';
 import { sfx } from './sfx.ts';
@@ -341,48 +340,22 @@ const FIG_FEET = 78;
 export function makeCharacter(scene: Phaser.Scene, outfit: Outfit, scale: number, flip = false) {
   const c = scene.add.container(0, 0);
   c.add(scene.add.ellipse(0, -scale, 34 * scale, 6 * scale, 0x000000, 0.35));
-  const key = scene.textures.exists(figureKey(outfit)) ? figureKey(outfit) : 'fig_none_none';
+  const armed = figureKey(outfit);
+  const plain = figureKey({ ...outfit, hand: null });
+  const key = scene.textures.exists(armed) ? armed : scene.textures.exists(plain) ? plain : 'fig_none_none';
   const layer = (k: string) =>
     c.add(
       scene.add
         .image(0, 0, k)
-        .setOrigin(0.5, FIG_FEET / FIG_H)
+        .setOrigin(0.5, FIG_FEET / (scene.textures.get(k).getSourceImage().height || FIG_H))
         .setScale(scale)
         .setFlipX(flip),
     );
   layer(key);
-  // Arma na mão da frente (slot Mão). Fica num container próprio para espelhar junto com o boneco.
-  const weapon = outfit.hand ? WEAPONS[outfit.hand] : undefined;
-  if (weapon && scene.textures.exists(`weapon_${outfit.hand}`)) {
-    const dir = flip ? -1 : 1;
-    const wc = scene.add.container(HAND.x * scale * dir, HAND.y * scale).setScale(dir, 1);
-    wc.add(
-      scene.add
-        .image(0, 0, `weapon_${outfit.hand}`)
-        .setOrigin(weapon.gripX / weapon.w, weapon.gripY / weapon.h)
-        .setScale(scale / WEAPON_RES)
-        .setRotation(WEAPON_ANGLE[outfit.hand!] ?? Math.PI / 2),
-    );
-    c.add(wc);
-  }
   c.setSize(FIG_W * scale, FIG_H * scale);
   return c;
 }
 
-/** Mão da frente do boneco, em pixels da figura, a partir dos pés (centro embaixo). */
-const HAND = { x: 14, y: -23 };
-/**
- * Giro de cada arma a partir do desenho original (apontando para cima e para a direita).
- * 90° = para frente e para baixo; 180° = para trás e para baixo (kunai em empunhadura invertida).
- * Só múltiplos de 90° para não deformar o pixel art.
- */
-const WEAPON_ANGLE: Record<string, number> = {
-  espada_trunks: Math.PI / 2,
-  zanpakuto: Math.PI / 2,
-  cutelo_nanami: Math.PI / 2,
-  pistola_pirata: Math.PI / 2,
-  kunai_ninja: Math.PI,
-};
 
 /** Ícone de uma peça de roupa, cabendo numa caixa de tamanho máximo. */
 export function makeItemIcon(scene: Phaser.Scene, itemId: string, maxW: number, maxH: number) {

@@ -64,5 +64,7 @@ export function outfitCards(outfit: Outfit): string[] {
 
 /** Nome do arquivo da figura do personagem para essa combinação de roupas. */
 export function figureKey(outfit: Outfit): string {
-  return `fig_${outfit.head ?? 'none'}_${outfit.body ?? 'none'}`;
+  const base = `fig_${outfit.head ?? 'none'}_${outfit.body ?? 'none'}`;
+  // Com arma: boneco desenhado já segurando a arma (tools/process-armed.py).
+  return outfit.hand ? `${base}_${outfit.hand}` : base;
 }
