@@ -73,12 +73,31 @@ export class GalleryScene extends Phaser.Scene {
     return Math.max(1, Math.ceil(this.ids.length / COLLECTION.slots.length));
   }
 
+  /** Botão de página: placa dourada maior que a arte do painel, centrada no mesmo ponto, com a seta no meio. */
   private arrow(r: { x: number; y: number; w: number; h: number }, dir: number) {
     const cx = r.x + r.w / 2, cy = r.y + r.h / 2;
-    const tri = this.add.triangle(cx, cy, 0, -7, dir * 11, 0, 0, 7, 0x2a1a08).setOrigin(0.5);
-    const z = this.add.zone(cx, cy, r.w + 10, r.h + 10).setInteractive({ useHandCursor: true });
-    z.on('pointerover', () => tri.setFillStyle(0xffffff));
-    z.on('pointerout', () => tri.setFillStyle(0x2a1a08));
+    const w = 112, h = 46, cut = 12;
+    const g = this.add.graphics().setPosition(cx, cy).setDepth(5);
+    const plate = (k: number) => [
+      new Phaser.Math.Vector2(-w / 2 * k + cut, -h / 2 * k),
+      new Phaser.Math.Vector2(w / 2 * k - cut, -h / 2 * k),
+      new Phaser.Math.Vector2(w / 2 * k, 0),
+      new Phaser.Math.Vector2(w / 2 * k - cut, h / 2 * k),
+      new Phaser.Math.Vector2(-w / 2 * k + cut, h / 2 * k),
+      new Phaser.Math.Vector2(-w / 2 * k, 0),
+    ];
+    const s = 13;
+    const draw = (hover: boolean) => {
+      g.clear();
+      g.fillStyle(0x2a1a08).fillPoints(plate(1.08), true);
+      g.fillStyle(0xc85a14).fillPoints(plate(1), true);
+      g.fillStyle(hover ? 0xffd060 : 0xf0a830).fillPoints(plate(0.84), true);
+      g.fillStyle(hover ? 0xffffff : 0x2a1a08).fillTriangle(-dir * s * 0.75, -s, -dir * s * 0.75, s, dir * s * 0.95, 0);
+    };
+    draw(false);
+    const z = this.add.zone(cx, cy, w, h).setInteractive({ useHandCursor: true }).setDepth(6);
+    z.on('pointerover', () => draw(true));
+    z.on('pointerout', () => draw(false));
     z.on('pointerdown', () => {
       sfx('click');
       this.show(this.page + dir);
@@ -101,22 +120,22 @@ export class GalleryScene extends Phaser.Scene {
     const def = getCard(id);
     const cx = r.x + r.w / 2;
     const c = this.add.container(0, 0);
-    const artH = r.h - 26;
+    // Só a arte, dentro do espaço (sem nome: a carta inteira aparece ao passar o mouse).
+    const pad = 6;
     const art = this.textures.exists(`cardart_${id}`) ? `cardart_${id}` : this.textures.exists(`card_${id}`) ? `card_${id}` : null;
     if (art) {
-      const img = this.add.image(cx, r.y + artH / 2 + 2, art);
-      img.setScale(Math.min((r.w - 10) / img.width, (artH - 4) / img.height));
+      const img = this.add.image(cx, r.y + r.h / 2, art);
+      img.setScale(Math.min((r.w - pad * 2) / img.width, (r.h - pad * 2) / img.height));
       c.add(img);
     }
-    // Faixa do nome, na cor do tipo.
-    c.add(this.add.rectangle(cx, r.y + r.h - 12, r.w, 24, TYPE_COLOR[def.type], 0.92));
-    c.add(fitText(centerInk(txt(this, 0, 0, def.name, 13, '#ffffff', { fontStyle: 'bold', stroke: '#0d0a14', strokeThickness: 3 }), cx, r.y + r.h - 12), r.w - 6));
+    // Linha fina na base com a cor do tipo (ataque/técnica/poder), dentro do espaço.
+    c.add(this.add.rectangle(cx, r.y + r.h - 4, r.w - pad * 2, 4, TYPE_COLOR[def.type]));
     // Custo.
     const k = this.add.graphics();
-    k.fillStyle(COLORS.outline).fillCircle(r.x + 14, r.y + 14, 13);
-    k.fillStyle(COLORS.ki).fillCircle(r.x + 14, r.y + 14, 11);
+    k.fillStyle(COLORS.outline).fillCircle(r.x + 17, r.y + 17, 13);
+    k.fillStyle(COLORS.ki).fillCircle(r.x + 17, r.y + 17, 11);
     c.add(k);
-    c.add(centerInk(txt(this, 0, 0, String(def.cost), 18, '#ffffff', { fontFamily: NUM_FONT, stroke: '#0d0a14', strokeThickness: 3 }), r.x + 14, r.y + 14));
+    c.add(centerInk(txt(this, 0, 0, String(def.cost), 18, '#ffffff', { fontFamily: NUM_FONT, stroke: '#0d0a14', strokeThickness: 3 }), r.x + 17, r.y + 17));
     const hover = this.add.rectangle(cx, r.y + r.h / 2, r.w, r.h, 0xffffff, 0);
     c.add(hover);
     const z = this.add.zone(cx, r.y + r.h / 2, r.w, r.h).setInteractive({ useHandCursor: true });
