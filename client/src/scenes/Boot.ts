@@ -5,7 +5,7 @@ import { txt } from '../ui.ts';
 import { FX } from '../fx.generated.ts';
 import { MENU_KEYS } from '../menu.generated.ts';
 
-const ARMED_FIGURES = false;
+const ARMED_FIGURES = true;
 
 export class BootScene extends Phaser.Scene {
   constructor() {

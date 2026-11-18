@@ -27,8 +27,8 @@ export const CARDS: Record<string, CardDef> = {
   },
   gear_second: {
     id: 'gear_second', name: 'Gear Second', cost: 2, type: 'power', rarity: 'power',
-    text: 'Poder: no início de cada turno, +1 Ki e perde 2 HP.',
-    effects: [{ kind: 'power', power: 'gearSecond' }],
+    text: 'Poder (3 turnos): no início de cada turno, +1 Ki e perde 2 HP.',
+    effects: [{ kind: 'power', power: 'gearSecond', turns: 3 }],
   },
   kamehameha: {
     id: 'kamehameha', name: 'Kamehameha', cost: 1, type: 'attack', rarity: 'rare',
@@ -53,8 +53,8 @@ export const CARDS: Record<string, CardDef> = {
   },
   bankai: {
     id: 'bankai', name: 'Bankai', cost: 3, type: 'power', rarity: 'power',
-    text: 'Poder: seus ataques causam +3 de dano por golpe.',
-    effects: [{ kind: 'power', power: 'bankai' }],
+    text: 'Poder (2 turnos): seus ataques causam +3 de dano por golpe.',
+    effects: [{ kind: 'power', power: 'bankai', turns: 2 }],
   },
   rasengan: {
     id: 'rasengan', name: 'Rasengan', cost: 2, type: 'attack', rarity: 'rare',
@@ -79,7 +79,7 @@ export const CARDS: Record<string, CardDef> = {
   domain_expansion: {
     id: 'domain_expansion', name: 'Domain Expansion', cost: 3, type: 'power', rarity: 'power',
     text: 'Poder: no início de cada turno, o oponente recebe 1 de Fraco.',
-    effects: [{ kind: 'power', power: 'domain' }],
+    effects: [{ kind: 'power', power: 'domain', turns: 3 }],
   },
   haki: {
     id: 'haki', name: 'Busoshoku Haki', cost: 1, type: 'skill', rarity: 'common',
@@ -143,13 +143,13 @@ export const CARDS: Record<string, CardDef> = {
   },
   hollowficacao: {
     id: 'hollowficacao', name: 'Hollowficação', cost: 2, type: 'power', rarity: 'power',
-    text: 'Poder: +2 de Força. No início de cada turno, perde 2 HP.',
-    effects: [{ kind: 'strength', amount: 2 }, { kind: 'power', power: 'hollow' }],
+    text: 'Poder (2 turnos): +2 de Força. Perde 2 HP no início do próximo turno.',
+    effects: [{ kind: 'power', power: 'hollow', turns: 2 }],
   },
   sonido: {
     id: 'sonido', name: 'Sonído', cost: 0, type: 'skill', rarity: 'common',
-    text: 'Ganha 4 de Bloqueio. Seu próximo ataque neste turno causa +3.',
-    effects: [{ kind: 'block', amount: 4 }, { kind: 'nextAttackBonus', amount: 3 }],
+    text: 'Ganha 3 de Bloqueio. Seu próximo ataque neste turno causa +3.',
+    effects: [{ kind: 'block', amount: 3 }, { kind: 'nextAttackBonus', amount: 3 }],
   },
   leitura_de_poder: {
     id: 'leitura_de_poder', name: 'Leitura de Poder', cost: 1, type: 'skill', rarity: 'common',
@@ -187,7 +187,7 @@ export const CARDS: Record<string, CardDef> = {
     effects: [{ kind: 'sage', turns: 2, strength: 1, draw: 1 }],
   },
   shunpo: {
-    id: 'shunpo', name: 'Shunpo', cost: 0, type: 'skill', rarity: 'common',
+    id: 'shunpo', name: 'Shunpo', cost: 1, type: 'skill', rarity: 'common',
     text: 'Ganha 5 de Bloqueio. +1 carta no próximo turno.',
     effects: [{ kind: 'block', amount: 5 }, { kind: 'drawNext', amount: 1 }],
   },

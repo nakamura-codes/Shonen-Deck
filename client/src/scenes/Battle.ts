@@ -304,8 +304,12 @@ export class BattleScene extends Phaser.Scene {
     f.powers.forEach((p, i) => {
       // Do lado de fora da barra (o escudo fica do lado de dentro).
       const dir = side === 0 ? -1 : 1;
-      const icon = makeMiniIcon(this, POWER_CARD[p], 0.42).setPosition(x + dir * (BAR_W / 2 + 22 + i * 30), BAR_Y);
+      const px = x + dir * (BAR_W / 2 + 22 + i * 30);
+      const icon = makeMiniIcon(this, POWER_CARD[p], 0.42).setPosition(px, BAR_Y);
       this.hud.add(icon);
+      // Turnos que ainda faltam (contando o atual).
+      const left = f.powerTurns?.[i];
+      if (left) this.hud.add(txt(this, px + 9, BAR_Y + 10, String(left), 13, '#ffe28a', { fontFamily: NUM_FONT, stroke: '#0d0a14', strokeThickness: 3 }).setDepth(9));
     });
 
     // Golpes carregando (o oponente vê!).
@@ -568,6 +572,10 @@ export class BattleScene extends Phaser.Scene {
           sfx('powerUp');
           playFx(this, 'power-up-aura', CHAR_X[this.side(ev.player)], FEET_Y, { scale: 4 });
           await this.bigShout(this.side(ev.player), getCard(POWER_CARD[ev.power]).name.toUpperCase() + '!', 0xb070ff);
+          break;
+        case 'powerEnd':
+          floatText(this, CHAR_X[this.side(ev.player)], BODY_Y - 120, `${getCard(POWER_CARD[ev.power]).name} acabou`, '#c8b8e8', 20);
+          await wait(this, 500);
           break;
         case 'chargeStart':
           sfx('charge');

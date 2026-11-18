@@ -17,7 +17,8 @@ export type Effect =
   | { kind: 'reveal' }
   | { kind: 'clone' }
   | { kind: 'charge'; turns: number; damage: number; cancelOnDamage?: number }
-  | { kind: 'power'; power: PowerId }
+  /** Poder com duração: fica ativo no turno em que é jogado e em mais `turns - 1` turnos. */
+  | { kind: 'power'; power: PowerId; turns: number }
   /** Desvia da próxima habilidade de dano do oponente neste turno. */
   | { kind: 'evade' }
   /** A próxima habilidade de dano do oponente neste turno volta nele. */
@@ -107,6 +108,8 @@ export interface Fighter {
   weak: number;
   vulnerable: number;
   powers: PowerId[];
+  /** Turnos restantes de cada poder (mesma posição de `powers`), contando o atual. */
+  powerTurns: number[];
   charges: Charge[];
   drawPile: CardInstance[];
   hand: CardInstance[];
@@ -173,6 +176,7 @@ export type BattleEvent =
   | { type: 'status'; player: PlayerIndex; status: 'strength' | 'weak' | 'vulnerable'; amount: number; cardId?: string }
   | { type: 'hpLoss'; player: PlayerIndex; amount: number; reason: string }
   | { type: 'power'; player: PlayerIndex; power: PowerId }
+  | { type: 'powerEnd'; player: PlayerIndex; power: PowerId }
   | { type: 'chargeStart'; player: PlayerIndex; cardId: string; turns: number }
   | { type: 'chargeFire'; player: PlayerIndex; cardId: string }
   | { type: 'chargeCancel'; player: PlayerIndex; cardId: string }
@@ -197,6 +201,8 @@ export interface FighterPublicView {
   weak: number;
   vulnerable: number;
   powers: PowerId[];
+  /** Turnos restantes de cada poder (mesma posição de `powers`), contando o atual. */
+  powerTurns: number[];
   charges: Charge[];
   handCount: number;
   drawCount: number;

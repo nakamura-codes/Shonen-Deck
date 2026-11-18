@@ -626,19 +626,42 @@ describe('Máscara Hollow', () => {
     expect(r.state.fighters[1].hp).toBe(44);
   });
 
-  it('Hollowficação dá +2 de Força e custa 2 HP por turno', () => {
+  it('Hollowficação dura 2 turnos: +2 de Força e perde 2 HP no início do próximo turno', () => {
     let s = newBattle();
     giveHand(s, 0, ['hollowficacao']);
     s = play(s, 0, 'hollowficacao');
     let r = readyAndResolve(s);
-    expect(r.state.fighters[0].strength).toBe(2);
+    expect(r.state.fighters[0].powers).toEqual(['hollow']);
     expect(r.state.fighters[0].hp).toBe(58);
     s = r.state;
     giveHand(s, 0, ['golpe_basico']);
     s = play(s, 0, 'golpe_basico');
     r = readyAndResolve(s);
     expect(r.state.fighters[1].hp).toBe(60 - 8);
-    expect(r.state.fighters[0].hp).toBe(56);
+    // Acabou: não perde mais HP e a Força extra some.
+    expect(r.state.fighters[0].powers).toEqual([]);
+    expect(r.state.fighters[0].hp).toBe(58);
+    s = r.state;
+    giveHand(s, 0, ['golpe_basico']);
+    s = play(s, 0, 'golpe_basico');
+    r = readyAndResolve(s);
+    expect(r.state.fighters[1].hp).toBe(60 - 8 - 6);
+  });
+
+  it('Bankai dura 2 turnos e Gear Second 3', () => {
+    let s = newBattle();
+    giveHand(s, 0, ['bankai']);
+    s.fighters[0].ki = 5;
+    giveHand(s, 1, ['gear_second']);
+    s = play(s, 0, 'bankai');
+    s = play(s, 1, 'gear_second');
+    const powers = (st: typeof s) => [st.fighters[0].powers.length, st.fighters[1].powers.length];
+    let r = readyAndResolve(s);
+    expect(powers(r.state)).toEqual([1, 1]);
+    r = readyAndResolve(r.state);
+    expect(powers(r.state)).toEqual([0, 1]);
+    r = readyAndResolve(r.state);
+    expect(powers(r.state)).toEqual([0, 0]);
   });
 
   it('Sonído dá 4 de Bloqueio e +3 só no próximo ataque, em todos os golpes dele', () => {

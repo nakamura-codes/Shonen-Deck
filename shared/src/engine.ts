@@ -23,6 +23,8 @@ export const RULES = {
   maxHandSize: 10,
   turnLimit: 40,
   bankaiBonus: 3,
+  /** Força extra enquanto a Hollowficação estiver ativa. */
+  hollowStrength: 2,
 } as const;
 
 export interface PlayerSetup {
@@ -51,6 +53,7 @@ function newFighter(setup: PlayerSetup, cards: CardInstance[]): Fighter {
     weak: 0,
     vulnerable: 0,
     powers: [],
+    powerTurns: [],
     charges: [],
     drawPile: cards,
     hand: [],
@@ -153,9 +156,17 @@ function startTurn(state: BattleState, events: BattleEvent[]) {
     f.cloneNext = false;
     f.damageTakenThisTurn = 0;
   }
-  // Poderes ativos acontecem no início do turno.
+  // Poderes ativos acontecem no início do turno; os que acabaram saem antes.
   for (const p of [0, 1] as PlayerIndex[]) {
     const f = state.fighters[p];
+    f.powerTurns = f.powerTurns.map((t) => t - 1);
+    for (let i = f.powers.length - 1; i >= 0; i--) {
+      if (f.powerTurns[i] <= 0) {
+        events.push({ type: 'powerEnd', player: p, power: f.powers[i] });
+        f.powers.splice(i, 1);
+        f.powerTurns.splice(i, 1);
+      }
+    }
     for (const power of f.powers) {
       if (power === 'gearSecond') {
         f.ki = Math.min(f.kiCap, f.ki + 1);
@@ -326,7 +337,8 @@ function attackDamage(state: BattleState, source: PlayerIndex, target: PlayerInd
   const a = state.fighters[source];
   const t = state.fighters[target];
   const bankai = a.powers.filter((p) => p === 'bankai').length * RULES.bankaiBonus;
-  let dmg = base + a.strength + a.tempStrength + bankai;
+  const hollow = a.powers.filter((p) => p === 'hollow').length * RULES.hollowStrength;
+  let dmg = base + a.strength + a.tempStrength + bankai + hollow;
   if (a.weak > 0) dmg = Math.floor(dmg * 0.75);
   if (t.vulnerable > 0) dmg = Math.floor(dmg * 1.25);
   return Math.max(0, dmg);
@@ -474,6 +486,7 @@ function resolveCard(state: BattleState, player: PlayerIndex, q: QueuedCard, eve
           break;
         case 'power':
           f.powers.push(e.power);
+          f.powerTurns.push(e.turns);
           events.push({ type: 'power', player, power: e.power });
           break;
         case 'reveal':
@@ -635,6 +648,7 @@ function publicView(f: Fighter): FighterPublicView {
     weak: f.weak,
     vulnerable: f.vulnerable,
     powers: f.powers,
+    powerTurns: f.powerTurns,
     charges: f.charges,
     handCount: f.hand.length,
     drawCount: f.drawPile.length,
