@@ -7,7 +7,7 @@ export type PowerId = 'bankai' | 'gearSecond' | 'domain' | 'hollow';
 
 /** Efeitos que uma carta pode ter. Os números ficam nos dados (cards.ts). */
 export type Effect =
-  | { kind: 'damage'; amount: number; times?: number; pierce?: boolean; fixed?: boolean; firstCardAmount?: number; bonusVsBlock?: number }
+  | { kind: 'damage'; amount: number; times?: number; pierce?: boolean; fixed?: boolean; firstCardAmount?: number; bonusVsBlock?: number; doubleBelowHp?: number }
   | { kind: 'block'; amount: number }
   | { kind: 'strength'; amount: number; temporary?: boolean }
   | { kind: 'weak'; amount: number }
@@ -66,7 +66,7 @@ export interface CardInstance {
   id: string;
 }
 
-export type OutfitSlot = 'head' | 'body';
+export type OutfitSlot = 'head' | 'body' | 'hand';
 
 export interface OutfitItem {
   id: string;

@@ -21,7 +21,8 @@
     "art:inventory": "tsx tools/process-inventory.ts",
     "art:menus": "tsx tools/process-menus.ts",
     "art:collection": "tsx tools/process-collection.ts",
-    "art:music": "tsx tools/process-music.ts"
+    "art:music": "tsx tools/process-music.ts",
+    "art:weapons": "tsx tools/process-weapons.ts"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20250924.0",

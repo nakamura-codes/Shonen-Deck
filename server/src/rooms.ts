@@ -22,6 +22,7 @@ import {
   bothReady,
   createBattle,
   moveToFront,
+  itemsForSlot,
   toggleKeep,
   playCard,
   resolveTurn,
@@ -77,7 +78,9 @@ export class Match {
     private onFinish: (m: Match) => void,
   ) {
     const botName = 'Bot Treinador';
-    const botOutfit: Outfit = { head: 'venda_olhos', body: 'shihakusho' };
+    // O bot usa uma arma diferente a cada partida.
+    const weapons = itemsForSlot('hand');
+    const botOutfit: Outfit = { head: 'venda_olhos', body: 'shihakusho', hand: weapons[randomInt(weapons.length)]?.id ?? null };
     // SEED fixa o embaralhamento e a moeda (útil para testes).
     const seed = Match.seed !== undefined ? Match.seed : randomInt(2 ** 31);
     this.state = createBattle(seed, [

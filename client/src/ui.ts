@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { WEAPONS, WEAPON_RES } from './weapons.generated.ts';
 import { figureKey, getCard, getItem, type CardDef, type Outfit } from '@oficina/shared';
 import { FRAME_LAYOUT, FRAME_SIZE } from './cardFrames.generated.ts';
 import { sfx } from './sfx.ts';
@@ -350,9 +351,38 @@ export function makeCharacter(scene: Phaser.Scene, outfit: Outfit, scale: number
         .setFlipX(flip),
     );
   layer(key);
+  // Arma na mão da frente (slot Mão). Fica num container próprio para espelhar junto com o boneco.
+  const weapon = outfit.hand ? WEAPONS[outfit.hand] : undefined;
+  if (weapon && scene.textures.exists(`weapon_${outfit.hand}`)) {
+    const dir = flip ? -1 : 1;
+    const wc = scene.add.container(HAND.x * scale * dir, HAND.y * scale).setScale(dir, 1);
+    wc.add(
+      scene.add
+        .image(0, 0, `weapon_${outfit.hand}`)
+        .setOrigin(weapon.gripX / weapon.w, weapon.gripY / weapon.h)
+        .setScale(scale / WEAPON_RES)
+        .setRotation(WEAPON_ANGLE[outfit.hand!] ?? Math.PI / 2),
+    );
+    c.add(wc);
+  }
   c.setSize(FIG_W * scale, FIG_H * scale);
   return c;
 }
+
+/** Mão da frente do boneco, em pixels da figura, a partir dos pés (centro embaixo). */
+const HAND = { x: 14, y: -23 };
+/**
+ * Giro de cada arma a partir do desenho original (apontando para cima e para a direita).
+ * 90° = para frente e para baixo; 180° = para trás e para baixo (kunai em empunhadura invertida).
+ * Só múltiplos de 90° para não deformar o pixel art.
+ */
+const WEAPON_ANGLE: Record<string, number> = {
+  espada_trunks: Math.PI / 2,
+  zanpakuto: Math.PI / 2,
+  cutelo_nanami: Math.PI / 2,
+  pistola_pirata: Math.PI / 2,
+  kunai_ninja: Math.PI,
+};
 
 /** Ícone de uma peça de roupa, cabendo numa caixa de tamanho máximo. */
 export function makeItemIcon(scene: Phaser.Scene, itemId: string, maxW: number, maxH: number) {
@@ -525,6 +555,62 @@ export function makeArtButton(
   };
   c.setLabel = (s: string) => {
     t.setText(s);
+    return c;
+  };
+  draw();
+  return c;
+}
+
+/**
+ * Botão que preenche uma abertura da HUD (a moldura dourada é da própria arte):
+ * face em pixel art com luz em cima e sombra embaixo, como os botões do menu.
+ */
+export function makeSlotButton(
+  scene: Phaser.Scene,
+  r: { x: number; y: number; w: number; h: number },
+  label: string,
+  onClick: () => void,
+  fill = 0xe8761c,
+  size = 20,
+): Button {
+  const c = scene.add.container(r.x + r.w / 2, r.y + r.h / 2) as Button;
+  const g = scene.add.graphics();
+  const t = txt(scene, 0, -1, label, size, '#ffffff', { fontStyle: 'bold', stroke: '#0d0a14', strokeThickness: 4 });
+  let enabled = true;
+  let hover = false;
+  let down = false;
+  const W = r.w + 4, H = r.h + 4;
+  const draw = () => {
+    g.clear();
+    const col = Phaser.Display.Color.ValueToColor(!enabled ? 0x3a3550 : fill);
+    const base = hover && enabled ? col.clone().lighten(12) : col;
+    const light = base.clone().lighten(18).color, dark = base.clone().darken(22).color;
+    g.fillStyle(base.color).fillRect(-W / 2, -H / 2, W, H);
+    g.fillStyle(light).fillRect(-W / 2, -H / 2, W, 5);
+    g.fillStyle(dark).fillRect(-W / 2, H / 2 - (down ? 3 : 7), W, down ? 3 : 7);
+    t.setColor(enabled ? '#ffffff' : '#8a8f9a').setY(down ? 1 : -2);
+  };
+  c.add([g, t]);
+  c.setSize(r.w, r.h);
+  c.setInteractive({ useHandCursor: true });
+  c.on('pointerover', () => ((hover = true), draw()));
+  c.on('pointerout', () => ((hover = false), (down = false), draw()));
+  c.on('pointerdown', () => {
+    if (!enabled) return;
+    down = true;
+    draw();
+    sfx('click');
+    onClick();
+  });
+  c.on('pointerup', () => ((down = false), draw()));
+  c.setEnabled = (v: boolean) => {
+    enabled = v;
+    draw();
+    return c;
+  };
+  c.setLabel = (s2: string) => {
+    t.setText(s2);
+    fitText(t, r.w - 12);
     return c;
   };
   draw();

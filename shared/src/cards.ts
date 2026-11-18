@@ -191,6 +191,85 @@ export const CARDS: Record<string, CardDef> = {
     text: 'Ganha 5 de Bloqueio. +1 carta no próximo turno.',
     effects: [{ kind: 'block', amount: 5 }, { kind: 'drawNext', amount: 1 }],
   },
+  // ── Armas (slot Mão) ──
+  burning_attack: {
+    id: 'burning_attack', name: 'Burning Attack', cost: 2, type: 'attack', rarity: 'rare',
+    text: 'Causa 12 de dano.',
+    effects: [{ kind: 'damage', amount: 12 }],
+  },
+  corte_do_futuro: {
+    id: 'corte_do_futuro', name: 'Corte do Futuro', cost: 1, type: 'attack', rarity: 'common',
+    text: 'Causa 3 de dano 3 vezes.',
+    effects: [{ kind: 'damage', amount: 3, times: 3 }],
+  },
+  shining_sword: {
+    id: 'shining_sword', name: 'Shining Sword Attack', cost: 3, type: 'attack', rarity: 'rare',
+    text: 'Causa 20 de dano. Exaurir.',
+    effects: [{ kind: 'damage', amount: 20 }],
+    exhaust: true,
+  },
+  tiro_duplo: {
+    id: 'tiro_duplo', name: 'Tiro Duplo', cost: 1, type: 'attack', rarity: 'common',
+    text: 'Causa 4 de dano 2 vezes.',
+    effects: [{ kind: 'damage', amount: 4, times: 2 }],
+  },
+  tiro_certeiro: {
+    id: 'tiro_certeiro', name: 'Tiro Certeiro', cost: 2, type: 'attack', rarity: 'rare',
+    text: 'Causa 9 de dano. Ignora Bloqueio.',
+    effects: [{ kind: 'damage', amount: 9, pierce: true }],
+  },
+  recarregar: {
+    id: 'recarregar', name: 'Recarregar', cost: 0, type: 'skill', rarity: 'common',
+    text: 'Ganha 3 de Bloqueio. +1 carta no próximo turno.',
+    effects: [{ kind: 'block', amount: 3 }, { kind: 'drawNext', amount: 1 }],
+  },
+  kunai_explosiva: {
+    id: 'kunai_explosiva', name: 'Kunai Explosiva', cost: 2, type: 'attack', rarity: 'rare',
+    text: 'Causa 12 de dano.',
+    effects: [{ kind: 'damage', amount: 12 }],
+  },
+  hiraishin: {
+    id: 'hiraishin', name: 'Hiraishin', cost: 2, type: 'skill', rarity: 'rare',
+    text: 'Desvia do próximo golpe do oponente neste turno. Seu próximo ataque causa +4.',
+    effects: [{ kind: 'evade' }, { kind: 'nextAttackBonus', amount: 4 }],
+  },
+  corte_shinigami: {
+    id: 'corte_shinigami', name: 'Corte Shinigami', cost: 1, type: 'attack', rarity: 'common',
+    text: 'Causa 9 de dano.',
+    effects: [{ kind: 'damage', amount: 9 }],
+  },
+  senbonzakura: {
+    id: 'senbonzakura', name: 'Senbonzakura', cost: 3, type: 'attack', rarity: 'rare',
+    text: 'Causa 2 de dano 8 vezes.',
+    effects: [{ kind: 'damage', amount: 2, times: 8 }],
+  },
+  defesa_de_lamina: {
+    id: 'defesa_de_lamina', name: 'Defesa de Lâmina', cost: 1, type: 'skill', rarity: 'common',
+    text: 'Ganha 7 de Bloqueio.',
+    effects: [{ kind: 'block', amount: 7 }],
+  },
+  proporcao_7_3: {
+    id: 'proporcao_7_3', name: 'Proporção 7:3', cost: 2, type: 'attack', rarity: 'rare',
+    text: 'Causa 10 de dano. Dano dobrado se o oponente tiver 40% de HP ou menos.',
+    effects: [{ kind: 'damage', amount: 10, doubleBelowHp: 0.4 }],
+  },
+  hora_extra: {
+    id: 'hora_extra', name: 'Hora Extra', cost: 0, type: 'skill', rarity: 'common',
+    text: 'Ganha 2 de Força neste turno.',
+    effects: [{ kind: 'strength', amount: 2, temporary: true }],
+  },
+  colapso: {
+    id: 'colapso', name: 'Colapso', cost: 3, type: 'attack', rarity: 'rare',
+    text: 'Causa 18 de dano. Ignora Bloqueio. Exaurir.',
+    effects: [{ kind: 'damage', amount: 18, pierce: true }],
+    exhaust: true,
+  },
+  kawarimi: {
+    id: 'kawarimi', name: 'Kawarimi no Jutsu', cost: 1, type: 'skill', rarity: 'common',
+    text: 'Desvia do próximo golpe do oponente neste turno. Exaurir.',
+    effects: [{ kind: 'evade' }],
+    exhaust: true,
+  },
 };
 
 export function getCard(id: string): CardDef {

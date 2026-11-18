@@ -13,23 +13,30 @@ export const OUTFIT_ITEMS: OutfitItem[] = [
   { id: 'gi_laranja', slot: 'body', name: 'Gi Laranja', cards: ['kamehameha', 'genki_dama', 'kaioken'] },
   { id: 'shihakusho', slot: 'body', name: 'Shihakusho Negro', cards: ['bankai', 'getsuga', 'shunpo'] },
   { id: 'uniforme_jujutsu', slot: 'body', name: 'Uniforme Jujutsu', cards: ['black_flash', 'boogie_woogie', 'tecnica_reversa'] },
-  { id: 'uniforme_naruto', slot: 'body', name: 'Uniforme Ninja', cards: ['kage_bunshin', 'kunai', 'modo_sabio'] },
+  { id: 'uniforme_naruto', slot: 'body', name: 'Uniforme Ninja', cards: ['kage_bunshin', 'kawarimi', 'modo_sabio'] },
   { id: 'roupa_luffy', slot: 'body', name: 'Colete do Pirata', cards: ['gear_second', 'haki', 'sake'] },
   { id: 'scouter', slot: 'head', name: 'Scouter', cards: ['leitura_de_poder', 'ki_blast', 'galick_gun'] },
+  // Mão: armas (o boneco segura a arma; sprite em assets/weapons/<id>.png).
+  { id: 'espada_trunks', slot: 'hand', name: 'Espada do Trunks', cards: ['burning_attack', 'corte_do_futuro', 'shining_sword'] },
+  { id: 'pistola_pirata', slot: 'hand', name: 'Pistola Pirata', cards: ['tiro_duplo', 'tiro_certeiro', 'recarregar'] },
+  { id: 'kunai_ninja', slot: 'hand', name: 'Kunai', cards: ['kunai', 'kunai_explosiva', 'hiraishin'] },
+  { id: 'zanpakuto', slot: 'hand', name: 'Zanpakutō do Ichigo', cards: ['corte_shinigami', 'senbonzakura', 'defesa_de_lamina'] },
+  { id: 'cutelo_nanami', slot: 'hand', name: 'Cutelo do Nanami', cards: ['proporcao_7_3', 'hora_extra', 'colapso'] },
 ];
 
 /** Cartas que existem mas estão fora das roupas por enquanto. */
 export const RETIRED_CARDS = ['domain_expansion'];
 
-export const OUTFIT_SLOTS: OutfitSlot[] = ['head', 'body'];
+export const OUTFIT_SLOTS: OutfitSlot[] = ['head', 'body', 'hand'];
 
 export const SLOT_LABELS: Record<OutfitSlot, string> = {
   head: 'Cabeça',
   body: 'Corpo',
+  hand: 'Mão',
 };
 
 /** Personagem novo: totalmente cinza, sem nada vestido. */
-export const EMPTY_OUTFIT: Outfit = { head: null, body: null };
+export const EMPTY_OUTFIT: Outfit = { head: null, body: null, hand: null };
 
 export function itemsForSlot(slot: OutfitSlot): OutfitItem[] {
   return OUTFIT_ITEMS.filter((i) => i.slot === slot);

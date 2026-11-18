@@ -1,52 +1,46 @@
 // Gerado por tools/process-hud.ts — não edite à mão.
-// Áreas da HUD de baixo, em pixels da tela (1280×720).
+// Áreas da HUD de baixo, em pixels da tela (1280×720). A imagem tem o dobro da resolução.
 export const HUD = {
   "panel": {
     "x": 0,
-    "y": 427,
+    "y": 480,
     "w": 1280,
-    "h": 293
+    "h": 240
   },
-  "hpLeft": {
-    "x": 174,
-    "y": 464,
-    "w": 332,
-    "h": 20
-  },
-  "hpRight": {
-    "x": 773,
-    "y": 464,
-    "w": 335,
-    "h": 20
+  "tray": {
+    "x": 152,
+    "y": 546,
+    "w": 948,
+    "h": 147
   },
   "ki": {
-    "x": 47,
-    "y": 504,
-    "w": 117,
-    "h": 116
+    "x": 22,
+    "y": 543,
+    "w": 99,
+    "h": 99
   },
   "drawPile": {
-    "x": 42,
-    "y": 645,
-    "w": 52,
-    "h": 27
+    "x": 23,
+    "y": 669,
+    "w": 38,
+    "h": 29
   },
   "discardPile": {
-    "x": 121,
-    "y": 645,
-    "w": 52,
-    "h": 27
+    "x": 85,
+    "y": 669,
+    "w": 37,
+    "h": 29
   },
   "readyBtn": {
-    "x": 1078,
-    "y": 518,
-    "w": 159,
-    "h": 57
+    "x": 1128,
+    "y": 560,
+    "w": 134,
+    "h": 47
   },
   "undoBtn": {
-    "x": 1078,
-    "y": 609,
-    "w": 159,
-    "h": 57
+    "x": 1128,
+    "y": 637,
+    "w": 134,
+    "h": 47
   }
 } as const;

@@ -24,7 +24,7 @@ import {
   makeButton,
   makeCard,
   makeCharacter,
-  makeArtButton,
+  makeSlotButton,
   makeMiniIcon,
   NUM_FONT,
   playFx,
@@ -38,9 +38,16 @@ import {
 type Side = 0 | 1; // 0 = eu (esquerda), 1 = oponente (direita)
 
 const CHAR_X: Record<Side, number> = { 0: 260, 1: 1020 };
-const FEET_Y = 374; // pés no meio do chão das arenas
+const FEET_Y = 455; // pés no chão das arenas, logo acima da HUD
 const CHAR_SCALE = 3;
 const BODY_Y = FEET_Y - 100;
+/** Topo da cabeça do boneco (64 px de altura × escala). */
+const HEAD_Y = FEET_Y - 64 * CHAR_SCALE;
+/** Barra de vida e nome ficam acima da cabeça de cada personagem. */
+const BAR_W = 150;
+const BAR_H = 14;
+const BAR_Y = HEAD_Y - 34;
+const NAME_Y = BAR_Y - 22;
 
 const POWER_CARD: Record<PowerId, string> = { bankai: 'bankai', gearSecond: 'gear_second', domain: 'domain_expansion', hollow: 'hollowficacao' };
 
@@ -75,41 +82,41 @@ export class BattleScene extends Phaser.Scene {
     this.hpBars = {};
 
     this.arenaImage = undefined;
-    // Faixa de baixo (mão e botões); a arena entra em cima quando chega o primeiro estado.
-    const panel = this.add.graphics().setDepth(-9);
-    panel.fillGradientStyle(0x232a36, 0x232a36, 0x141820, 0x141820).fillRect(-MARGIN_X, 427, VIEW_W, 293 + MARGIN_Y);
-    // HUD com arte (assets/ui/hud.png): as áreas vazadas recebem barras de HP, Ki, contadores e botões.
+    // A arena (tela inteira) entra por trás quando chega o primeiro estado.
+    // HUD com arte (assets/ui/hud.png, 2× de resolução): as áreas vazadas recebem Ki, contadores e botões.
     this.hasHudArt = this.textures.exists('hud');
-    if (this.hasHudArt) this.add.image(HUD.panel.x, HUD.panel.y, 'hud').setOrigin(0).setDepth(-8);
+    if (this.hasHudArt) this.add.image(HUD.panel.x, HUD.panel.y, 'hud').setOrigin(0).setDisplaySize(HUD.panel.w, HUD.panel.h).setDepth(-8);
+    else this.add.rectangle(640, 600, 1280, 240, 0x141820).setDepth(-8);
     this.hud = this.add.container(0, 0).setDepth(5);
     this.hand = this.add.container(0, 0).setDepth(20);
 
     const top = this.add.graphics().setDepth(4);
-    top.fillStyle(COLORS.outline, 0.85).fillRect(-MARGIN_X, -MARGIN_Y, VIEW_W, 52 + MARGIN_Y);
-    top.fillStyle(COLORS.gold).fillRect(-MARGIN_X, 52, VIEW_W, 3);
-    this.turnText = txt(this, 90, 27, 'Turno 1', 22, '#ffe28a', { fontStyle: 'bold' }).setDepth(6);
-    this.timerText = txt(this, 640, 27, '', 36, '#ffffff', { fontFamily: NUM_FONT }).setDepth(6);
-    this.starterText = txt(this, 1110, 27, '', 16, '#ffe28a').setDepth(6);
+    // Faixa fina no topo, translúcida, para a arena aparecer quase inteira.
+    top.fillStyle(COLORS.outline, 0.6).fillRect(-MARGIN_X, -MARGIN_Y, VIEW_W, 44 + MARGIN_Y);
+    top.fillStyle(COLORS.gold, 0.8).fillRect(-MARGIN_X, 44, VIEW_W, 2);
+    this.turnText = txt(this, 90, 22, 'Turno 1', 22, '#ffe28a', { fontStyle: 'bold', stroke: '#0d0a14', strokeThickness: 4 }).setDepth(6);
+    this.timerText = txt(this, 640, 22, '', 34, '#ffffff', { fontFamily: NUM_FONT, stroke: '#0d0a14', strokeThickness: 4 }).setDepth(6);
+    this.starterText = txt(this, 1110, 22, '', 16, '#ffe28a', { stroke: '#0d0a14', strokeThickness: 4 }).setDepth(6);
     // Som ligado/desligado.
-    const muteBtn = txt(this, 1250, 27, isMuted() ? '🔇' : '🔊', 22, '#ffffff').setDepth(7).setInteractive({ useHandCursor: true });
+    const muteBtn = txt(this, 1250, 22, isMuted() ? '🔇' : '🔊', 22, '#ffffff').setDepth(7).setInteractive({ useHandCursor: true });
     muteBtn.on('pointerdown', () => muteBtn.setText(toggleMute() ? '🔇' : '🔊'));
     // Música: botão próprio e o título da faixa que está tocando.
     if (hasMusic()) {
       // Para a música do menu e começa (ou continua) a lista da batalha.
-      const musicBtn = txt(this, 1212, 27, isMusicMuted() ? '🎵✕' : '🎵', 20, '#ffffff').setDepth(7).setInteractive({ useHandCursor: true });
+      const musicBtn = txt(this, 1212, 22, isMusicMuted() ? '🎵✕' : '🎵', 20, '#ffffff').setDepth(7).setInteractive({ useHandCursor: true });
       musicBtn.on('pointerdown', () => musicBtn.setText(toggleMusic() ? '🎵✕' : '🎵'));
-      const now = txt(this, 640, 64, '', 12, '#c8d0e8', { stroke: '#0d0a14', strokeThickness: 3 }).setDepth(7).setAlpha(0);
+      const now = txt(this, 640, 58, '', 12, '#c8d0e8', { stroke: '#0d0a14', strokeThickness: 3 }).setDepth(7).setAlpha(0);
       startBattleMusic((title) => {
         now.setText(`♪ ${title}`).setAlpha(1);
         this.tweens.add({ targets: now, alpha: 0, delay: 4000, duration: 800 });
       });
       this.events.once(Phaser.Scenes.Events.SHUTDOWN, stopBattleMusic);
     }
-    this.banner = txt(this, 640, 82, '', 18, '#ffb0b0', { stroke: '#0d0a14', strokeThickness: 4 }).setDepth(30);
+    this.banner = txt(this, 640, 70, '', 18, '#ffb0b0', { stroke: '#0d0a14', strokeThickness: 4 }).setDepth(30);
 
     if (this.hasHudArt) {
-      this.readyBtn = makeArtButton(this, HUD.readyBtn, 'Confirmar', () => this.sendReady(), 0x2f6fb0, 22).setDepth(25);
-      this.undoBtn = makeArtButton(this, HUD.undoBtn, 'Desfazer', () => this.sendUndo(), 0x3a4558, 19).setDepth(25);
+      this.readyBtn = makeSlotButton(this, HUD.readyBtn, 'Confirmar', () => this.sendReady(), 0xe8761c, 20).setDepth(-8.5); // por baixo da HUD: a moldura dourada fica por cima
+      this.undoBtn = makeSlotButton(this, HUD.undoBtn, 'Desfazer', () => this.sendUndo(), 0x5a4a8a, 18).setDepth(-8.5);
     } else {
       this.readyBtn = makeButton(this, 1165, 560, 190, 60, 'Confirmar', () => this.sendReady(), COLORS.gold, 22).setDepth(25);
       this.undoBtn = makeButton(this, 1165, 636, 190, 46, 'Desfazer', () => this.sendUndo(), 0xb0a0c8, 18).setDepth(25);
@@ -203,7 +210,7 @@ export class BattleScene extends Phaser.Scene {
     if (!this.arenaImage) {
       const key = `arena_${view.arena}`;
       if (this.textures.exists(key)) {
-        this.arenaImage = this.add.image(0, 0, key).setOrigin(0).setDisplaySize(1280, 427).setDepth(-10);
+        this.arenaImage = this.add.image(0, 0, key).setOrigin(0).setDisplaySize(1280, 720).setDepth(-10);
       }
     }
     this.turnText.setText(`Turno ${view.turn}`);
@@ -228,12 +235,12 @@ export class BattleScene extends Phaser.Scene {
       for (const [r, n, label] of [[HUD.drawPile, view.me.drawCount, 'Compra'], [HUD.discardPile, view.me.discardCount, 'Descarte']] as const) {
         // Mini carta (compra = verso, descarte = carta virada) + número.
         const g = this.add.graphics();
-        const ix = r.x + 12, iy = r.y + r.h / 2;
-        g.fillStyle(0x0d0a14).fillRect(ix - 7, iy - 9, 14, 18);
-        g.fillStyle(label === 'Compra' ? 0x3a2a5a : 0xd8d2c8).fillRect(ix - 6, iy - 8, 12, 16);
-        g.fillStyle(label === 'Compra' ? 0xf0a830 : 0x8a8f9a).fillRect(ix - 3, iy - 4, 6, 8);
+        const ix = r.x + 9, iy = r.y + r.h / 2;
+        g.fillStyle(0x0d0a14).fillRect(ix - 6, iy - 8, 12, 16);
+        g.fillStyle(label === 'Compra' ? 0x3a2a5a : 0xd8d2c8).fillRect(ix - 5, iy - 7, 10, 14);
+        g.fillStyle(label === 'Compra' ? 0xf0a830 : 0x8a8f9a).fillRect(ix - 2, iy - 3, 4, 6);
         this.hud.add(g);
-        this.hud.add(centerInk(txt(this, 0, 0, String(n), 22, '#ffffff', { fontFamily: NUM_FONT, stroke: '#0d0a14', strokeThickness: 3 }), r.x + r.w / 2 + 8, r.y + r.h / 2));
+        this.hud.add(centerInk(txt(this, 0, 0, String(n), 19, '#ffffff', { fontFamily: NUM_FONT, stroke: '#0d0a14', strokeThickness: 3 }), r.x + r.w * 0.68, r.y + r.h / 2));
       }
     } else {
       this.hud.add(txt(this, 90, 670, `Compra ${view.me.drawCount}  ·  Descarte ${view.me.discardCount}`, 13, COLORS.textDim));
@@ -251,35 +258,28 @@ export class BattleScene extends Phaser.Scene {
     const c = makeCharacter(this, f.outfit, CHAR_SCALE, side === 1).setPosition(CHAR_X[side], FEET_Y).setDepth(3);
     this.tweens.add({ targets: c, scaleY: 1.02, yoyo: true, repeat: -1, duration: 1100 + side * 150, ease: 'Sine.easeInOut' });
     this.chars[side] = c;
-    txt(this, CHAR_X[side], 130, f.name, 20, '#ffffff', { fontStyle: 'bold', stroke: '#0d0a14', strokeThickness: 5 }).setDepth(4);
+    txt(this, CHAR_X[side], NAME_Y, f.name, 18, '#ffffff', { fontStyle: 'bold', stroke: '#0d0a14', strokeThickness: 5 }).setDepth(4);
   }
 
+  /** Barra de vida acima da cabeça do personagem, com o número dentro. */
   private drawHpBar(side: Side, hp: number, max: number) {
     let bar = this.hpBars[side];
     if (!bar) {
-      bar = { g: this.add.graphics().setDepth(6), t: txt(this, CHAR_X[side], 448, '', 19, '#ffffff', { fontFamily: NUM_FONT, stroke: '#0d0a14', strokeThickness: 4 }).setDepth(7), max };
+      bar = { g: this.add.graphics().setDepth(6), t: txt(this, CHAR_X[side], BAR_Y, '', 15, '#ffffff', { fontFamily: NUM_FONT, stroke: '#0d0a14', strokeThickness: 4 }).setDepth(7), max };
       this.hpBars[side] = bar;
     }
     bar.max = max;
-    const slot = this.hasHudArt ? (side === 0 ? HUD.hpLeft : HUD.hpRight) : null;
-    const x = slot ? slot.x : CHAR_X[side] - 100;
-    const w = 200;
+    const x = CHAR_X[side] - BAR_W / 2, y = BAR_Y - BAR_H / 2;
     const ratio = Phaser.Math.Clamp(hp / max, 0, 1);
     bar.g.clear();
-    if (slot) {
-      // Barra dentro da abertura da HUD (a moldura é da própria arte).
-      bar.g.fillStyle(0x3a1a22).fillRect(slot.x - 1, slot.y - 1, slot.w + 2, slot.h + 2);
-      bar.g.fillStyle(COLORS.hp).fillRect(slot.x - 1, slot.y - 1, Math.round((slot.w + 2) * ratio), slot.h + 2);
-      bar.g.fillStyle(0xff8a8a).fillRect(slot.x - 1, slot.y - 1, Math.round((slot.w + 2) * ratio), 4);
-    } else {
-      bar.g.fillStyle(COLORS.outline).fillRect(x - 3, 437, w + 6, 24);
-      bar.g.fillStyle(0x3a1a22).fillRect(x, 440, w, 18);
-      bar.g.fillStyle(COLORS.hp).fillRect(x, 440, Math.round(w * ratio), 18);
-      bar.g.fillStyle(0xff8a8a).fillRect(x, 440, Math.round(w * ratio), 4);
-    }
+    // Contorno escuro grosso + filete dourado, no estilo das molduras do menu.
+    bar.g.fillStyle(COLORS.outline).fillRect(x - 4, y - 4, BAR_W + 8, BAR_H + 8);
+    bar.g.fillStyle(0xf0a830).fillRect(x - 2, y - 2, BAR_W + 4, BAR_H + 4);
+    bar.g.fillStyle(0x3a1a22).fillRect(x, y, BAR_W, BAR_H);
+    bar.g.fillStyle(COLORS.hp).fillRect(x, y, Math.round(BAR_W * ratio), BAR_H);
+    bar.g.fillStyle(0xff8a8a).fillRect(x, y, Math.round(BAR_W * ratio), 3);
     bar.t.setText(`${Math.max(0, hp)}/${max}`);
-    if (slot) centerInk(bar.t, slot.x + slot.w / 2, slot.y + slot.h / 2);
-    else centerInk(bar.t, CHAR_X[side], 449);
+    centerInk(bar.t, CHAR_X[side], BAR_Y);
   }
 
   private drawSide(side: Side, f: FighterPublicView) {
@@ -297,21 +297,21 @@ export class BattleScene extends Phaser.Scene {
     if (f.sageTurns > 0) chips.push([`Modo Sábio ${f.sageTurns}`, '#ffb040']);
     if (f.maxKi < 5) chips.push([`Ki máx ${f.maxKi}`, '#8fd0ff']);
     chips.forEach(([label, color], i) => {
-      this.hud.add(txt(this, x - (chips.length - 1) * 55 + i * 110, 146, label, 14, color, { stroke: '#0d0a14', strokeThickness: 4 }));
+      this.hud.add(txt(this, x - (chips.length - 1) * 50 + i * 100, BAR_Y + 20, label, 13, color, { stroke: '#0d0a14', strokeThickness: 4 }).setDepth(7));
     });
 
     // Poderes ativos.
     f.powers.forEach((p, i) => {
-      const slot = this.hasHudArt ? (side === 0 ? HUD.hpLeft : HUD.hpRight) : null;
-      const px = slot ? (side === 0 ? slot.x + slot.w + 58 + i * 34 : slot.x - 58 - i * 34) : x + 128 + i * 34;
-      const icon = makeMiniIcon(this, POWER_CARD[p], 0.42).setPosition(px, slot ? slot.y + slot.h / 2 : 449);
+      // Do lado de fora da barra (o escudo fica do lado de dentro).
+      const dir = side === 0 ? -1 : 1;
+      const icon = makeMiniIcon(this, POWER_CARD[p], 0.42).setPosition(x + dir * (BAR_W / 2 + 22 + i * 30), BAR_Y);
       this.hud.add(icon);
     });
 
     // Golpes carregando (o oponente vê!).
     f.charges.forEach((ch, i) => {
       const cx = x + (side === 0 ? 115 : -115);
-      const cy = 250 + i * 70;
+      const cy = BODY_Y - 40 + i * 70;
       const icon = makeMiniIcon(this, ch.cardId, 0.6).setPosition(cx, cy);
       this.tweens.add({ targets: icon, scale: 0.66, yoyo: true, repeat: -1, duration: 400 });
       this.hud.add(icon);
@@ -319,7 +319,7 @@ export class BattleScene extends Phaser.Scene {
     });
 
     if (f.ready && this.view?.phase === 'planning') {
-      this.hud.add(txt(this, x, 102, 'Pronto!', 16, '#7fe0a0', { fontStyle: 'bold', stroke: '#0d0a14', strokeThickness: 4 }));
+      this.hud.add(txt(this, x, NAME_Y - 22, 'Pronto!', 16, '#7fe0a0', { fontStyle: 'bold', stroke: '#0d0a14', strokeThickness: 4 }));
     }
   }
 
@@ -331,10 +331,10 @@ export class BattleScene extends Phaser.Scene {
       : view.opponent.ready
         ? 'Oponente pronto.'
         : 'Oponente está escolhendo suas cartas…';
-    this.hud.add(txt(this, 640, 112, status, 16, oq ? '#ff8080' : '#ffffff', { stroke: '#0d0a14', strokeThickness: 4 }));
+    this.hud.add(txt(this, 640, 80, status, 16, oq ? '#ff8080' : '#ffffff', { stroke: '#0d0a14', strokeThickness: 4 }));
     (oq ?? []).forEach((q, i) => {
       const x = 640 - (oq!.length - 1) * 34 + i * 68;
-      this.hud.add(makeMiniIcon(this, q.card.id, 0.75).setPosition(x, 170));
+      this.hud.add(makeMiniIcon(this, q.card.id, 0.75).setPosition(x, 135));
     });
 
     // Minha fila.
@@ -342,12 +342,12 @@ export class BattleScene extends Phaser.Scene {
     // Entre os dois personagens, sem passar por cima deles.
     this.hud.add(
       mq.length
-        ? txt(this, 640, 262, 'Sua jogada', 16, '#ffffff', { stroke: '#0d0a14', strokeThickness: 4 })
-        : txt(this, 640, 300, 'Clique nas cartas da mão para jogar\no cadeado guarda 1 carta para o próximo turno', 16, '#ffffff', { stroke: '#0d0a14', strokeThickness: 4, align: 'center', lineSpacing: 6 }),
+        ? txt(this, 640, 300, 'Sua jogada', 16, '#ffffff', { stroke: '#0d0a14', strokeThickness: 4 })
+        : txt(this, 640, 360, 'Clique nas cartas da mão para jogar\no cadeado guarda 1 carta para o próximo turno', 16, '#ffffff', { stroke: '#0d0a14', strokeThickness: 4, align: 'center', lineSpacing: 6 }),
     );
     mq.forEach((q, i) => {
       const x = 640 - (mq.length - 1) * 40 + i * 80;
-      const icon = makeMiniIcon(this, q.card.id, 0.85).setPosition(x, 330);
+      const icon = makeMiniIcon(this, q.card.id, 0.85).setPosition(x, 368);
       this.hud.add(icon);
       // Leitura de Poder: clicar numa carta da jogada a coloca para resolver primeiro.
       if (view.me.canReorder && !view.me.ready && i > 0) {
@@ -356,24 +356,24 @@ export class BattleScene extends Phaser.Scene {
         icon.on('pointerover', () => icon.setScale(0.95));
         icon.on('pointerout', () => icon.setScale(0.85));
       }
-      this.hud.add(this.orderBadge(x - 26, 300, i + 1, COLORS.ki));
-      if (q.doubled) this.hud.add(txt(this, x + 24, 300, 'x2', 18, '#ffe28a', { fontStyle: 'bold', stroke: '#0d0a14', strokeThickness: 4 }));
+      this.hud.add(this.orderBadge(x - 26, 338, i + 1, COLORS.ki));
+      if (q.doubled) this.hud.add(txt(this, x + 24, 338, 'x2', 18, '#ffe28a', { fontStyle: 'bold', stroke: '#0d0a14', strokeThickness: 4 }));
     });
-    if (view.me.comboLock) this.hud.add(txt(this, 640, 410, 'Combo! Nenhuma outra carta neste turno. Hollow Purple na próxima rodada.', 15, '#e9b8ff', { stroke: '#0d0a14', strokeThickness: 4 }));
-    if (view.me.canReorder && !view.me.ready && mq.length > 1) this.hud.add(txt(this, 640, 372, 'Scouter: clique numa carta da sua jogada para ela resolver primeiro', 15, '#9dff8a', { stroke: '#0d0a14', strokeThickness: 4 }));
-    if (view.me.stunned) this.hud.add(txt(this, 640, 390, 'Atordoado pelo Haki do Rei: você não pode jogar cartas neste turno.', 15, '#ffd060', { stroke: '#0d0a14', strokeThickness: 4 }));
-    if (view.me.lockedTo) this.hud.add(txt(this, 640, 410, `Turno travado: só ${getCard(view.me.lockedTo).name} (custo 0). O Ki deste turno não acumula.`, 15, '#e9b8ff', { stroke: '#0d0a14', strokeThickness: 4 }));
-    if (view.me.cloneNext) this.hud.add(txt(this, 640, 390, 'Kage Bunshin: a próxima carta acontece 2 vezes', 15, '#ffe28a', { stroke: '#0d0a14', strokeThickness: 4 }));
+    if (view.me.comboLock) this.hud.add(txt(this, 640, 440, 'Combo! Nenhuma outra carta neste turno. Hollow Purple na próxima rodada.', 15, '#e9b8ff', { stroke: '#0d0a14', strokeThickness: 4 }));
+    if (view.me.canReorder && !view.me.ready && mq.length > 1) this.hud.add(txt(this, 640, 418, 'Scouter: clique numa carta da sua jogada para ela resolver primeiro', 15, '#9dff8a', { stroke: '#0d0a14', strokeThickness: 4 }));
+    if (view.me.stunned) this.hud.add(txt(this, 640, 418, 'Atordoado pelo Haki do Rei: você não pode jogar cartas neste turno.', 15, '#ffd060', { stroke: '#0d0a14', strokeThickness: 4 }));
+    if (view.me.lockedTo) this.hud.add(txt(this, 640, 440, `Turno travado: só ${getCard(view.me.lockedTo).name} (custo 0). O Ki deste turno não acumula.`, 15, '#e9b8ff', { stroke: '#0d0a14', strokeThickness: 4 }));
+    if (view.me.cloneNext) this.hud.add(txt(this, 640, 418, 'Kage Bunshin: a próxima carta acontece 2 vezes', 15, '#ffe28a', { stroke: '#0d0a14', strokeThickness: 4 }));
   }
 
   private drawHand(view: BattleView) {
     const cards = view.me.hand;
     const n = cards.length;
-    // Com a HUD, as cartas ficam a 70% dentro da área escura do meio e ampliam ao passar o mouse.
-    const handScale = this.hasHudArt ? 0.64 : 1;
-    const area = this.hasHudArt ? { x0: HUD.ki.x + HUD.ki.w + 30, x1: HUD.readyBtn.x - 14 } : { x0: 190, x1: 1050 };
+    // As cartas cabem na bandeja escura do meio da HUD e ampliam ao passar o mouse.
+    const handScale = (HUD.tray.h - 8) / CARD_H;
+    const area = { x0: HUD.tray.x + 12, x1: HUD.tray.x + HUD.tray.w - 12 };
     const spacing = Math.min(166 * handScale + 8, (area.x1 - area.x0 - CARD_W * handScale) / Math.max(1, n - 1));
-    const y = this.hasHudArt ? HUD.panel.y + 164 : 720 - CARD_H / 2 - 8;
+    const y = HUD.tray.y + HUD.tray.h / 2;
     const midX = (area.x0 + area.x1) / 2;
     const canAct = view.phase === 'planning' && !view.me.ready && !this.animating;
     cards.forEach((c, i) => {
@@ -416,16 +416,15 @@ export class BattleScene extends Phaser.Scene {
         card.add(this.add.rectangle(0, 0, CARD_W + 10, CARD_H + 10).setStrokeStyle(5, 0xffd040));
       }
       this.hand.add(card);
-      this.hand.add(this.lockButton(view, c.uid, c.id, x, y - (CARD_H * handScale) / 2 - 12, canAct));
+      this.hand.add(this.lockButton(view, c.uid, c.id, x, y - (CARD_H * handScale) / 2 - 4, canAct));
     });
   }
 
   /** Escudo no fim da barra de HP com o dano que ainda vai segurar. */
   private makeShield(side: Side, amount: number) {
-    const slot = this.hasHudArt ? (side === 0 ? HUD.hpLeft : HUD.hpRight) : null;
-    const x = slot ? (side === 0 ? slot.x + slot.w + 4 : slot.x - 4) : CHAR_X[side] + (side === 0 ? 122 : -122);
-    const y = slot ? slot.y + slot.h / 2 : 449;
-    const c = this.add.container(x, y).setScale(1.3);
+    // Na ponta de dentro da barra de vida (lado do oponente).
+    const x = CHAR_X[side] + (side === 0 ? BAR_W / 2 + 14 : -BAR_W / 2 - 14);
+    const c = this.add.container(x, BAR_Y).setDepth(8);
     const g = this.add.graphics();
     const shape = (k: number) => [
       new Phaser.Math.Vector2(-15 * k, -16 * k),

@@ -395,6 +395,9 @@ function resolveCard(state: BattleState, player: PlayerIndex, q: QueuedCard, eve
           }
           amount += bonus;
           if (e.bonusVsBlock && state.fighters[target].block > 0) amount += e.bonusVsBlock;
+          // Proporção 7:3: dano dobrado com o alvo em HP baixo.
+          const tf = state.fighters[target];
+          if (e.doubleBelowHp && tf.hp <= tf.maxHp * e.doubleBelowHp) amount *= 2;
           for (let i = 0; i < (e.times ?? 1); i++) dealDamage(state, player, target, amount, !!e.pierce, def.id, events, !!e.fixed);
           break;
         }

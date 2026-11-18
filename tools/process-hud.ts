@@ -4,7 +4,10 @@
  *   npm run art:hud
  *
  * Entrada (art/raw/ui/):
- *  - hud.png     faixa 2560×586 (o dobro de 1280×293), fundo preto nos cantos, áreas em magenta
+ *  - hud.png     painel da HUD (qualquer tamanho), fundo preto em volta, áreas em magenta:
+ *                círculo do Ki, 2 contadores embaixo dele e 2 botões à direita.
+ *                O painel é recortado e esticado para a largura da tela sem deformar os enfeites:
+ *                só duas faixas lisas da bandeja do meio são esticadas.
  *  - botoes.png  três botões lado a lado em fundo preto: normal, mouse em cima, desabilitado
  *
  * Saída:
@@ -21,8 +24,13 @@ const OUT = join(ROOT, 'client/public/assets/ui');
 const LAYOUT = join(ROOT, 'client/src/hud.generated.ts');
 
 const HUD_W = 1280;
-const HUD_H = 293;
+/** Altura da HUD na tela (1280×720). A arena ocupa a tela inteira por trás. */
+const HUD_H = 240;
 const HUD_Y = 720 - HUD_H;
+/** A imagem é gravada com o dobro da resolução, para ficar nítida em telas grandes. */
+const OUT_SCALE = 2;
+/** Colunas lisas (fração da largura do painel) que podem ser esticadas. */
+const STRETCH = [0.25, 0.67];
 
 interface Rect { x: number; y: number; w: number; h: number }
 
@@ -88,6 +96,50 @@ function cleanup(p: Px) {
   }
 }
 
+/** Recorta o painel, reduz para a altura certa e estica as duas faixas lisas até a largura da tela. */
+async function buildPanel(file: string): Promise<Px> {
+  const src = await load(file);
+  // Caixa do painel: tudo que não é preto.
+  let x0 = src.w, y0 = src.h, x1 = 0, y1 = 0;
+  for (let y = 0; y < src.h; y++)
+    for (let x = 0; x < src.w; x++)
+      if (!isBlack(src.data, y * src.w + x)) {
+        x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y);
+      }
+  const pw = x1 - x0 + 1, ph = y1 - y0 + 1;
+  const outH = HUD_H * OUT_SCALE, outW = HUD_W * OUT_SCALE;
+  const k = outH / ph;
+  const scaledW = Math.round(pw * k);
+  const scaled = await sharp(src.data, { raw: { width: src.w, height: src.h, channels: 4 } })
+    .extract({ left: x0, top: y0, width: pw, height: ph })
+    .resize(scaledW, outH, { kernel: 'lanczos3' })
+    .raw()
+    .toBuffer();
+  const cols = STRETCH.map((f) => Math.round(scaledW * f));
+  const extra = outW - scaledW;
+  if (extra < 0) throw new Error(`HUD: o painel reduzido (${scaledW}px) já é mais largo que a tela`);
+  const grow = [Math.floor(extra / 2), Math.ceil(extra / 2)];
+  const out = Buffer.alloc(outW * outH * 4);
+  for (let y = 0; y < outH; y++) {
+    let ox = 0;
+    for (let x = 0; x < scaledW; x++) {
+      const i = (y * scaledW + x) * 4;
+      const reps = 1 + (x === cols[0] ? grow[0] : x === cols[1] ? grow[1] : 0);
+      for (let r = 0; r < reps; r++, ox++) scaled.copy(out, (y * outW + ox) * 4, i, i + 4);
+    }
+  }
+  return { data: out, w: outW, h: outH };
+}
+
+/** Bandeja das cartas: a área escura ligada ao centro do painel. */
+function tray(p: Px): Rect {
+  const c = (Math.round(p.h * 0.55) * p.w + Math.round(p.w / 2)) * 4;
+  const ref = [p.data[c], p.data[c + 1], p.data[c + 2]];
+  const near = (i: number) => Math.abs(p.data[i * 4] - ref[0]) + Math.abs(p.data[i * 4 + 1] - ref[1]) + Math.abs(p.data[i * 4 + 2] - ref[2]) < 40;
+  const all = components(p, near, 1000);
+  return all.reduce((a, b) => (a.w * a.h > b.w * b.h ? a : b));
+}
+
 async function load(file: string, w?: number, h?: number): Promise<Px> {
   let img = sharp(join(RAW, file)).ensureAlpha();
   if (w && h) img = img.resize(w, h, { kernel: 'lanczos3' });
@@ -102,20 +154,23 @@ async function save(p: Px, file: string) {
 async function main() {
   mkdirSync(OUT, { recursive: true });
 
-  // HUD: mede as áreas magenta na imagem reduzida (antes de virarem transparentes).
-  const hud = await load('hud.png', HUD_W, HUD_H);
-  const holes = components(hud, (i) => isMag(hud.data, i), 150).sort((a, b) => a.y - b.y || a.x - b.x);
-  const top = holes.filter((r) => r.w > HUD_W * 0.2).sort((a, b) => a.x - b.x); // barras de HP
-  const rest = holes.filter((r) => r.w <= HUD_W * 0.2);
-  const left = rest.filter((r) => r.x < HUD_W * 0.25);
-  const right = rest.filter((r) => r.x > HUD_W * 0.75).sort((a, b) => a.y - b.y);
+  // HUD: mede as áreas magenta (antes de virarem transparentes), em pixels da imagem (2×).
+  const hud = await buildPanel('hud.png');
+  const holes = components(hud, (i) => isMag(hud.data, i), 300).sort((a, b) => a.y - b.y || a.x - b.x);
+  const left = holes.filter((r) => r.x < hud.w * 0.25);
+  const right = holes.filter((r) => r.x > hud.w * 0.75).sort((a, b) => a.y - b.y);
   const ki = left.reduce((a, b) => (a.w * a.h > b.w * b.h ? a : b));
   const piles = left.filter((r) => r !== ki).sort((a, b) => a.x - b.x);
-  if (top.length !== 2 || piles.length !== 2 || right.length !== 2) {
-    throw new Error(`HUD: esperava 2 barras, 1 círculo, 2 contadores e 2 botões; achei ${JSON.stringify(holes)}`);
+  if (piles.length !== 2 || right.length !== 2) {
+    throw new Error(`HUD: esperava 1 círculo, 2 contadores e 2 botões; achei ${JSON.stringify(holes)}`);
   }
-  // Área das cartas: o retângulo escuro do meio (entre o círculo e os botões).
-  const shift = (r: Rect): Rect => ({ x: r.x, y: r.y + HUD_Y, w: r.w, h: r.h });
+  const cards = tray(hud);
+  const shift = (r: Rect): Rect => ({
+    x: Math.round(r.x / OUT_SCALE),
+    y: Math.round(r.y / OUT_SCALE) + HUD_Y,
+    w: Math.round(r.w / OUT_SCALE),
+    h: Math.round(r.h / OUT_SCALE),
+  });
   cleanup(hud);
   await save(hud, 'hud.png');
   console.log('  ✓ hud');
@@ -143,8 +198,7 @@ async function main() {
 
   const layout = {
     panel: { x: 0, y: HUD_Y, w: HUD_W, h: HUD_H },
-    hpLeft: shift(top[0]),
-    hpRight: shift(top[1]),
+    tray: shift(cards),
     ki: shift(ki),
     drawPile: shift(piles[0]),
     discardPile: shift(piles[1]),
@@ -153,7 +207,7 @@ async function main() {
   };
   writeFileSync(
     LAYOUT,
-    `// Gerado por tools/process-hud.ts — não edite à mão.\n// Áreas da HUD de baixo, em pixels da tela (1280×720).\n` +
+    `// Gerado por tools/process-hud.ts — não edite à mão.\n// Áreas da HUD de baixo, em pixels da tela (1280×720). A imagem tem o dobro da resolução.\n` +
       `export const HUD = ${JSON.stringify(layout, null, 2)} as const;\n`,
   );
   console.log('  ✓ layout da HUD', JSON.stringify(layout));

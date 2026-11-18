@@ -44,7 +44,10 @@ export function previewCardDamage(view: BattleView, cardId: string): DamagePrevi
   const weak = view.me.weak > 0;
 
   const bankai = view.me.powers.filter((p) => p === 'bankai').length * RULES.bankaiBonus;
-  let value = base + strength + bankai + bonus;
+  let value = base + bonus;
+  // Proporção 7:3: o golpe dobra com o oponente em HP baixo (antes da Força, como no motor).
+  if (dmg.doubleBelowHp && view.opponent.hp <= view.opponent.maxHp * dmg.doubleBelowHp) value *= 2;
+  value += strength + bankai;
   if (weak) value = Math.floor(value * 0.75);
   if (vulnerable) value = Math.floor(value * 1.25);
   value = Math.max(0, value);
