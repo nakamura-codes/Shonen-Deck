@@ -38,7 +38,7 @@ import {
 type Side = 0 | 1; // 0 = eu (esquerda), 1 = oponente (direita)
 
 const CHAR_X: Record<Side, number> = { 0: 260, 1: 1020 };
-const FEET_Y = 416;
+const FEET_Y = 374; // pés no meio do chão das arenas
 const CHAR_SCALE = 3;
 const BODY_Y = FEET_Y - 100;
 
@@ -203,9 +203,7 @@ export class BattleScene extends Phaser.Scene {
     if (!this.arenaImage) {
       const key = `arena_${view.arena}`;
       if (this.textures.exists(key)) {
-        // Arena esticada para cobrir também as bordas extras da tela (escala de interface < 100%).
-        const w = VIEW_W, h = (427 + MARGIN_Y) * Math.max(1, w / 1280 / ((427 + MARGIN_Y) / 427));
-        this.arenaImage = this.add.image(640, 427, key).setOrigin(0.5, 1).setDisplaySize(Math.max(w, (h * 1280) / 427), Math.max(h, 427 + MARGIN_Y)).setDepth(-10);
+        this.arenaImage = this.add.image(0, 0, key).setOrigin(0).setDisplaySize(1280, 427).setDepth(-10);
       }
     }
     this.turnText.setText(`Turno ${view.turn}`);
@@ -253,7 +251,7 @@ export class BattleScene extends Phaser.Scene {
     const c = makeCharacter(this, f.outfit, CHAR_SCALE, side === 1).setPosition(CHAR_X[side], FEET_Y).setDepth(3);
     this.tweens.add({ targets: c, scaleY: 1.02, yoyo: true, repeat: -1, duration: 1100 + side * 150, ease: 'Sine.easeInOut' });
     this.chars[side] = c;
-    txt(this, CHAR_X[side], 172, f.name, 20, '#ffffff', { fontStyle: 'bold', stroke: '#0d0a14', strokeThickness: 5 }).setDepth(4);
+    txt(this, CHAR_X[side], 130, f.name, 20, '#ffffff', { fontStyle: 'bold', stroke: '#0d0a14', strokeThickness: 5 }).setDepth(4);
   }
 
   private drawHpBar(side: Side, hp: number, max: number) {
@@ -321,7 +319,7 @@ export class BattleScene extends Phaser.Scene {
     });
 
     if (f.ready && this.view?.phase === 'planning') {
-      this.hud.add(txt(this, x, 120, 'Pronto!', 16, '#7fe0a0', { fontStyle: 'bold', stroke: '#0d0a14', strokeThickness: 4 }));
+      this.hud.add(txt(this, x, 102, 'Pronto!', 16, '#7fe0a0', { fontStyle: 'bold', stroke: '#0d0a14', strokeThickness: 4 }));
     }
   }
 
@@ -341,7 +339,12 @@ export class BattleScene extends Phaser.Scene {
 
     // Minha fila.
     const mq = view.me.queue;
-    this.hud.add(txt(this, 640, 262, mq.length ? 'Sua jogada' : 'Clique nas cartas da mão para jogar · o cadeado guarda 1 carta para o próximo turno', 16, '#ffffff', { stroke: '#0d0a14', strokeThickness: 4 }));
+    // Entre os dois personagens, sem passar por cima deles.
+    this.hud.add(
+      mq.length
+        ? txt(this, 640, 262, 'Sua jogada', 16, '#ffffff', { stroke: '#0d0a14', strokeThickness: 4 })
+        : txt(this, 640, 300, 'Clique nas cartas da mão para jogar\no cadeado guarda 1 carta para o próximo turno', 16, '#ffffff', { stroke: '#0d0a14', strokeThickness: 4, align: 'center', lineSpacing: 6 }),
+    );
     mq.forEach((q, i) => {
       const x = 640 - (mq.length - 1) * 40 + i * 80;
       const icon = makeMiniIcon(this, q.card.id, 0.85).setPosition(x, 330);
