@@ -3,8 +3,8 @@
  *
  *   npm run art:music
  *
- *  - art/raw/music/batalha/  músicas das batalhas (tocam em sequência, em ordem alfabética; ao acabar a
- *                            última, volta para a primeira). O nome do arquivo vira o título no jogo.
+ *  - art/raw/music/batalha/  músicas das batalhas (cada partida começa numa faixa sorteada e segue a
+ *                            lista, voltando ao início). O nome do arquivo vira o título no jogo.
  *  - art/raw/music/menu/     música do menu principal (repete sem parar).
  *
  * Tudo é convertido para MP3 estéreo 128 kbps com volume equalizado (loudnorm, -20 LUFS), para nenhuma

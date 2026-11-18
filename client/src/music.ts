@@ -3,8 +3,8 @@ import { MENU_MUSIC, MUSIC, type Track } from './music.generated.ts';
 /**
  * Música do jogo (usa <audio>, em streaming).
  *  - Menu (login, menu principal, inventário, coleção, fila): a música do menu repete sem parar.
- *  - Batalha: as faixas tocam em sequência; ao acabar a última, volta para a primeira. A posição
- *    continua de uma batalha para a outra.
+ *  - Batalha: cada partida começa numa faixa sorteada; dali segue a lista e, ao acabar a última,
+ *    volta para a primeira.
  * O volume é baixo de propósito: na batalha, os sons dos ataques têm que se destacar.
  */
 const KEY = 'shonen.music';
@@ -94,14 +94,14 @@ export function startBattleMusic(titleCb?: (t: string) => void) {
   onTitle = titleCb ?? null;
   if (mode === 'battle' || !MUSIC.length) return;
   mode = 'battle';
+  battleIndex = Math.floor(Math.random() * MUSIC.length);
   playBattleTrack();
 }
 
-/** Fim da batalha: a próxima batalha começa na faixa seguinte. */
+/** Fim da batalha (a próxima sorteia de novo). */
 export function stopBattleMusic() {
   if (mode !== 'battle') return;
   mode = null;
-  battleIndex = (battleIndex + 1) % Math.max(1, MUSIC.length);
   const a = audio;
   if (a) fade(a, 0, 800, () => a.pause());
   audio = null;
