@@ -25,6 +25,7 @@ export class BootScene extends Phaser.Scene {
     this.load.image('card_back', 'assets/cards/frames/back.png');
     for (const [name, f] of Object.entries(FX)) this.load.spritesheet(`fx_${name}`, `assets/fx/${name}.png`, { frameWidth: f.w, frameHeight: f.h });
     for (const k of ['hud', 'btn_normal', 'btn_hover', 'btn_disabled', 'inventario', 'slot_normal', 'slot_selected', 'colecao', 'trofeu']) this.load.image(k, `assets/ui/${k}.png`);
+    this.load.image('fundo_preparacao', 'assets/ui/fundo_preparacao.webp');
     for (const k of MENU_KEYS) this.load.image(k, `assets/menu/${k}.png`);
     for (const a of ARENAS) this.load.image(`arena_${a.id}`, `assets/arenas/${a.id}.png`);
     for (const item of OUTFIT_ITEMS) this.load.image(`item_${item.id}`, `assets/items/${item.id}.png`);
