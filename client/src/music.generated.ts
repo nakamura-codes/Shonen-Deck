@@ -17,6 +17,10 @@ export const MUSIC: Track[] = [
   {
     "file": "batalha_naruto_shippuden_op_2.mp3",
     "title": "Naruto Shippuden Op 2"
+  },
+  {
+    "file": "batalha_one_piece_we_are.mp3",
+    "title": "One Piece - We Are"
   }
 ];
 /** Menu principal: repete sem parar (usa a primeira). */
