@@ -5,6 +5,8 @@ import { txt } from '../ui.ts';
 import { FX } from '../fx.generated.ts';
 import { MENU_KEYS } from '../menu.generated.ts';
 
+const ARMED_FIGURES = false;
+
 export class BootScene extends Phaser.Scene {
   constructor() {
     super('Boot');
@@ -28,7 +30,9 @@ export class BootScene extends Phaser.Scene {
     for (const item of OUTFIT_ITEMS) this.load.image(`item_${item.id}`, `assets/items/${item.id}.png`);
     const heads = ['none', ...itemsForSlot('head').map((i) => i.id)];
     const bodies = ['none', ...itemsForSlot('body').map((i) => i.id)];
-    const hands = ['', ...itemsForSlot('hand').map((i) => `_${i.id}`)];
+    // Bonecos segurando a arma: desligados até chegarem os desenhos definitivos (tools/process-armed.py).
+    // Sem eles, o personagem aparece sem a arma (as cartas da arma funcionam normalmente).
+    const hands = ['', ...(ARMED_FIGURES ? itemsForSlot('hand').map((i) => `_${i.id}`) : [])];
     for (const h of heads) for (const b of bodies) for (const w of hands) this.load.image(`fig_${h}_${b}${w}`, `assets/character/fig_${h}_${b}${w}.png`);
   }
 
