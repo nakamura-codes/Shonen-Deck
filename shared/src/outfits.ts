@@ -17,11 +17,11 @@ export const OUTFIT_ITEMS: OutfitItem[] = [
   { id: 'roupa_luffy', slot: 'body', name: 'Colete do Pirata', cards: ['gear_second', 'haki', 'sake'] },
   { id: 'scouter', slot: 'head', name: 'Scouter', cards: ['leitura_de_poder', 'ki_blast', 'galick_gun'] },
   // Mão: armas (o boneco segura a arma; sprite em assets/weapons/<id>.png).
-  { id: 'espada_trunks', slot: 'hand', name: 'Espada do Trunks', cards: ['burning_attack', 'corte_do_futuro', 'shining_sword'] },
-  { id: 'pistola_pirata', slot: 'hand', name: 'Pistola Pirata', cards: ['tiro_duplo', 'tiro_certeiro', 'recarregar'] },
+  { id: 'espada_trunks', slot: 'hand', name: 'Espada', cards: ['burning_attack', 'corte_do_futuro', 'shining_sword'] },
+  { id: 'pistola_pirata', slot: 'hand', name: 'Pistola', cards: ['tiro_duplo', 'tiro_certeiro', 'recarregar'] },
   { id: 'kunai_ninja', slot: 'hand', name: 'Kunai', cards: ['kunai', 'kunai_explosiva', 'hiraishin'] },
-  { id: 'zanpakuto', slot: 'hand', name: 'Zanpakutō do Ichigo', cards: ['corte_shinigami', 'senbonzakura', 'defesa_de_lamina'] },
-  { id: 'cutelo_nanami', slot: 'hand', name: 'Cutelo do Nanami', cards: ['proporcao_7_3', 'hora_extra', 'colapso'] },
+  { id: 'zanpakuto', slot: 'hand', name: 'Zanpakuto', cards: ['corte_shinigami', 'senbonzakura', 'defesa_de_lamina'] },
+  { id: 'cutelo_nanami', slot: 'hand', name: 'Cutelo', cards: ['proporcao_7_3', 'hora_extra', 'colapso'] },
 ];
 
 /** Cartas que existem mas estão fora das roupas por enquanto. */
