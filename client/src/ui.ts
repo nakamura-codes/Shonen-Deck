@@ -38,6 +38,14 @@ export const TYPE_LABEL: Record<CardDef['type'], string> = {
   power: 'Poder',
 };
 
+/**
+ * Tamanhos de texto pedidos em pixels de uma tela 1920×1080 (o layout de 1280×720 aparece 1,5× maior).
+ * Nomes de itens: Pixelify Sans SemiBold 20 px. Descrições de habilidades: Pixelify Sans Regular 18 px.
+ */
+const SCREEN_PX = 1080 / 720;
+export const ITEM_NAME = { size: 20 / SCREEN_PX, style: { fontStyle: '600' } } as const;
+export const SKILL_DESC = { size: 18 / SCREEN_PX, style: { fontStyle: 'normal' } } as const;
+
 export function txt(
   scene: Phaser.Scene,
   x: number,
@@ -81,9 +89,9 @@ export function centerInk(t: Phaser.GameObjects.Text, x: number, y: number) {
 
 /** Texto que diminui até caber na largura. */
 export function fitText(t: Phaser.GameObjects.Text, maxWidth: number) {
-  let size = parseInt(String(t.style.fontSize), 10);
-  while (t.width > maxWidth && size > 9) {
-    size -= 1;
+  let size = parseFloat(String(t.style.fontSize));
+  while (t.width > maxWidth && size > 8) {
+    size -= 0.5;
     t.setFontSize(size);
   }
   return t;
@@ -212,12 +220,14 @@ function makeFramedCard(scene: Phaser.Scene, cardId: string, opts: CardOpts) {
 
   c.add(fitText(txt(scene, cx(L.name), cy(L.name), def.name, 14, '#ffffff', { fontStyle: 'bold' }), L.name.w - 8));
   // Descrição centralizada na caixa, com a maior fonte que couber.
-  const body = txt(scene, cx(L.text), cy(L.text), def.text, 14, '#1c1424', {
+  const body = txt(scene, cx(L.text), cy(L.text), def.text, SKILL_DESC.size, '#1c1424', {
+    ...SKILL_DESC.style,
     align: 'center',
-    wordWrap: { width: L.text.w - 8 },
-    lineSpacing: -4,
+    wordWrap: { width: L.text.w - 6 },
+    lineSpacing: -3,
   });
-  for (let size = 14; size > 9 && body.height > L.text.h - 2; size--) body.setFontSize(size);
+  // Só diminui se a descrição não couber na caixa.
+  for (let size = SKILL_DESC.size; size > 9 && body.height > L.text.h; size -= 0.5) body.setFontSize(size);
   c.add(body);
   const typeLabel = def.ethereal ? `${TYPE_LABEL[def.type]} · Etérea` : TYPE_LABEL[def.type];
   c.add(fitText(txt(scene, cx(L.type), cy(L.type), typeLabel, 10, def.ethereal ? '#e9b8ff' : '#f4ecd8'), L.type.w - 6));
@@ -386,7 +396,7 @@ export function makeItemTile(
   draw(false);
   c.add(g);
   c.add(makeItemIcon(scene, itemId, w - 16, 82).setPosition(0, -h / 2 + 42));
-  c.add(fitText(txt(scene, 0, h / 2 - 52, item.name, 16, '#ffffff', { fontStyle: 'bold' }), w - 12));
+  c.add(fitText(txt(scene, 0, h / 2 - 52, item.name, ITEM_NAME.size, '#ffffff', ITEM_NAME.style), w - 12));
   item.cards.forEach((cardId, i) => {
     const x = (i - 1) * Math.min(46, (w - 10) / 3);
     const icon = makeMiniIcon(scene, cardId, 0.48).setPosition(x, h / 2 - 22);

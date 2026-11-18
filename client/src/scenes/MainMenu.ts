@@ -26,10 +26,11 @@ export class MainMenuScene extends Phaser.Scene {
     const [pk, , , pw, ph] = shrink(prof);
     const px = -MARGIN_X + 16, py = -MARGIN_Y + 16;
     placeImage(this, [pk, px, py, pw, ph]);
-    centerInk(fitText(txt(this, 0, 0, session.name, 22, '#ffffff', { fontStyle: 'bold', stroke: '#0d0a14', strokeThickness: 4 }), pw * 0.55), px + pw * 0.6, py + ph * 0.36);
+    centerInk(fitText(txt(this, 0, 0, session.name, 22, '#ffffff', { fontStyle: 'bold', stroke: '#0d0a14', strokeThickness: 4 }), pw * 0.5), px + pw * 0.63, py + ph * 0.36);
 
     const logo = placeImage(this, find('logo_shonen_deck_transparente'));
-    // O título fica no tamanho original, um pouco mais para cima.
+    // O título fica 10% menor que o original, um pouco mais para cima.
+    logo.setScale(logo.scaleX * 0.9, logo.scaleY * 0.9);
     logo.y -= 30;
     this.tweens.add({ targets: logo, y: logo.y + 6, yoyo: true, repeat: -1, duration: 1800, ease: 'Sine.easeInOut' });
 

@@ -3,7 +3,7 @@ import { startMenuMusic } from '../music.ts';
 import { OUTFIT_ITEMS, OUTFIT_SLOTS, SLOT_LABELS, buildDeck, getItem, type OutfitSlot, type ServerMessage } from '@oficina/shared';
 import { session } from '../session.ts';
 import { sfx } from '../sfx.ts';
-import { COLORS, drawArena, fitText, floatText, makeButton, makeCard, makeCharacter, makeItemIcon, makeMiniIcon, txt, fullBackground, fullShade } from '../ui.ts';
+import { ITEM_NAME, COLORS, drawArena, fitText, floatText, makeButton, makeCard, makeCharacter, makeItemIcon, makeMiniIcon, txt, fullBackground, fullShade } from '../ui.ts';
 import { INV } from '../inventory.generated.ts';
 
 /**
@@ -122,14 +122,21 @@ export class WardrobeScene extends Phaser.Scene {
     const frame = this.add.image(0, 0, this.textures.exists(key) ? key : '__DEFAULT').setDisplaySize(worn ? w * 1.04 : w, worn ? h * 1.04 : h);
     c.add([fill, frame]);
     c.add(txt(this, 0, -h / 2 + h * 0.075, worn ? 'Vestindo' : SLOT_LABELS[item.slot], 10, worn ? '#7fe0ff' : '#ffe28a', { fontStyle: 'bold' }));
-    // Ícone limitado à área entre a faixa de cima e o nome (não invade a faixa).
-    const ic = makeItemIcon(this, itemId, iw - 6, ih * 0.4).setPosition(0, iy + ih * 0.28);
+    // Nome do item: uma linha; nomes compridos quebram em duas (sem diminuir a fonte) e o ícone
+    // fica um pouco menor para os dois caberem entre a faixa de cima e as habilidades.
+    const nm = txt(this, 0, 0, item.name, ITEM_NAME.size, '#ffffff', { ...ITEM_NAME.style, stroke: '#0d0a14', strokeThickness: 3, align: 'center', lineSpacing: -4 });
+    if (nm.width > iw - 4 && item.name.includes(' ')) nm.setWordWrapWidth(iw - 4);
+    fitText(nm, iw - 4);
+    const twoLines = nm.height > ITEM_NAME.size * 1.9;
+    const iconH = ih * (twoLines ? 0.3 : 0.4);
+    const iconY = iy + ih * (twoLines ? 0.21 : 0.28);
+    nm.setY(iy + ih * (twoLines ? 0.535 : 0.58));
+    const ic = makeItemIcon(this, itemId, iw - 6, iconH).setPosition(0, iconY);
     if (ic instanceof Phaser.GameObjects.Image) {
-      const k = Math.min((iw - 8) / ic.width, (ih * 0.4) / ic.height);
+      const k = Math.min((iw - 8) / ic.width, iconH / ic.height);
       ic.setScale(k >= 1 ? Math.floor(k) : k);
     }
-    c.add(ic);
-    c.add(fitText(txt(this, 0, iy + ih * 0.58, item.name, 11, '#ffffff', { fontStyle: 'bold', stroke: '#0d0a14', strokeThickness: 3 }), iw - 4));
+    c.add([ic, nm]);
     item.cards.forEach((cardId, k) => {
       const cx = (k - 1) * (iw / 3);
       const cy = iy + ih * 0.82;
@@ -173,7 +180,7 @@ export class WardrobeScene extends Phaser.Scene {
       return;
     }
     this.dynamic.push(makeItemIcon(this, item.id, 56, h - 8).setPosition(x + 36, mid));
-    this.dynamic.push(txt(this, x + 150, mid, item.name, 16, '#ffffff', { fontStyle: 'bold' }).setOrigin(0, 0.5));
+    this.dynamic.push(txt(this, x + 150, mid, item.name, ITEM_NAME.size, '#ffffff', ITEM_NAME.style).setOrigin(0, 0.5));
     item.cards.forEach((cardId, i) => {
       const cx = x + 470 + i * 46;
       const icon = makeMiniIcon(this, cardId, 0.32).setPosition(cx, mid);
