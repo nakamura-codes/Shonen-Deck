@@ -666,6 +666,8 @@ describe('Máscara Hollow', () => {
     expect(powers(r.state)).toEqual([1, 1]);
     r = readyAndResolve(r.state);
     expect(powers(r.state)).toEqual([0, 0]);
+    // Exaustão do Bankai: Fraco quando acaba.
+    expect(r.state.fighters[0].weak).toBeGreaterThanOrEqual(1);
   });
 
   it('Sonído dá 3 de Bloqueio e +3 só no próximo ataque, em todos os golpes dele', () => {

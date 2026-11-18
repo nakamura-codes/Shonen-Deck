@@ -53,7 +53,7 @@ export const CARDS: Record<string, CardDef> = {
   },
   bankai: {
     id: 'bankai', name: 'Bankai', cost: 3, type: 'power', rarity: 'power',
-    text: 'Poder (2 turnos): seus ataques causam +3 de dano por golpe.',
+    text: 'Poder (2 turnos): ataques causam +3 por golpe. Depois, 2 de Fraco.',
     effects: [{ kind: 'power', power: 'bankai', turns: 2 }],
   },
   rasengan: {

@@ -24,6 +24,8 @@ export const RULES = {
   maxHandSize: 10,
   turnLimit: 40,
   bankaiBonus: 3,
+  /** Fraco que o Bankai deixa quando acaba. */
+  bankaiExhaustion: 2,
   /** Força extra enquanto a Hollowficação estiver ativa. */
   hollowStrength: 3,
   /** HP que Hollowficação e Gear Second custam em cada turno ativo. */
@@ -182,6 +184,11 @@ function startTurn(state: BattleState, events: BattleEvent[]) {
     for (let i = f.powers.length - 1; i >= 0; i--) {
       if (f.powerTurns[i] <= 0) {
         events.push({ type: 'powerEnd', player: p, power: f.powers[i] });
+        // Bankai: ao acabar, o corpo cobra o preço (exaustão).
+        if (f.powers[i] === 'bankai') {
+          f.weak += RULES.bankaiExhaustion;
+          events.push({ type: 'status', player: p, status: 'weak', amount: RULES.bankaiExhaustion });
+        }
         f.powers.splice(i, 1);
         f.powerTurns.splice(i, 1);
       }
