@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { startMenuMusic } from '../music.ts';
 import type { ServerMessage } from '@oficina/shared';
 import { session } from '../session.ts';
-import { COLORS, drawArena, makeButton, makeCharacter, txt } from '../ui.ts';
+import { COLORS, drawArena, makeButton, makeCharacter, txt, fullShade } from '../ui.ts';
 
 /** Espera um oponente na fila (ou começa direto contra o bot). */
 export class LobbyScene extends Phaser.Scene {
@@ -13,7 +13,7 @@ export class LobbyScene extends Phaser.Scene {
   create(data: { vsBot?: boolean }) {
     startMenuMusic();
     drawArena(this);
-    this.add.rectangle(640, 360, 1280, 720, 0x0d0a14, 0.5);
+    fullShade(this, 0.5);
     makeCharacter(this, session.outfit, 4).setPosition(640, 500);
 
     const title = txt(this, 640, 150, data.vsBot ? 'Preparando treino' : 'Procurando oponente', 34, '#ffe28a', {

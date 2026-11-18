@@ -1,8 +1,9 @@
 import Phaser from 'phaser';
+import { UI_SCALE } from '../render.ts';
 import { startMenuMusic } from '../music.ts';
 import { auth } from '../session.ts';
 import { sfx } from '../sfx.ts';
-import { txt } from '../ui.ts';
+import { txt, fullBackground } from '../ui.ts';
 import { SCREENS } from '../menu.generated.ts';
 import { menuButton, placeImage, type Box } from '../menuUi.ts';
 
@@ -23,8 +24,12 @@ export class LoginScene extends Phaser.Scene {
   create() {
     startMenuMusic();
     this.busy = false;
-    this.add.image(0, 0, 'fundos_fundo_login_2560x1440').setOrigin(0).setDisplaySize(1280, 720);
+    fullBackground(this, 'fundos_fundo_login_2560x1440');
     const logo = placeImage(this, find('logo_shonen_deck_transparente'));
+    // O título não encolhe com a escala da interface.
+    const h0 = logo.displayHeight;
+    logo.setScale(logo.scaleX / UI_SCALE, logo.scaleY / UI_SCALE);
+    logo.y -= (logo.displayHeight - h0) / 2; // cresce para cima, sem cobrir os botões
     this.tweens.add({ targets: logo, y: logo.y + 6, yoyo: true, repeat: -1, duration: 1800, ease: 'Sine.easeInOut' });
     const panel = find('molduras_painel_login');
     placeImage(this, panel);

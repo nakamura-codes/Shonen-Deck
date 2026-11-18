@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { startMenuMusic } from '../music.ts';
 import { BASE_DECK, CARDS, COMBOS, OUTFIT_ITEMS, getCard, type CardDef } from '@oficina/shared';
-import { COLORS, NUM_FONT, TYPE_COLOR, centerInk, fitText, makeButton, makeCard, txt } from '../ui.ts';
+import { COLORS, NUM_FONT, TYPE_COLOR, centerInk, fitText, makeButton, makeCard, txt, fullBackground, fullShade } from '../ui.ts';
 import { auth } from '../session.ts';
 import { sfx } from '../sfx.ts';
 import { COLLECTION } from '../collection.generated.ts';
@@ -51,8 +51,8 @@ export class GalleryScene extends Phaser.Scene {
     this.ids = collectionOrder();
     this.from = origins();
     if (this.textures.exists('fundos_fundo_menu_principal_2560x1440')) {
-      this.add.image(0, 0, 'fundos_fundo_menu_principal_2560x1440').setOrigin(0).setDisplaySize(1280, 720);
-      this.add.rectangle(640, 360, 1280, 720, 0x0d0a14, 0.35);
+      fullBackground(this, 'fundos_fundo_menu_principal_2560x1440');
+      fullShade(this, 0.35);
     } else this.cameras.main.setBackgroundColor('#16121f');
 
     // Fundo das áreas vazadas (embaixo do painel).

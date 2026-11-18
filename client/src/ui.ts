@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { figureKey, getCard, getItem, type CardDef, type Outfit } from '@oficina/shared';
 import { FRAME_LAYOUT, FRAME_SIZE } from './cardFrames.generated.ts';
 import { sfx } from './sfx.ts';
-import { RENDER_SCALE } from './render.ts';
+import { MARGIN_X, MARGIN_Y, RENDER_SCALE, VIEW_H, VIEW_W } from './render.ts';
 import { FX } from './fx.generated.ts';
 
 export const FONT = '"GameFont", monospace';
@@ -430,7 +430,7 @@ export function drawArena(scene: Phaser.Scene) {
   const W = 1280;
   const H = 720;
   const g = scene.add.graphics().setDepth(-10);
-  g.fillGradientStyle(0x1d2340, 0x1d2340, 0x2a1d3a, 0x2a1d3a).fillRect(0, 0, W, H);
+  g.fillGradientStyle(0x1d2340, 0x1d2340, 0x2a1d3a, 0x2a1d3a).fillRect(-MARGIN_X, -MARGIN_Y, VIEW_W, VIEW_H);
   // Pilares.
   for (const x of [120, 400, 880, 1160]) {
     g.fillStyle(0x161a30).fillRect(x - 40, 60, 80, 400);
@@ -529,4 +529,21 @@ export function makeArtButton(
   };
   draw();
   return c;
+}
+
+/**
+ * Fundo de tela cheia: a imagem fica no lugar do layout (1280×720) e uma cópia ampliada por trás cobre as
+ * bordas extras da tela (quando a interface está em escala menor que 100%).
+ */
+export function fullBackground(scene: Phaser.Scene, key: string, depth = -11, framed = false) {
+  const cover = Math.max(VIEW_W / 1280, VIEW_H / 720);
+  if (!framed) return scene.add.image(640, 360, key).setDisplaySize(1280 * cover, 720 * cover).setDepth(depth);
+  // Arte com painéis no lugar certo: fica exata em 1280×720 e as bordas extras recebem a mesma arte escurecida.
+  if (MARGIN_X > 0 || MARGIN_Y > 0) scene.add.image(640, 360, key).setDisplaySize(1280 * cover, 720 * cover).setDepth(depth - 1).setTint(0x262033);
+  return scene.add.image(0, 0, key).setOrigin(0).setDisplaySize(1280, 720).setDepth(depth);
+}
+
+/** Retângulo escurecido cobrindo a tela inteira (inclusive as bordas extras). */
+export function fullShade(scene: Phaser.Scene, alpha: number) {
+  return scene.add.rectangle(640, 360, VIEW_W + 4, VIEW_H + 4, 0x0d0a14, alpha);
 }

@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { BootScene } from './scenes/Boot.ts';
-import { RENDER_SCALE } from './render.ts';
+import { RENDER_SCALE, VIEW_H, VIEW_W } from './render.ts';
 import { LoginScene } from './scenes/Login.ts';
 import { MainMenuScene } from './scenes/MainMenu.ts';
 import { WardrobeScene } from './scenes/Wardrobe.ts';
@@ -34,8 +34,8 @@ async function start() {
     parent: 'game',
     // O jogo é pensado em 1280×720 e desenhado com RENDER_SCALE (1× a 2×, conforme a tela),
     // com o mesmo zoom nas câmeras: nítido sem pesar à toa em telas menores.
-    width: 1280 * RENDER_SCALE,
-    height: 720 * RENDER_SCALE,
+    width: Math.round(VIEW_W * RENDER_SCALE),
+    height: Math.round(VIEW_H * RENDER_SCALE),
     backgroundColor: '#16121f',
     pixelArt: true,
     dom: { createContainer: true },

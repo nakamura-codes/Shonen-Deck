@@ -14,6 +14,7 @@ import { session } from '../session.ts';
 import { attackSound, isMuted, sfx, toggleMute } from '../sfx.ts';
 import { hasMusic, isMusicMuted, startBattleMusic, stopBattleMusic, toggleMusic } from '../music.ts';
 import { HUD } from '../hud.generated.ts';
+import { MARGIN_X, MARGIN_Y, VIEW_H, VIEW_W } from '../render.ts';
 import { mergeRepeats } from '../events.ts';
 import {
   CARD_H,
@@ -76,7 +77,7 @@ export class BattleScene extends Phaser.Scene {
     this.arenaImage = undefined;
     // Faixa de baixo (mão e botões); a arena entra em cima quando chega o primeiro estado.
     const panel = this.add.graphics().setDepth(-9);
-    panel.fillGradientStyle(0x232a36, 0x232a36, 0x141820, 0x141820).fillRect(0, 427, 1280, 293);
+    panel.fillGradientStyle(0x232a36, 0x232a36, 0x141820, 0x141820).fillRect(-MARGIN_X, 427, VIEW_W, 293 + MARGIN_Y);
     // HUD com arte (assets/ui/hud.png): as áreas vazadas recebem barras de HP, Ki, contadores e botões.
     this.hasHudArt = this.textures.exists('hud');
     if (this.hasHudArt) this.add.image(HUD.panel.x, HUD.panel.y, 'hud').setOrigin(0).setDepth(-8);
@@ -84,8 +85,8 @@ export class BattleScene extends Phaser.Scene {
     this.hand = this.add.container(0, 0).setDepth(20);
 
     const top = this.add.graphics().setDepth(4);
-    top.fillStyle(COLORS.outline, 0.85).fillRect(0, 0, 1280, 52);
-    top.fillStyle(COLORS.gold).fillRect(0, 52, 1280, 3);
+    top.fillStyle(COLORS.outline, 0.85).fillRect(-MARGIN_X, -MARGIN_Y, VIEW_W, 52 + MARGIN_Y);
+    top.fillStyle(COLORS.gold).fillRect(-MARGIN_X, 52, VIEW_W, 3);
     this.turnText = txt(this, 90, 27, 'Turno 1', 22, '#ffe28a', { fontStyle: 'bold' }).setDepth(6);
     this.timerText = txt(this, 640, 27, '', 36, '#ffffff', { fontFamily: NUM_FONT }).setDepth(6);
     this.starterText = txt(this, 1110, 27, '', 16, '#ffe28a').setDepth(6);
@@ -201,7 +202,11 @@ export class BattleScene extends Phaser.Scene {
     this.view = view;
     if (!this.arenaImage) {
       const key = `arena_${view.arena}`;
-      if (this.textures.exists(key)) this.arenaImage = this.add.image(0, 0, key).setOrigin(0).setDisplaySize(1280, 427).setDepth(-10);
+      if (this.textures.exists(key)) {
+        // Arena esticada para cobrir também as bordas extras da tela (escala de interface < 100%).
+        const w = VIEW_W, h = (427 + MARGIN_Y) * Math.max(1, w / 1280 / ((427 + MARGIN_Y) / 427));
+        this.arenaImage = this.add.image(640, 427, key).setOrigin(0.5, 1).setDisplaySize(Math.max(w, (h * 1280) / 427), Math.max(h, 427 + MARGIN_Y)).setDepth(-10);
+      }
     }
     this.turnText.setText(`Turno ${view.turn}`);
     const starterName = view.turnStarter === view.you ? 'Você' : view.opponent.name;
@@ -839,7 +844,7 @@ export class BattleScene extends Phaser.Scene {
     const winner = view.firstPlayer;
     this.animating = true;
     this.hand.setVisible(false);
-    const shade = this.add.rectangle(640, 360, 1280, 720, 0x0d0a14, 0.6).setDepth(80);
+    const shade = this.add.rectangle(640, 360, VIEW_W + 4, VIEW_H + 4, 0x0d0a14, 0.6).setDepth(80);
     const coin = this.add.container(640, 330).setDepth(81);
     const g = this.add.graphics();
     g.fillStyle(0x7a4a10).fillCircle(0, 6, 92);
@@ -1117,7 +1122,7 @@ export class BattleScene extends Phaser.Scene {
     const won = view.winner === view.you;
     sfx(view.winner === 'draw' ? 'confirm' : won ? 'victory' : 'defeat');
     const label = view.winner === 'draw' ? 'Empate!' : won ? 'Vitória!' : 'Derrota…';
-    const shade = this.add.rectangle(640, 360, 1280, 720, 0x0d0a14, 0.75).setDepth(90).setInteractive();
+    const shade = this.add.rectangle(640, 360, VIEW_W + 4, VIEW_H + 4, 0x0d0a14, 0.75).setDepth(90).setInteractive();
     const t = txt(this, 640, 280, label, 72, won ? '#ffe28a' : '#ff9090', { fontStyle: 'bold', stroke: '#0d0a14', strokeThickness: 10 }).setDepth(91);
     t.setScale(0.4);
     this.tweens.add({ targets: t, scale: 1, duration: 400, ease: 'Back.easeOut' });

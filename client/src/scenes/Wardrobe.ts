@@ -3,7 +3,7 @@ import { startMenuMusic } from '../music.ts';
 import { OUTFIT_ITEMS, OUTFIT_SLOTS, SLOT_LABELS, buildDeck, getItem, type OutfitSlot, type ServerMessage } from '@oficina/shared';
 import { session } from '../session.ts';
 import { sfx } from '../sfx.ts';
-import { COLORS, drawArena, fitText, floatText, makeButton, makeCard, makeCharacter, makeItemIcon, makeMiniIcon, txt } from '../ui.ts';
+import { COLORS, drawArena, fitText, floatText, makeButton, makeCard, makeCharacter, makeItemIcon, makeMiniIcon, txt, fullBackground, fullShade } from '../ui.ts';
 import { INV } from '../inventory.generated.ts';
 
 /**
@@ -37,10 +37,10 @@ export class WardrobeScene extends Phaser.Scene {
   create() {
     startMenuMusic();
     if (this.textures.exists('inventario')) {
-      this.add.image(0, 0, 'inventario').setOrigin(0).setDisplaySize(1280, 720).setDepth(-10);
+      fullBackground(this, 'inventario', -10, true);
     } else {
       drawArena(this);
-      this.add.rectangle(640, 360, 1280, 720, 0x0d0a14, 0.5);
+      fullShade(this, 0.5);
     }
 
     const t = INV.title;
