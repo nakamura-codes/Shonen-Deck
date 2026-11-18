@@ -27,8 +27,8 @@ export const CARDS: Record<string, CardDef> = {
   },
   gear_second: {
     id: 'gear_second', name: 'Gear Second', cost: 2, type: 'power', rarity: 'power',
-    text: 'Poder (3 turnos): no início de cada turno, +1 Ki e perde 2 HP.',
-    effects: [{ kind: 'power', power: 'gearSecond', turns: 3 }],
+    text: 'Poder (2 turnos): +1 Ki e perde 5 HP em cada um desses turnos.',
+    effects: [{ kind: 'power', power: 'gearSecond', turns: 2 }],
   },
   kamehameha: {
     id: 'kamehameha', name: 'Kamehameha', cost: 1, type: 'attack', rarity: 'rare',
@@ -143,7 +143,7 @@ export const CARDS: Record<string, CardDef> = {
   },
   hollowficacao: {
     id: 'hollowficacao', name: 'Hollowficação', cost: 2, type: 'power', rarity: 'power',
-    text: 'Poder (2 turnos): +2 de Força. Perde 2 HP no início do próximo turno.',
+    text: 'Poder (2 turnos): +3 de Força. Perde 5 HP em cada um desses turnos.',
     effects: [{ kind: 'power', power: 'hollow', turns: 2 }],
   },
   sonido: {

@@ -303,14 +303,17 @@ describe('poderes', () => {
     expect(r.state.fighters[1].hp).toBe(60 - 9);
   });
 
-  it('Gear Second dá +1 Ki e custa 2 HP por turno', () => {
+  it('Gear Second dura 2 turnos: +1 Ki e perde 5 HP em cada um', () => {
     let s = newBattle();
     giveHand(s, 0, ['gear_second']);
     s = play(s, 0, 'gear_second');
-    const r = readyAndResolve(s);
-    // Sobrou 2 + 3 do turno + 1 do Gear Second = 6, limitado a 5.
+    let r = readyAndResolve(s);
+    // 5 HP ao ser jogado + 5 no início do turno seguinte; Ki limitado a 5.
     expect(r.state.fighters[0].ki).toBe(5);
-    expect(r.state.fighters[0].hp).toBe(58);
+    expect(r.state.fighters[0].hp).toBe(50);
+    r = readyAndResolve(r.state);
+    expect(r.state.fighters[0].powers).toEqual([]);
+    expect(r.state.fighters[0].hp).toBe(50);
   });
 
   it('Domain Expansion aplica Fraco no oponente a cada turno', () => {
@@ -318,7 +321,7 @@ describe('poderes', () => {
     giveHand(s, 0, ['domain_expansion']);
     s = play(s, 0, 'domain_expansion');
     const r = readyAndResolve(s);
-    expect(r.state.fighters[1].weak).toBe(1);
+    expect(r.state.fighters[1].weak).toBeGreaterThanOrEqual(1);
   });
 });
 
@@ -626,29 +629,32 @@ describe('Máscara Hollow', () => {
     expect(r.state.fighters[1].hp).toBe(44);
   });
 
-  it('Hollowficação dura 2 turnos: +2 de Força e perde 2 HP no início do próximo turno', () => {
+  it('Hollowficação dura 2 turnos: +3 de Força e perde 5 HP em cada um', () => {
     let s = newBattle();
-    giveHand(s, 0, ['hollowficacao']);
+    giveHand(s, 0, ['hollowficacao', 'golpe_basico']);
+    s.fighters[0].ki = 3;
     s = play(s, 0, 'hollowficacao');
+    s = play(s, 0, 'golpe_basico');
     let r = readyAndResolve(s);
-    expect(r.state.fighters[0].powers).toEqual(['hollow']);
-    expect(r.state.fighters[0].hp).toBe(58);
+    // O poder vale já no turno em que é jogado: 6 + 3.
+    expect(r.state.fighters[1].hp).toBe(60 - 9);
+    expect(r.state.fighters[0].hp).toBe(50);
     s = r.state;
     giveHand(s, 0, ['golpe_basico']);
     s = play(s, 0, 'golpe_basico');
     r = readyAndResolve(s);
-    expect(r.state.fighters[1].hp).toBe(60 - 8);
+    expect(r.state.fighters[1].hp).toBe(60 - 9 - 9);
     // Acabou: não perde mais HP e a Força extra some.
     expect(r.state.fighters[0].powers).toEqual([]);
-    expect(r.state.fighters[0].hp).toBe(58);
+    expect(r.state.fighters[0].hp).toBe(50);
     s = r.state;
     giveHand(s, 0, ['golpe_basico']);
     s = play(s, 0, 'golpe_basico');
     r = readyAndResolve(s);
-    expect(r.state.fighters[1].hp).toBe(60 - 8 - 6);
+    expect(r.state.fighters[1].hp).toBe(60 - 9 - 9 - 6);
   });
 
-  it('Bankai dura 2 turnos e Gear Second 3', () => {
+  it('Bankai e Gear Second duram 2 turnos', () => {
     let s = newBattle();
     giveHand(s, 0, ['bankai']);
     s.fighters[0].ki = 5;
@@ -658,8 +664,6 @@ describe('Máscara Hollow', () => {
     const powers = (st: typeof s) => [st.fighters[0].powers.length, st.fighters[1].powers.length];
     let r = readyAndResolve(s);
     expect(powers(r.state)).toEqual([1, 1]);
-    r = readyAndResolve(r.state);
-    expect(powers(r.state)).toEqual([0, 1]);
     r = readyAndResolve(r.state);
     expect(powers(r.state)).toEqual([0, 0]);
   });

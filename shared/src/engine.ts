@@ -11,6 +11,7 @@ import type {
   FighterPublicView,
   Outfit,
   PlayerIndex,
+  PowerId,
   QueuedCard,
 } from './types.ts';
 
@@ -24,7 +25,9 @@ export const RULES = {
   turnLimit: 40,
   bankaiBonus: 3,
   /** Força extra enquanto a Hollowficação estiver ativa. */
-  hollowStrength: 2,
+  hollowStrength: 3,
+  /** HP que Hollowficação e Gear Second custam em cada turno ativo. */
+  powerHpCost: 5,
 } as const;
 
 export interface PlayerSetup {
@@ -91,6 +94,20 @@ export function buildDeck(outfit: Outfit): string[] {
 }
 
 /** Cria a batalha e já começa o turno 1 (cartas compradas). */
+/** Efeito de um poder ativo em cada turno (o primeiro acontece quando ele é jogado). */
+function powerTick(state: BattleState, p: PlayerIndex, power: PowerId, events: BattleEvent[]) {
+  const f = state.fighters[p];
+  if (power === 'gearSecond') {
+    f.ki = Math.min(f.kiCap, f.ki + 1);
+    loseHp(f, p, RULES.powerHpCost, 'Gear Second', events);
+  } else if (power === 'hollow') {
+    loseHp(f, p, RULES.powerHpCost, 'Hollowficação', events);
+  } else if (power === 'domain') {
+    state.fighters[other(p)].weak += 1;
+    events.push({ type: 'status', player: other(p), status: 'weak', amount: 1 });
+  }
+}
+
 export function createBattle(seed: number, players: [PlayerSetup, PlayerSetup]): BattleState {
   let rng = seed >>> 0;
   let uid = 0;
@@ -167,17 +184,7 @@ function startTurn(state: BattleState, events: BattleEvent[]) {
         f.powerTurns.splice(i, 1);
       }
     }
-    for (const power of f.powers) {
-      if (power === 'gearSecond') {
-        f.ki = Math.min(f.kiCap, f.ki + 1);
-        loseHp(f, p, 2, 'Gear Second', events);
-      } else if (power === 'hollow') {
-        loseHp(f, p, 2, 'Hollowficação', events);
-      } else if (power === 'domain') {
-        state.fighters[other(p)].weak += 1;
-        events.push({ type: 'status', player: other(p), status: 'weak', amount: 1 });
-      }
-    }
+    for (const power of f.powers) powerTick(state, p, power, events);
   }
   for (const f of state.fighters) {
     // Modo Sábio: bônus no início de cada turno enquanto durar (Força dura só o turno).
@@ -488,6 +495,8 @@ function resolveCard(state: BattleState, player: PlayerIndex, q: QueuedCard, eve
           f.powers.push(e.power);
           f.powerTurns.push(e.turns);
           events.push({ type: 'power', player, power: e.power });
+          // O turno em que o poder é jogado já conta como um dos turnos ativos.
+          powerTick(state, player, e.power, events);
           break;
         case 'reveal':
         case 'reorder':
