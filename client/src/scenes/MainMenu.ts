@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { UI_SCALE } from '../render.ts';
+import { MARGIN_X, MARGIN_Y, UI_SCALE } from '../render.ts';
 import { auth, session } from '../session.ts';
 import { isMuted, toggleMute } from '../sfx.ts';
 import { isMusicMuted, startMenuMusic, toggleMusic } from '../music.ts';
@@ -22,15 +22,17 @@ export class MainMenuScene extends Phaser.Scene {
 
     // Perfil com o nome da conta.
     const prof = find('molduras_painel_perfil');
-    placeImage(this, prof);
-    const [, px, py, pw, ph] = prof;
+    // No canto superior esquerdo da tela (inclusive nas bordas extras).
+    const [pk, , , pw, ph] = prof;
+    const px = -MARGIN_X + 16, py = -MARGIN_Y + 16;
+    placeImage(this, [pk, px, py, pw, ph]);
     centerInk(fitText(txt(this, 0, 0, session.name, 26, '#ffffff', { fontStyle: 'bold', stroke: '#0d0a14', strokeThickness: 4 }), pw * 0.55), px + pw * 0.6, py + ph * 0.36);
 
     const logo = placeImage(this, find('logo_shonen_deck_transparente'));
     // O título não encolhe com a escala da interface.
     const h0 = logo.displayHeight;
     logo.setScale(logo.scaleX / UI_SCALE, logo.scaleY / UI_SCALE);
-    logo.y -= (logo.displayHeight - h0) / 2; // cresce para cima, sem cobrir os botões
+    logo.y -= (logo.displayHeight - h0) / 2 + 30; // cresce para cima, sem cobrir os botões
     this.tweens.add({ targets: logo, y: logo.y + 6, yoyo: true, repeat: -1, duration: 1800, ease: 'Sine.easeInOut' });
 
     menuButton(this, 'botoes_botao_principal', find('botoes_botao_principal_normal'), 'Jogar', () => this.scene.start('Wardrobe'), 32);
