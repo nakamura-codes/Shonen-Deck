@@ -3,6 +3,10 @@ export interface Track { file: string; title: string }
 /** Batalha: tocam em sequência e voltam para a primeira. */
 export const MUSIC: Track[] = [
   {
+    "file": "batalha_dragon_ball_z_cha_la_head_cha_la.mp3",
+    "title": "Dragon Ball Z - Cha-La Head-Cha-La"
+  },
+  {
     "file": "batalha_naruto_ending_3.mp3",
     "title": "Naruto Ending 3"
   },
