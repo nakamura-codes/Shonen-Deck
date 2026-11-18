@@ -7,16 +7,16 @@ export const MUSIC: Track[] = [
     "title": "Dragon Ball Z - Cha-La Head-Cha-La"
   },
   {
-    "file": "batalha_naruto_viva_rock_orange_range.mp3",
-    "title": "Naruto - Viva Rock (Orange Range)"
+    "file": "batalha_naruto_viva_rock.mp3",
+    "title": "Naruto - Viva Rock"
   },
   {
-    "file": "batalha_naruto_shippuden_distance_long_shot_party.mp3",
-    "title": "Naruto Shippuden - Distance (Long Shot Party)"
+    "file": "batalha_naruto_shippuden_distance.mp3",
+    "title": "Naruto Shippuden - Distance"
   },
   {
-    "file": "batalha_naruto_shippuden_hero_s_come_back_nobodyknows.mp3",
-    "title": "Naruto Shippuden - Hero's Come Back!! (nobodyknows+)"
+    "file": "batalha_naruto_shippuden_hero_s_come_back.mp3",
+    "title": "Naruto Shippuden - Hero's Come Back!!"
   },
   {
     "file": "batalha_one_piece_we_are.mp3",
