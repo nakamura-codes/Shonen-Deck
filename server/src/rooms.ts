@@ -357,8 +357,10 @@ export class Matchmaker {
     // Mantém os tokens um pouco para quem recarregar a página ver o resultado; depois limpa.
     setTimeout(() => {
       for (const s of m.seats) {
-        this.byToken.delete(s.token);
-        if (s.ws) this.byWs.delete(s.ws);
+        // A conexão pode já estar em outra partida (revanche ou treino).
+        // O timer da sala antiga não pode remover o vínculo da sala atual.
+        if (this.byToken.get(s.token)?.match === m) this.byToken.delete(s.token);
+        if (s.ws && this.byWs.get(s.ws) === m) this.byWs.delete(s.ws);
       }
     }, 60_000);
   }
