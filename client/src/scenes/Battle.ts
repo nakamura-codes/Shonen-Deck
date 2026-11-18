@@ -46,10 +46,10 @@ const BODY_Y = FEET_Y - 100;
 /** Topo da cabeça do boneco (64 px de altura × escala). */
 const HEAD_Y = FEET_Y - 64 * CHAR_SCALE;
 /** Barra de vida e nome ficam acima da cabeça de cada personagem. */
-const BAR_W = 150;
-const BAR_H = 14;
-const BAR_Y = HEAD_Y - 34;
-const NAME_Y = BAR_Y - 22;
+const BAR_W = 180;
+const BAR_H = 28;
+const BAR_Y = HEAD_Y - 42;
+const NAME_Y = BAR_Y - 31;
 
 const POWER_CARD: Record<PowerId, string> = { bankai: 'bankai', gearSecond: 'gear_second', domain: 'domain_expansion', hollow: 'hollowficacao' };
 
@@ -129,7 +129,7 @@ export class BattleScene extends Phaser.Scene {
       });
       this.events.once(Phaser.Scenes.Events.SHUTDOWN, stopBattleMusic);
     }
-    this.banner = txt(this, 640, 70, '', 18, '#ffb0b0', { stroke: '#0d0a14', strokeThickness: 4 }).setDepth(30);
+    this.banner = txt(this, 640, 70, '', 18, '#ffb0b0', { stroke: '#0d0a14', strokeThickness: 4, backgroundColor: '#171022' }).setDepth(30);
 
     if (this.hasHudArt) {
       this.readyBtn = makeSlotButton(this, HUD.readyBtn, 'Confirmar', () => this.sendReady(), 0xe8761c, 20).setDepth(-8.5); // por baixo da HUD: a moldura dourada fica por cima
@@ -292,7 +292,7 @@ export class BattleScene extends Phaser.Scene {
   private drawHpBar(side: Side, hp: number, max: number) {
     let bar = this.hpBars[side];
     if (!bar) {
-      bar = { g: this.add.graphics().setDepth(6), t: txt(this, CHAR_X[side], BAR_Y, '', 15, '#ffffff', { fontFamily: NUM_FONT, stroke: '#0d0a14', strokeThickness: 4 }).setDepth(7), max };
+      bar = { g: this.add.graphics().setDepth(6), t: txt(this, CHAR_X[side], BAR_Y, '', 24, '#ffffff', { fontFamily: 'Arial, sans-serif', fontStyle: 'bold', stroke: '#0d0a14', strokeThickness: 5 }).setDepth(7), max };
       this.hpBars[side] = bar;
     }
     bar.max = max;
@@ -324,7 +324,7 @@ export class BattleScene extends Phaser.Scene {
     if (f.sageTurns > 0) chips.push([`Modo Sábio ${f.sageTurns}`, '#ffb040']);
     if (f.maxKi < 5) chips.push([`Ki máx ${f.maxKi}`, '#8fd0ff']);
     chips.forEach(([label, color], i) => {
-      this.hud.add(txt(this, x - (chips.length - 1) * 50 + i * 100, BAR_Y + 20, label, 13, color, { stroke: '#0d0a14', strokeThickness: 4 }).setDepth(7));
+      this.hud.add(txt(this, x - (chips.length - 1) * 50 + i * 100, BAR_Y + 26, label, 13, color, { stroke: '#0d0a14', strokeThickness: 4 }).setDepth(7));
     });
 
     // Poderes ativos.
@@ -362,7 +362,7 @@ export class BattleScene extends Phaser.Scene {
       : view.opponent.ready
         ? 'Oponente pronto.'
         : 'Oponente está escolhendo suas cartas…';
-    this.hud.add(txt(this, 640, 80, status, 16, oq ? '#ff8080' : '#ffffff', { stroke: '#0d0a14', strokeThickness: 4 }));
+    this.hud.add(txt(this, 640, 80, status, 16, oq ? '#ff8080' : '#ffffff', { stroke: '#0d0a14', strokeThickness: 3, backgroundColor: '#171022', padding: { x: 10, y: 5 } }));
     (oq ?? []).forEach((q, i) => {
       const x = 640 - (oq!.length - 1) * 34 + i * 68;
       this.hud.add(makeMiniIcon(this, q.card.id, 0.75).setPosition(x, 135));
@@ -373,8 +373,8 @@ export class BattleScene extends Phaser.Scene {
     // Entre os dois personagens, sem passar por cima deles.
     this.hud.add(
       mq.length
-        ? txt(this, 640, 300, 'Sua jogada', 16, '#ffffff', { stroke: '#0d0a14', strokeThickness: 4 })
-        : txt(this, 640, 360, 'Clique nas cartas da mão para jogar\no cadeado guarda 1 carta para o próximo turno', 16, '#ffffff', { stroke: '#0d0a14', strokeThickness: 4, align: 'center', lineSpacing: 6 }),
+        ? txt(this, 640, 300, 'Sua jogada', 16, '#ffffff', { stroke: '#0d0a14', strokeThickness: 3, backgroundColor: '#171022', padding: { x: 10, y: 5 } })
+        : txt(this, 640, 310, 'Clique nas cartas da mão para jogar\no cadeado guarda 1 carta para o próximo turno', 18, '#ffffff', { stroke: '#0d0a14', strokeThickness: 3, backgroundColor: '#171022', padding: { x: 10, y: 5 }, align: 'center', lineSpacing: 6 }),
     );
     mq.forEach((q, i) => {
       const x = 640 - (mq.length - 1) * 40 + i * 80;
@@ -388,13 +388,13 @@ export class BattleScene extends Phaser.Scene {
         icon.on('pointerout', () => icon.setScale(0.85));
       }
       this.hud.add(this.orderBadge(x - 26, 338, i + 1, COLORS.ki));
-      if (q.doubled) this.hud.add(txt(this, x + 24, 338, 'x2', 18, '#ffe28a', { fontStyle: 'bold', stroke: '#0d0a14', strokeThickness: 4 }));
+      if (q.doubled) this.hud.add(txt(this, x + 24, 338, 'x2', 18, '#ffe28a', { fontStyle: 'bold', stroke: '#0d0a14', strokeThickness: 3, backgroundColor: '#171022', padding: { x: 10, y: 5 } }));
     });
-    if (view.me.comboLock) this.hud.add(txt(this, 640, 440, 'Combo! Nenhuma outra carta neste turno. Hollow Purple na próxima rodada.', 15, '#e9b8ff', { stroke: '#0d0a14', strokeThickness: 4 }));
-    if (view.me.canReorder && !view.me.ready && mq.length > 1) this.hud.add(txt(this, 640, 418, 'Scouter: clique numa carta da sua jogada para ela resolver primeiro', 15, '#9dff8a', { stroke: '#0d0a14', strokeThickness: 4 }));
-    if (view.me.stunned) this.hud.add(txt(this, 640, 418, 'Atordoado pelo Haki do Rei: você não pode jogar cartas neste turno.', 15, '#ffd060', { stroke: '#0d0a14', strokeThickness: 4 }));
-    if (view.me.lockedTo) this.hud.add(txt(this, 640, 440, `Turno travado: só ${getCard(view.me.lockedTo).name} (custo 0). O Ki deste turno não acumula.`, 15, '#e9b8ff', { stroke: '#0d0a14', strokeThickness: 4 }));
-    if (view.me.cloneNext) this.hud.add(txt(this, 640, 418, 'Kage Bunshin: a próxima carta acontece 2 vezes', 15, '#ffe28a', { stroke: '#0d0a14', strokeThickness: 4 }));
+    if (view.me.comboLock) this.hud.add(txt(this, 640, 440, 'Combo! Nenhuma outra carta neste turno. Hollow Purple na próxima rodada.', 15, '#e9b8ff', { stroke: '#0d0a14', strokeThickness: 3, backgroundColor: '#171022', padding: { x: 10, y: 5 } }));
+    if (view.me.canReorder && !view.me.ready && mq.length > 1) this.hud.add(txt(this, 640, 418, 'Scouter: clique numa carta da sua jogada para ela resolver primeiro', 15, '#9dff8a', { stroke: '#0d0a14', strokeThickness: 3, backgroundColor: '#171022', padding: { x: 10, y: 5 } }));
+    if (view.me.stunned) this.hud.add(txt(this, 640, 418, 'Atordoado pelo Haki do Rei: você não pode jogar cartas neste turno.', 15, '#ffd060', { stroke: '#0d0a14', strokeThickness: 3, backgroundColor: '#171022', padding: { x: 10, y: 5 } }));
+    if (view.me.lockedTo) this.hud.add(txt(this, 640, 440, `Turno travado: só ${getCard(view.me.lockedTo).name} (custo 0). O Ki deste turno não acumula.`, 15, '#e9b8ff', { stroke: '#0d0a14', strokeThickness: 3, backgroundColor: '#171022', padding: { x: 10, y: 5 } }));
+    if (view.me.cloneNext) this.hud.add(txt(this, 640, 418, 'Kage Bunshin: a próxima carta acontece 2 vezes', 15, '#ffe28a', { stroke: '#0d0a14', strokeThickness: 3, backgroundColor: '#171022', padding: { x: 10, y: 5 } }));
   }
 
   private drawHand(view: BattleView) {
@@ -454,7 +454,7 @@ export class BattleScene extends Phaser.Scene {
   /** Escudo no fim da barra de HP com o dano que ainda vai segurar. */
   private makeShield(side: Side, amount: number) {
     // Na ponta de dentro da barra de vida (lado do oponente).
-    const x = CHAR_X[side] + (side === 0 ? BAR_W / 2 + 14 : -BAR_W / 2 - 14);
+    const x = CHAR_X[side] + (side === 0 ? BAR_W / 2 + 21 : -BAR_W / 2 - 21);
     const c = this.add.container(x, BAR_Y).setDepth(8);
     const g = this.add.graphics();
     const shape = (k: number) => [
@@ -872,41 +872,57 @@ export class BattleScene extends Phaser.Scene {
     [next, label, sub, glow].forEach((o) => o.destroy());
   }
 
-  /** Moeda estilo Legends of Runeterra: decide quem começa a partida. */
+  /** Sorteio visual de duas faces: a decisão continua sendo do servidor. */
   private async maybeCoinFlip(view: BattleView) {
     const key = `${session.net.token}:coin`;
     if (view.turn !== 1 || view.phase !== 'planning' || BattleScene.coinShown.has(key)) return;
     BattleScene.coinShown.add(key);
     const names: Record<PlayerIndex, string> = { [view.you]: 'Você', [view.you === 0 ? 1 : 0]: view.opponent.name } as Record<PlayerIndex, string>;
     const winner = view.firstPlayer;
+    const textureFor = (p: PlayerIndex) => p === 0 ? 'coin_blue' : 'coin_red';
     this.animating = true;
     this.hand.setVisible(false);
-    const shade = viewportRect(this, 0x0d0a14, 0.6).setDepth(80);
+    this.readyBtn.setEnabled(false);
+    this.undoBtn.setEnabled(false);
+    const shade = viewportRect(this, 0x0d0a14, 0.72).setDepth(80);
     const coin = this.add.container(640, 330).setDepth(81);
-    const g = this.add.graphics();
-    g.fillStyle(0x7a4a10).fillCircle(0, 6, 92);
-    g.fillStyle(COLORS.gold).fillCircle(0, 0, 92);
-    g.fillStyle(COLORS.goldLight).fillCircle(0, 0, 78);
-    g.lineStyle(4, 0xb8561a).strokeCircle(0, 0, 70);
-    const face = txt(this, 0, 0, names[winner === 0 ? 1 : 0], 22, '#3a1a08', { fontStyle: 'bold', align: 'center', wordWrap: { width: 130 } });
-    coin.add([g, face]);
-    const flips = 9;
-    for (let i = 0; i < flips; i++) {
-      const d = 70 + i * 22;
-      sfx('coin');
-      await tweenPromise(this, { targets: coin, scaleX: 0, y: 330 - Math.sin(((i + 0.5) / flips) * Math.PI) * 140, duration: d, ease: 'Sine.easeIn' });
-      // A face troca a cada meia volta; na última, para no nome de quem começa.
-      face.setText(i === flips - 1 ? names[winner] : names[(i % 2) as PlayerIndex]);
-      await tweenPromise(this, { targets: coin, scaleX: 1, duration: d, ease: 'Sine.easeOut' });
+    // A borda de metal fica visível quando a face passa de perfil.
+    const edge = this.add.graphics();
+    edge.fillStyle(0x31130a).fillRoundedRect(-9, -94, 18, 188, 5);
+    edge.fillStyle(0xf6b327).fillRoundedRect(-6, -91, 12, 182, 4);
+    edge.fillStyle(0xffec9b).fillRect(-3, -87, 3, 174);
+    const face = this.add.image(0, 0, textureFor(0)).setDisplaySize(192, 192);
+    coin.add([edge, face]);
+    const title = txt(this, 640, 90, 'Quem começa?', 24, '#ffe28a', { fontStyle: 'bold', backgroundColor: '#21182f', padding: { x: 16, y: 7 }, stroke: '#0d0a14', strokeThickness: 4 }).setDepth(82);
+    const legend = txt(this, 640, 487, `Azul: ${names[0]}  ·  Vermelho: ${names[1]}`, 18, '#ffffff', { backgroundColor: '#21182f', padding: { x: 14, y: 6 }, stroke: '#0d0a14', strokeThickness: 3 }).setDepth(82);
+    const result = txt(this, 640, 445, '', 30, '#ffe28a', { fontStyle: 'bold', backgroundColor: '#21182f', padding: { x: 16, y: 7 }, stroke: '#0d0a14', strokeThickness: 5 }).setDepth(82).setVisible(false);
+    // Começa com a face 0. Um número par de meias-voltas termina em 0;
+    // um número ímpar termina em 1, sem trocar a face artificialmente no fim.
+    const flips = winner === 0 ? 10 : 11;
+    let shown: PlayerIndex = 0;
+    const halfDuration = Array.from({ length: flips }, (_, i) => 55 + i * 8).reduce((a, b) => a + b, 0);
+    this.tweens.add({ targets: coin, y: 185, duration: halfDuration, yoyo: true, ease: 'Sine.easeOut' });
+    try {
+      for (let i = 0; i < flips; i++) {
+        const d = 55 + i * 8;
+        sfx('coin');
+        await tweenPromise(this, { targets: face, scaleX: 0, duration: d, ease: 'Sine.easeIn' });
+        shown = shown === 0 ? 1 : 0;
+        face.setTexture(textureFor(shown)).setDisplaySize(192, 192);
+        const fullScaleX = face.scaleX;
+        face.setScale(0, face.scaleY);
+        await tweenPromise(this, { targets: face, scaleX: fullScaleX, duration: d, ease: 'Sine.easeOut' });
+      }
+    } finally {
+      // A face final representa exatamente o firstPlayer definido no servidor.
+      face.setTexture(textureFor(winner)).setDisplaySize(192, 192);
     }
     sfx('coinLand');
-    this.cameras.main.shake(120, 0.004);
-    const label = txt(this, 640, 470, `${names[winner]} começa!`, 34, '#ffe28a', { fontStyle: 'bold', stroke: '#0d0a14', strokeThickness: 7 }).setDepth(82);
-    label.setScale(0.4);
-    await tweenPromise(this, { targets: label, scale: 1, duration: 250, ease: 'Back.easeOut' });
-    await wait(this, 700);
-    await tweenPromise(this, { targets: [shade, coin, label], alpha: 0, duration: 250 });
-    [shade, coin, label].forEach((o) => o.destroy());
+    result.setText(winner === view.you ? 'Você começa!' : `${names[winner]} começa!`).setVisible(true).setScale(0.7);
+    await tweenPromise(this, { targets: result, scale: 1, duration: 180, ease: 'Back.easeOut' });
+    await wait(this, 500);
+    await tweenPromise(this, { targets: [shade, coin, title, legend, result], alpha: 0, duration: 180 });
+    [shade, coin, title, legend, result].forEach((o) => o.destroy());
     this.hand.setVisible(true);
     this.animating = false;
     if (this.view) this.render(session.lastView?.view ?? this.view);

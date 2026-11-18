@@ -26,6 +26,8 @@ export class BootScene extends Phaser.Scene {
     for (const [name, f] of Object.entries(FX)) this.load.spritesheet(`fx_${name}`, `assets/fx/${name}.png`, { frameWidth: f.w, frameHeight: f.h });
     for (const k of ['hud', 'btn_normal', 'btn_hover', 'btn_disabled', 'inventario', 'slot_normal', 'slot_selected', 'colecao', 'trofeu']) this.load.image(k, `assets/ui/${k}.png`);
     this.load.image('fundo_preparacao', 'assets/ui/fundo_preparacao.webp');
+    this.load.image('coin_blue', 'assets/ui/coin_blue.png');
+    this.load.image('coin_red', 'assets/ui/coin_red.png');
     for (const k of MENU_KEYS) {
       // Os fundos originais são 2560×1440; o build prepara versões 1920×1080.
       // Mantemos as chaves existentes para não alterar as coordenadas das cenas.
