@@ -12,6 +12,7 @@ import {
 } from '@oficina/shared';
 import { session } from '../session.ts';
 import { attackSound, isMuted, sfx, toggleMute } from '../sfx.ts';
+import { hasMusic, isMusicMuted, startBattleMusic, stopBattleMusic, toggleMusic } from '../music.ts';
 import { HUD } from '../hud.generated.ts';
 import { mergeRepeats } from '../events.ts';
 import {
@@ -91,6 +92,17 @@ export class BattleScene extends Phaser.Scene {
     // Som ligado/desligado.
     const muteBtn = txt(this, 1250, 27, isMuted() ? '🔇' : '🔊', 22, '#ffffff').setDepth(7).setInteractive({ useHandCursor: true });
     muteBtn.on('pointerdown', () => muteBtn.setText(toggleMute() ? '🔇' : '🔊'));
+    // Música: botão próprio e o título da faixa que está tocando.
+    if (hasMusic()) {
+      const musicBtn = txt(this, 1212, 27, isMusicMuted() ? '🎵✕' : '🎵', 20, '#ffffff').setDepth(7).setInteractive({ useHandCursor: true });
+      musicBtn.on('pointerdown', () => musicBtn.setText(toggleMusic() ? '🎵✕' : '🎵'));
+      const now = txt(this, 640, 64, '', 12, '#c8d0e8', { stroke: '#0d0a14', strokeThickness: 3 }).setDepth(7).setAlpha(0);
+      startBattleMusic((title) => {
+        now.setText(`♪ ${title}`).setAlpha(1);
+        this.tweens.add({ targets: now, alpha: 0, delay: 4000, duration: 800 });
+      });
+      this.events.once(Phaser.Scenes.Events.SHUTDOWN, stopBattleMusic);
+    }
     this.banner = txt(this, 640, 82, '', 18, '#ffb0b0', { stroke: '#0d0a14', strokeThickness: 4 }).setDepth(30);
 
     if (this.hasHudArt) {
@@ -1097,6 +1109,7 @@ export class BattleScene extends Phaser.Scene {
   }
 
   private showGameOver(view: BattleView) {
+    stopBattleMusic();
     if (this.ended) return;
     this.ended = true;
     session.net.token = null;
