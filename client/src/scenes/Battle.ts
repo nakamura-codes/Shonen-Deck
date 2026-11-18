@@ -94,6 +94,7 @@ export class BattleScene extends Phaser.Scene {
     muteBtn.on('pointerdown', () => muteBtn.setText(toggleMute() ? '🔇' : '🔊'));
     // Música: botão próprio e o título da faixa que está tocando.
     if (hasMusic()) {
+      // Para a música do menu e começa (ou continua) a lista da batalha.
       const musicBtn = txt(this, 1212, 27, isMusicMuted() ? '🎵✕' : '🎵', 20, '#ffffff').setDepth(7).setInteractive({ useHandCursor: true });
       musicBtn.on('pointerdown', () => musicBtn.setText(toggleMusic() ? '🎵✕' : '🎵'));
       const now = txt(this, 640, 64, '', 12, '#c8d0e8', { stroke: '#0d0a14', strokeThickness: 3 }).setDepth(7).setAlpha(0);

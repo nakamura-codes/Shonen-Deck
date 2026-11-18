@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { startMenuMusic } from '../music.ts';
 import { OUTFIT_ITEMS, OUTFIT_SLOTS, SLOT_LABELS, buildDeck, getItem, type OutfitSlot, type ServerMessage } from '@oficina/shared';
 import { session } from '../session.ts';
 import { sfx } from '../sfx.ts';
@@ -34,6 +35,7 @@ export class WardrobeScene extends Phaser.Scene {
   }
 
   create() {
+    startMenuMusic();
     if (this.textures.exists('inventario')) {
       this.add.image(0, 0, 'inventario').setOrigin(0).setDisplaySize(1280, 720).setDepth(-10);
     } else {

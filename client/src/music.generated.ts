@@ -1,2 +1,24 @@
 // Gerado por tools/process-music.ts — não edite à mão.
-export const MUSIC: { file: string; title: string }[] = [];
+export interface Track { file: string; title: string }
+/** Batalha: tocam em sequência e voltam para a primeira. */
+export const MUSIC: Track[] = [
+  {
+    "file": "batalha_naruto_ending_3.mp3",
+    "title": "Naruto Ending 3"
+  },
+  {
+    "file": "batalha_naruto_shippuden_op_1.mp3",
+    "title": "Naruto Shippuden Op 1"
+  },
+  {
+    "file": "batalha_naruto_shippuden_op_2.mp3",
+    "title": "Naruto Shippuden Op 2"
+  }
+];
+/** Menu principal: repete sem parar (usa a primeira). */
+export const MENU_MUSIC: Track[] = [
+  {
+    "file": "menu_main_menu.mp3",
+    "title": "Main Menu"
+  }
+];

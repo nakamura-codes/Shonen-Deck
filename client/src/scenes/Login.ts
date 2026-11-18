@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { startMenuMusic } from '../music.ts';
 import { auth } from '../session.ts';
 import { sfx } from '../sfx.ts';
 import { txt } from '../ui.ts';
@@ -20,6 +21,7 @@ export class LoginScene extends Phaser.Scene {
   }
 
   create() {
+    startMenuMusic();
     this.busy = false;
     this.add.image(0, 0, 'fundos_fundo_login_2560x1440').setOrigin(0).setDisplaySize(1280, 720);
     const logo = placeImage(this, find('logo_shonen_deck_transparente'));

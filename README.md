@@ -34,7 +34,7 @@ Outros comandos:
 | `npm run art:hud` | Processa a HUD de baixo e os botões (`art/raw/ui/`) |
 | `npm run art:inventory` | Processa o fundo do inventário e as molduras das peças |
 | `npm run art:menus` | Processa o login, o menu principal e os botões do menu |
-| `npm run art:music` | Converte as músicas de batalha de `art/raw/music/` (sorteadas a cada partida) |
+| `npm run art:music` | Converte as músicas: `art/raw/music/batalha/` (em sequência, voltando à primeira) e `art/raw/music/menu/` (repete) |
 | `npm run art:fx` | Processa os efeitos visuais (golpes, buffs, explosões) |
 | `npm run art:frames` | Processa as molduras das cartas (ataque, técnica, poder e verso) |
 | `npm run build` | Gera a versão de produção do cliente em `client/dist` |

@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { auth, session } from '../session.ts';
 import { isMuted, toggleMute } from '../sfx.ts';
+import { isMusicMuted, startMenuMusic, toggleMusic } from '../music.ts';
 import { centerInk, fitText, txt } from '../ui.ts';
 import { SCREENS } from '../menu.generated.ts';
 import { menuButton, placeImage, type Box } from '../menuUi.ts';
@@ -15,6 +16,7 @@ export class MainMenuScene extends Phaser.Scene {
   }
 
   create() {
+    startMenuMusic();
     this.add.image(0, 0, 'fundos_fundo_menu_principal_2560x1440').setOrigin(0).setDisplaySize(1280, 720);
 
     // Perfil com o nome da conta.
@@ -29,7 +31,10 @@ export class MainMenuScene extends Phaser.Scene {
     menuButton(this, 'botoes_botao_principal', find('botoes_botao_principal_normal'), 'Jogar', () => this.scene.start('Wardrobe'), 32);
     menuButton(this, 'botoes_botao_secundario', find('botoes_botao_secundario_normal', 0), 'Coleção de cartas', () => this.scene.start('Gallery'), 24);
     const som = menuButton(this, 'botoes_botao_secundario', find('botoes_botao_secundario_normal', 1), isMuted() ? 'Som: desligado' : 'Som: ligado', () => {
-      som.setLabel(toggleMute() ? 'Som: desligado' : 'Som: ligado');
+      // No menu, um botão só para efeitos e música (na batalha há botões separados).
+      const off = toggleMute();
+      if (isMusicMuted() !== off) toggleMusic();
+      som.setLabel(off ? 'Som: desligado' : 'Som: ligado');
     }, 24);
     menuButton(this, 'botoes_botao_secundario', find('botoes_botao_secundario_normal', 2), 'Sair da conta', () => {
       auth.logout();

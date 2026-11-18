@@ -1,87 +1,108 @@
-import { MUSIC } from './music.generated.ts';
+import { MENU_MUSIC, MUSIC, type Track } from './music.generated.ts';
 
 /**
- * Música de batalha: sorteia uma faixa de assets/music e, quando acaba, toca outra (sem repetir a
- * anterior). Usa <audio> (streaming), então não precisa baixar a faixa inteira antes de tocar.
+ * Música do jogo (usa <audio>, em streaming).
+ *  - Menu (login, menu principal, inventário, coleção, fila): a música do menu repete sem parar.
+ *  - Batalha: as faixas tocam em sequência; ao acabar a última, volta para a primeira. A posição
+ *    continua de uma batalha para a outra.
+ * O volume é baixo de propósito: na batalha, os sons dos ataques têm que se destacar.
  */
 const KEY = 'shonen.music';
+/** Volumes (0 a 1) sobre faixas já equalizadas em -20 LUFS. */
+const VOLUME = { menu: 0.18, battle: 0.1 };
+
+type Mode = 'menu' | 'battle' | null;
 let audio: HTMLAudioElement | null = null;
-let last = -1;
+let mode: Mode = null;
+let battleIndex = 0;
 let onTitle: ((t: string) => void) | null = null;
 
-function prefs(): { muted: boolean; volume: number } {
+function loadMuted(): boolean {
   try {
-    const p = JSON.parse(window.localStorage.getItem(KEY) ?? '{}');
-    return { muted: p.muted === true, volume: typeof p.volume === 'number' ? p.volume : 0.25 };
+    return JSON.parse(window.localStorage.getItem(KEY) ?? '{}').muted === true;
   } catch {
-    return { muted: false, volume: 0.25 };
+    return false;
   }
 }
-let state = prefs();
-const save = () => {
+let muted = loadMuted();
+
+export const hasMusic = () => MUSIC.length > 0 || MENU_MUSIC.length > 0;
+export const isMusicMuted = () => muted;
+
+export function toggleMusic(): boolean {
+  muted = !muted;
+  if (audio) audio.muted = muted;
   try {
-    window.localStorage.setItem(KEY, JSON.stringify(state));
+    window.localStorage.setItem(KEY, JSON.stringify({ muted }));
   } catch {
     /* ignora */
   }
-};
-
-export const hasMusic = () => MUSIC.length > 0;
-export const isMusicMuted = () => state.muted;
-
-function next() {
-  if (!MUSIC.length) return;
-  let i = Math.floor(Math.random() * MUSIC.length);
-  if (MUSIC.length > 1 && i === last) i = (i + 1) % MUSIC.length;
-  last = i;
-  const t = MUSIC[i];
-  audio?.pause();
-  audio = new Audio(`assets/music/${t.file}`);
-  audio.volume = 0;
-  audio.muted = state.muted;
-  audio.addEventListener('ended', next);
-  void audio.play().catch(() => {
-    /* sem interação ainda: tenta de novo no próximo clique */
-    window.addEventListener('pointerdown', () => void audio?.play().catch(() => {}), { once: true });
-  });
-  fade(state.volume, 1200);
-  onTitle?.(t.title);
+  return muted;
 }
 
-function fade(to: number, ms: number, done?: () => void) {
-  const a = audio;
-  if (!a) return done?.();
+function fade(a: HTMLAudioElement, to: number, ms: number, done?: () => void) {
   const from = a.volume;
   const start = performance.now();
   const step = (now: number) => {
     const k = Math.min(1, (now - start) / ms);
-    a.volume = from + (to - from) * k;
+    a.volume = Math.max(0, Math.min(1, from + (to - from) * k));
     if (k < 1) requestAnimationFrame(step);
     else done?.();
   };
   requestAnimationFrame(step);
 }
 
-/** Começa a música da batalha (se já estiver tocando, continua). */
-export function startBattleMusic(titleCb?: (t: string) => void) {
-  onTitle = titleCb ?? null;
-  if (audio && !audio.paused) return onTitle?.(MUSIC[last]?.title ?? '');
-  next();
-}
-
-/** Para com fade (fim da partida ou saída da batalha). */
-export function stopBattleMusic() {
-  const a = audio;
-  if (!a) return;
-  fade(0, 800, () => {
-    a.pause();
-    if (audio === a) audio = null;
+/** Troca para uma faixa, com fade de saída da anterior e de entrada da nova. */
+function play(track: Track, loop: boolean, volume: number, onEnd?: () => void) {
+  const old = audio;
+  if (old) fade(old, 0, 600, () => old.pause());
+  const a = new Audio(`assets/music/${track.file}`);
+  a.loop = loop;
+  a.volume = 0;
+  a.muted = muted;
+  if (onEnd) a.addEventListener('ended', onEnd);
+  audio = a;
+  const start = () => a.play().then(() => fade(a, volume, 1200));
+  start().catch(() => {
+    // O navegador só libera áudio depois de uma interação: tenta de novo no primeiro clique/tecla.
+    const retry = () => {
+      if (audio === a) void start().catch(() => {});
+    };
+    window.addEventListener('pointerdown', retry, { once: true });
+    window.addEventListener('keydown', retry, { once: true });
   });
 }
 
-export function toggleMusic(): boolean {
-  state.muted = !state.muted;
-  if (audio) audio.muted = state.muted;
-  save();
-  return state.muted;
+/** Música do menu (se já estiver tocando, continua). */
+export function startMenuMusic() {
+  if (mode === 'menu' || !MENU_MUSIC.length) return;
+  mode = 'menu';
+  play(MENU_MUSIC[0], true, VOLUME.menu);
+}
+
+function playBattleTrack() {
+  const t = MUSIC[battleIndex % MUSIC.length];
+  play(t, false, VOLUME.battle, () => {
+    battleIndex = (battleIndex + 1) % MUSIC.length;
+    if (mode === 'battle') playBattleTrack();
+  });
+  onTitle?.(t.title);
+}
+
+/** Música da batalha: continua a lista de onde parou. */
+export function startBattleMusic(titleCb?: (t: string) => void) {
+  onTitle = titleCb ?? null;
+  if (mode === 'battle' || !MUSIC.length) return;
+  mode = 'battle';
+  playBattleTrack();
+}
+
+/** Fim da batalha: a próxima batalha começa na faixa seguinte. */
+export function stopBattleMusic() {
+  if (mode !== 'battle') return;
+  mode = null;
+  battleIndex = (battleIndex + 1) % Math.max(1, MUSIC.length);
+  const a = audio;
+  if (a) fade(a, 0, 800, () => a.pause());
+  audio = null;
 }

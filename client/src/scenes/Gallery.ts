@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { startMenuMusic } from '../music.ts';
 import { BASE_DECK, CARDS, COMBOS, OUTFIT_ITEMS, getCard, type CardDef } from '@oficina/shared';
 import { COLORS, NUM_FONT, TYPE_COLOR, centerInk, fitText, makeButton, makeCard, txt } from '../ui.ts';
 import { auth } from '../session.ts';
@@ -46,6 +47,7 @@ export class GalleryScene extends Phaser.Scene {
   }
 
   create() {
+    startMenuMusic();
     this.ids = collectionOrder();
     this.from = origins();
     if (this.textures.exists('fundos_fundo_menu_principal_2560x1440')) {
