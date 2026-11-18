@@ -270,16 +270,7 @@ export class BattleScene extends Phaser.Scene {
     const x = CHAR_X[side];
     this.drawHpBar(side, f.hp, f.maxHp);
 
-    if (f.block > 0) {
-      const g = this.add.graphics();
-      const slot = this.hasHudArt ? (side === 0 ? HUD.hpLeft : HUD.hpRight) : null;
-      const bx = slot ? slot.x - 2 : x - 122;
-      const by = slot ? slot.y + slot.h / 2 : 449;
-      g.fillStyle(COLORS.outline).fillCircle(bx, by, 19);
-      g.fillStyle(COLORS.block).fillCircle(bx, by, 16);
-      this.hud.add(g);
-      this.hud.add(centerInk(txt(this, 0, 0, String(f.block), 20, '#ffffff', { fontFamily: NUM_FONT, stroke: '#0d0a14', strokeThickness: 3 }), bx, by));
-    }
+    if (f.block > 0) this.hud.add(this.makeShield(side, f.block));
 
     const chips: [string, string][] = [];
     const str = f.strength + f.tempStrength;
@@ -296,7 +287,7 @@ export class BattleScene extends Phaser.Scene {
     // Poderes ativos.
     f.powers.forEach((p, i) => {
       const slot = this.hasHudArt ? (side === 0 ? HUD.hpLeft : HUD.hpRight) : null;
-      const px = slot ? (side === 0 ? slot.x + slot.w + 22 + i * 34 : slot.x - 22 - i * 34) : x + 128 + i * 34;
+      const px = slot ? (side === 0 ? slot.x + slot.w + 58 + i * 34 : slot.x - 58 - i * 34) : x + 128 + i * 34;
       const icon = makeMiniIcon(this, POWER_CARD[p], 0.42).setPosition(px, slot ? slot.y + slot.h / 2 : 449);
       this.hud.add(icon);
     });
@@ -408,6 +399,29 @@ export class BattleScene extends Phaser.Scene {
     });
   }
 
+  /** Escudo no fim da barra de HP com o dano que ainda vai segurar. */
+  private makeShield(side: Side, amount: number) {
+    const slot = this.hasHudArt ? (side === 0 ? HUD.hpLeft : HUD.hpRight) : null;
+    const x = slot ? (side === 0 ? slot.x + slot.w + 4 : slot.x - 4) : CHAR_X[side] + (side === 0 ? 122 : -122);
+    const y = slot ? slot.y + slot.h / 2 : 449;
+    const c = this.add.container(x, y).setScale(1.3);
+    const g = this.add.graphics();
+    const shape = (k: number) => [
+      new Phaser.Math.Vector2(-15 * k, -16 * k),
+      new Phaser.Math.Vector2(15 * k, -16 * k),
+      new Phaser.Math.Vector2(15 * k, 2 * k),
+      new Phaser.Math.Vector2(0, 18 * k),
+      new Phaser.Math.Vector2(-15 * k, 2 * k),
+    ];
+    g.fillStyle(COLORS.outline).fillPoints(shape(1.18), true);
+    g.fillStyle(0x2a6fb8).fillPoints(shape(1), true);
+    g.fillStyle(COLORS.block).fillPoints(shape(0.78), true);
+    g.fillStyle(0xcfe8ff, 0.7).fillRect(-11, -14, 8, 3);
+    c.add(g);
+    c.add(centerInk(txt(this, 0, 0, String(amount), 20, '#ffffff', { fontFamily: NUM_FONT, stroke: '#0d0a14', strokeThickness: 4 }), 0, -2));
+    return c;
+  }
+
   /**
    * Cadeado acima da carta: trava a carta para ela não ser descartada no fim do turno (1 por turno).
    * Dourado = travada; apagado = foi travada no turno passado e não pode de novo.
@@ -463,6 +477,18 @@ export class BattleScene extends Phaser.Scene {
     this.view = { ...this.view };
 
     const hp: Record<Side, number> = { 0: this.view.me.hp, 1: this.view.opponent.hp };
+    // Escudo no fim da barra de HP: soma os Bloqueios e desconta o que cada golpe absorve.
+    const block: Record<Side, number> = { 0: 0, 1: 0 };
+    const shields: Partial<Record<Side, Phaser.GameObjects.Container>> = {};
+    const setShield = (sd: Side, value: number, pulse: boolean) => {
+      block[sd] = Math.max(0, value);
+      shields[sd]?.destroy();
+      shields[sd] = undefined;
+      if (block[sd] <= 0) return;
+      const sh = this.makeShield(sd, block[sd]).setDepth(8);
+      shields[sd] = sh;
+      if (pulse) this.tweens.add({ targets: sh, scale: { from: 1.4, to: 1 }, duration: 220, ease: 'Back.easeOut' });
+    };
     const max: Record<Side, number> = { 0: this.view.me.maxHp, 1: this.view.opponent.maxHp };
 
     this.hud.removeAll(true);
@@ -485,12 +511,14 @@ export class BattleScene extends Phaser.Scene {
           sfx(ev.amount >= 25 ? 'explosionBig' : ev.amount >= 15 ? 'hitHeavy' : ev.amount > 0 ? 'hit' : 'block');
           if (ev.blocked > 0 && ev.amount > 0) sfx('block');
           this.impactFx(t, ev.cardId, ev.amount, ev.blocked);
+          if (ev.blocked > 0) setShield(t, block[t] - ev.blocked, true);
           this.hitAnim(t, ev.amount, ev.blocked);
           await wait(this, fast ? 60 : 220);
           lastCard = `${ev.source}:${ev.cardId}`;
           break;
         }
         case 'block':
+          setShield(this.side(ev.player), block[this.side(ev.player)] + ev.amount, true);
           sfx('block');
           playFx(this, 'barrier-block', CHAR_X[this.side(ev.player)] + (this.side(ev.player) === 0 ? 50 : -50), BODY_Y, { scale: 2.5 });
           this.flashAura(this.side(ev.player), COLORS.block);
@@ -602,6 +630,8 @@ export class BattleScene extends Phaser.Scene {
     }
 
     await wait(this, 300);
+    // O Bloqueio zera no início do turno: o escudo some junto.
+    for (const sd of [0, 1] as Side[]) shields[sd]?.destroy();
     this.animating = false;
     // Usa a visão mais nova (pode ter chegado um "state" durante a animação).
     const latest = session.lastView?.view ?? finalView;
