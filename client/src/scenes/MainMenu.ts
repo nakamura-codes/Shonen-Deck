@@ -34,11 +34,9 @@ export class MainMenuScene extends Phaser.Scene {
 
     // Vitórias e derrotas da conta (contra jogadores), logo abaixo do perfil.
     const record = txt(this, px + 12, py + ph + 14, '', 15, '#ffe28a', { stroke: '#0d0a14', strokeThickness: 4 }).setOrigin(0, 0.5);
-    const portrait = this.add.image(px + pw * 0.17, py + ph * 0.44, '__DEFAULT').setVisible(false);
+    const portrait = this.add.image(px + pw * 0.17, py + ph * 0.44, 'avatar_padrao');
     const showStats = () => {
-      const avatar = auth.avatar;
-      portrait.setVisible(Boolean(avatar));
-      if (avatar) portrait.setTexture('avatar_' + avatar).setDisplaySize(ph * 0.7, ph * 0.7);
+      portrait.setTexture('avatar_' + (auth.avatar ?? 'padrao')).setDisplaySize(ph * 0.7, ph * 0.7);
       centerInk(fitText(name.setText(session.name), pw * 0.5), px + pw * 0.63, py + ph * 0.36);
       const st = auth.stats;
       record.setText(auth.isGuest ? 'Convidado: crie uma conta para o ranking' : st ? `Vitórias ${st.wins}  ·  Derrotas ${st.losses}` : '');

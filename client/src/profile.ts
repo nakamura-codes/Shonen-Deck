@@ -1,7 +1,6 @@
 import {
   AVATARS,
   type AvatarId,
-  figureKey,
   getItem,
   OUTFIT_SLOTS,
   type Contact,
@@ -56,8 +55,8 @@ function render(body: HTMLElement, p: PublicProfile) {
   const top = el('div', '', 'profile-top'),
     character = el('img'),
     info = el('div');
-  character.src = p.avatar ? 'assets/avatars/' + p.avatar + '.png' : 'assets/character/' + figureKey(p.outfit) + '.png';
-  character.alt = p.avatar ? AVATARS[p.avatar] : 'Personagem equipado';
+  character.src = 'assets/avatars/' + (p.avatar ?? 'padrao') + '.png';
+  character.alt = p.avatar ? AVATARS[p.avatar] : 'Boneco cinza (padrão)';
   info.append(
     el('h2', p.name),
     el('p', 'Conta criada em ' + date(p.createdAt)),
@@ -139,16 +138,17 @@ function chooseAvatar(profile: PublicProfile) {
     cancel = () => { off(); clearTimeout(timer); };
     session.net.send({ t: 'saveAvatar', avatar });
   };
-  for (const id of Object.keys(AVATARS) as AvatarId[]) {
-    const b = button(AVATARS[id], () => save(id));
+  const choices: (AvatarId | null)[] = [null, ...Object.keys(AVATARS) as AvatarId[]];
+  for (const id of choices) {
+    const b = button(id ? AVATARS[id] : 'Boneco cinza (padrão)', () => save(id));
     const img = el('img');
-    img.src = 'assets/avatars/' + id + '.png';
+    img.src = 'assets/avatars/' + (id ?? 'padrao') + '.png';
     img.alt = '';
     b.prepend(img);
-    b.setAttribute('aria-pressed', String(profile.avatar === id));
+    b.setAttribute('aria-pressed', String((profile.avatar ?? null) === id));
     grid.append(b);
   }
-  body.replaceChildren(grid, button('Usar personagem equipado', () => save(null)), status);
+  body.replaceChildren(grid, status);
 }
 
 function dialog(title: string) {
