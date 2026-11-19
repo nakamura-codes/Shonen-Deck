@@ -286,19 +286,80 @@ describe('golpes carregados', () => {
     expect(r.state.fighters[0].charges).toHaveLength(0);
   });
 
-  it('Genki Dama é cancelada se o dono sofrer 25+ de dano num turno', () => {
+  it('Genki Dama é cancelada com 25+ de dano no turno de uso, antes ou depois da carta', () => {
+    for (const starter of [0, 1] as PlayerIndex[]) {
+      let s = newBattle();
+      s.firstPlayer = starter;
+      s.fighters[0].ki = 5;
+      giveHand(s, 0, ['genki_dama']);
+      giveHand(s, 1, ['golpe_basico', 'getsuga']);
+      s = play(s, 0, 'genki_dama');
+      s = play(s, 1, 'getsuga');
+      s = play(s, 1, 'golpe_basico');
+      const r = readyAndResolve(s);
+      expect(r.state.fighters[0].hp).toBe(168);
+      expect(r.state.fighters[0].charges).toHaveLength(0);
+      expect(r.events.some(e => e.type === 'chargeCancel' && e.cardId === 'genki_dama')).toBe(true);
+    }
+  });
+
+  it('Genki Dama não cancela com 24 de dano no uso nem com 32 em cada rodada seguinte', () => {
     let s = newBattle();
     s.fighters[0].ki = 5;
     giveHand(s, 0, ['genki_dama']);
+    giveHand(s, 1, ['getsuga']);
     s = play(s, 0, 'genki_dama');
-    let r = readyAndResolve(s);
-    s = r.state;
-    giveHand(s, 1, ['getsuga', 'kaioken']);
-    s = play(s, 1, 'kaioken');
     s = play(s, 1, 'getsuga');
-    r = readyAndResolve(s);
+    let r = readyAndResolve(s);
+    expect(r.state.fighters[0].hp).toBe(176);
+    expect(r.state.fighters[0].charges).toHaveLength(1);
+    for (let i = 0; i < 2; i++) {
+      s = r.state;
+      giveHand(s, 1, ['getsuga', 'golpe_basico']);
+      s = play(s, 1, 'getsuga');
+      s = play(s, 1, 'golpe_basico');
+      r = readyAndResolve(s);
+      expect(r.state.fighters[0].charges).toHaveLength(1);
+      expect(r.events.some(e => e.type === 'chargeCancel')).toBe(false);
+    }
+    r = readyAndResolve(r.state);
+    expect(r.state.fighters[1].hp).toBe(100);
     expect(r.state.fighters[0].charges).toHaveLength(0);
-    expect(r.events.some((e) => e.type === 'chargeCancel')).toBe(true);
+  });
+
+  it('Genki Dama ignora Infinity, Kawarimi e Hiraishin sem consumir a esquiva de outro ataque', () => {
+    for (const dodge of ['infinity', 'kawarimi', 'hiraishin']) {
+      let s = newBattle();
+      s.fighters[0].ki = 5;
+      giveHand(s, 0, ['genki_dama']);
+      s = play(s, 0, 'genki_dama');
+      s = readyAndResolve(s).state;
+      s = readyAndResolve(s).state;
+      s = readyAndResolve(s).state;
+      giveHand(s, 0, ['golpe_basico']);
+      giveHand(s, 1, [dodge]);
+      s = play(s, 0, 'golpe_basico');
+      s = play(s, 1, dodge);
+      const r = readyAndResolve(s);
+      expect(r.state.fighters[1].hp).toBe(100);
+      expect(r.events.some(e => e.type === 'evade' && e.cardId === 'genki_dama')).toBe(false);
+      expect(r.events.some(e => e.type === 'evade' && e.cardId === 'golpe_basico')).toBe(true);
+    }
+  });
+
+  it('Genki Dama ainda pode ser bloqueada ou refletida', () => {
+    for (const defense of ['defesa_basica', 'boogie_woogie']) {
+      let s = newBattle();
+      s.fighters[0].ki = 5;
+      giveHand(s, 0, ['genki_dama']);
+      s = play(s, 0, 'genki_dama');
+      for (let i = 0; i < 3; i++) s = readyAndResolve(s).state;
+      giveHand(s, 1, [defense]);
+      s = play(s, 1, defense);
+      const r = readyAndResolve(s);
+      expect(r.state.fighters[1].hp).toBe(defense === 'defesa_basica' ? 107 : 200);
+      expect(r.state.fighters[0].hp).toBe(defense === 'boogie_woogie' ? 100 : 200);
+    }
   });
 });
 

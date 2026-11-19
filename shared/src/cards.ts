@@ -37,8 +37,8 @@ export const CARDS: Record<string, CardDef> = {
   },
   genki_dama: {
     id: 'genki_dama', name: 'Genki Dama', cost: 5, type: 'attack', rarity: 'rare',
-    text: 'Causa 100 de dano no 4º turno (contando o lançamento). Cancela ao sofrer 25+ de dano num turno. Exaurir.',
-    effects: [{ kind: 'charge', turns: 3, damage: 100, cancelOnDamage: 25 }],
+    text: 'Causa 100 no 4º turno (inclui lançamento). Não pode ser esquivada. Cancela com 25+ de dano só no turno de uso. Exaurir.',
+    effects: [{ kind: 'charge', turns: 3, damage: 100, cancelOnDamage: 25, cancelOnlyOnStart: true, cannotEvade: true }],
     exhaust: true,
   },
   kaioken: {

@@ -384,7 +384,7 @@ function dealDamage(
  * Infinity e Boogie Woogie agem sobre uma habilidade inteira (todos os golpes da carta).
  * Boogie Woogie tem prioridade: se o alvo tiver os dois, a habilidade volta no atacante.
  */
-function intercept(state: BattleState, attacker: PlayerIndex, cardId: string, events: BattleEvent[]): 'evade' | 'reflect' | null {
+function intercept(state: BattleState, attacker: PlayerIndex, cardId: string, events: BattleEvent[], cannotEvade = false): 'evade' | 'reflect' | null {
   const target = other(attacker);
   const t = state.fighters[target];
   if (t.reflect > 0) {
@@ -392,7 +392,7 @@ function intercept(state: BattleState, attacker: PlayerIndex, cardId: string, ev
     events.push({ type: 'reflect', player: target, cardId });
     return 'reflect';
   }
-  if (t.evade > 0) {
+  if (!cannotEvade && t.evade > 0) {
     t.evade -= 1;
     events.push({ type: 'evade', player: target, cardId });
     return 'evade';
@@ -497,6 +497,8 @@ function resolveCard(state: BattleState, player: PlayerIndex, q: QueuedCard, eve
             turnsLeft: e.turns,
             damage: e.damage,
             cancelOnDamage: e.cancelOnDamage,
+            cancelOnlyOnStart: e.cancelOnlyOnStart,
+            cannotEvade: e.cannotEvade,
           });
           events.push({ type: 'chargeStart', player, cardId: def.id, turns: e.turns });
           break;
@@ -534,7 +536,7 @@ function tickCharges(state: BattleState, order: PlayerIndex[], events: BattleEve
       ch.turnsLeft -= 1;
       if (ch.turnsLeft <= 0) {
         events.push({ type: 'chargeFire', player: p, cardId: ch.cardId });
-        const caught = intercept(state, p, ch.cardId, events);
+        const caught = intercept(state, p, ch.cardId, events, ch.cannotEvade);
         if (caught !== 'evade') dealDamage(state, p, caught === 'reflect' ? p : other(p), ch.damage, false, ch.cardId, events);
       } else {
         remaining.push(ch);
@@ -612,6 +614,8 @@ export function resolveTurn(state: BattleState): { state: BattleState; events: B
         events.push({ type: 'chargeCancel', player: p, cardId: ch.cardId });
         return false;
       }
+      // A Genki Dama sobrevivendo ao turno de lançamento não pode mais ser interrompida por dano.
+      if (ch.cancelOnlyOnStart) delete ch.cancelOnDamage;
       return true;
     });
   }
