@@ -1,4 +1,4 @@
-import { CHAT_MAX_LENGTH, EMPTY_OUTFIT, sanitizeOutfit, type BotLevel, type ClientMessage, type PlayerStats, type ServerMessage } from '@oficina/shared';
+import { ARENAS, isAvatar, CHAT_MAX_LENGTH, EMPTY_OUTFIT, sanitizeOutfit, type SocialAction, type BotLevel, type ClientMessage, type PlayerStats, type ServerMessage } from '@oficina/shared';
 import { Matchmaker, send, type Match, type Sock } from './rooms.ts';
 import { MemoryStore, hashPassword, randomToken, sameHash, type Account, type Store } from './store.ts';
 
@@ -33,6 +33,7 @@ interface Client {
   name: string;
   lastChat: number[];
   authTries: number;
+  pending: Promise<void>;
 }
 
 /** Recebe as mensagens dos jogadores: contas, chat, pareamento e partidas. */
@@ -41,13 +42,13 @@ export class Hub {
   private clients = new Map<Sock, Client>();
 
   constructor(private store: Store = new MemoryStore()) {
-    this.matchmaker.onResult = (m) => void this.recordResult(m);
+    this.matchmaker.onResult = (m) => { void this.recordResult(m).catch(err => console.error('Falha ao registrar partida:', err)); };
   }
 
   private client(ws: Sock): Client {
     let c = this.clients.get(ws);
     if (!c) {
-      c = { account: null, name: '', lastChat: [], authTries: 0 };
+      c = { account: null, name: '', lastChat: [], authTries: 0, pending: Promise.resolve() };
       this.clients.set(ws, c);
     }
     return c;
@@ -57,7 +58,11 @@ export class Hub {
     if (typeof raw === 'string' && raw.length > 4096) return send(ws, { t: 'error', message: 'Mensagem grande demais.' });
     const msg = parse(raw);
     if (!msg) return send(ws, { t: 'error', message: 'Mensagem inválida.' });
-    this.handle(ws, msg).catch(() => send(ws, { t: 'error', message: 'Erro no servidor. Tente de novo.' }));
+    // A retomada da conta termina antes de o mesmo socket consultar o perfil ou entrar na fila.
+    const client = this.client(ws);
+    client.pending = client.pending.then(() => {
+      if (this.clients.get(ws) === client) return this.handle(ws, msg);
+    }).catch(() => send(ws, { t: 'error', message: 'Erro no servidor. Tente de novo.' }));
   }
 
   private async handle(ws: Sock, msg: ClientMessage) {
@@ -66,7 +71,7 @@ export class Hub {
     switch (msg.t) {
       case 'hello':
         if (!me.account) me.name = cleanName(msg.name) || me.name;
-        send(ws, { t: 'chatHistory', messages: await this.store.recentChat(30) });
+        await this.sendHistory(ws, me);
         this.broadcastOnline();
         return;
       case 'register':
@@ -78,12 +83,27 @@ export class Hub {
         if (!acc) return send(ws, { t: 'authError', message: 'Sessão expirada. Entre de novo.', silent: true });
         me.account = acc.key;
         me.name = acc.name;
-        send(ws, { t: 'authOk', name: acc.name, session: msg.session, outfit: this.outfitOf(acc), stats: stats(acc) });
+        send(ws, { t: 'authOk', avatar: acc.avatar ?? null, name: acc.name, session: msg.session, outfit: this.outfitOf(acc), stats: stats(acc) });
+        this.sendContacts(ws, me);
+        this.broadcastOnline();
+        await this.sendHistory(ws, me);
         return;
       }
       case 'logout':
         me.account = null;
+        me.name = '';
+        this.clearInvites(ws);
+        send(ws, { t: 'social', contacts: [] });
         return;
+      case 'saveAvatar': {
+        const account = me.account;
+        if (!account || (msg.avatar !== null && !isAvatar(msg.avatar))) return;
+        await this.store.updateAvatar(account, msg.avatar);
+        for (const [peer, c] of this.clients) {
+          if (c.account === account) send(peer, { t: 'avatarSaved', avatar: msg.avatar });
+        }
+        return;
+      }
       case 'saveOutfit':
         if (me.account) await this.store.updateOutfit(me.account, JSON.stringify(sanitizeOutfit(msg.outfit)));
         return;
@@ -95,6 +115,23 @@ export class Hub {
       case 'leaderboard':
         send(ws, { t: 'leaderboard', rows: await this.store.top(20) });
         return;
+      case 'profile': {
+        const name = cleanName(msg.name);
+        if (!me.account) return send(ws, { t:'profileError',name,message:'Entre com uma conta para consultar perfis.' });
+        const a = await this.store.getAccount(name.toLowerCase());
+        if (!a) return send(ws, { t:'profileError',name,message:'Perfil não encontrado.' });
+        const summary = await this.store.profileSummary(a.key);
+        send(ws, { t: 'profile', profile: { avatar: a.avatar ?? null, name: a.name, createdAt: a.createdAt, outfit: this.outfitOf(a),
+          wins: a.wins, losses: a.losses, ...summary } });
+        return;
+      }
+      case 'social':
+        this.sendContacts(ws, me);
+        return;
+      case 'relationship':
+        return this.relationship(ws, me, msg.name, msg.action);
+      case 'duel':
+        return this.duel(ws, me, msg.name, msg.accept === true);
       case 'chat':
         return this.chat(ws, me, msg.text);
       case 'join': {
@@ -158,7 +195,90 @@ export class Hub {
     me.account = key;
     me.name = acc.name;
     me.authTries = 0;
-    send(ws, { t: 'authOk', name: acc.name, session, outfit: this.outfitOf(acc), stats: stats(acc) });
+    send(ws, { t: 'authOk', avatar: acc.avatar ?? null, name: acc.name, session, outfit: this.outfitOf(acc), stats: stats(acc) });
+    this.sendContacts(ws, me);
+    await this.sendHistory(ws, me);
+  }
+
+  private blocked(a?: string | null, b?: string | null) {
+    if (!a || !b || a === b) return false;
+    const p = this.store.pair(a, b);
+    return p.blockFirst || p.blockSecond;
+  }
+  private async sendHistory(ws: Sock, me: Client) {
+    const messages = (await this.store.recentChat(50)).filter(m => !this.blocked(me.account, m.account)).slice(-30);
+    send(ws, { t: 'chatHistory', messages });
+  }
+  private sendContacts(ws: Sock, me: Client) {
+    send(ws, { t: 'social', contacts: me.account ? this.store.contacts(me.account) : [] });
+  }
+  private async relationship(ws: Sock, me: Client, name: string, action: SocialAction) {
+    const key = me.account;
+    const target = await this.store.getAccount(cleanName(name).toLowerCase());
+    if (!key || key !== me.account || !target || key === target.key) return;
+    const p = this.store.pair(key, target.key);
+    const ownBlock = key === p.first ? 'blockFirst' : 'blockSecond';
+    if (action === 'block' || action === 'remove') {
+      for (const [peer, invite] of this.invites) {
+        if ((invite.from === key && invite.target === target.key) || (invite.from === target.key && invite.target === key)) this.invites.delete(peer);
+      }
+    }
+    if (action === 'block') {
+      p[ownBlock] = true;
+      p.requested = null;
+      p.friend = false;
+    } else if (action === 'unblock') {
+      p[ownBlock] = false;
+    } else if (p.blockFirst || p.blockSecond) {
+      return send(ws, { t: 'socialNotice', message: 'Ação indisponível.' });
+    } else if (action === 'request' && !p.requested && !p.friend) {
+      p.requested = key;
+    } else if (action === 'accept' && p.requested === target.key) {
+      p.friend = true;
+      p.requested = null;
+    } else if (action === 'remove') {
+      p.friend = false;
+      p.requested = null;
+    } else return;
+    this.store.savePair(p);
+    for (const [peer, c] of this.clients) {
+      if (c.account !== key && c.account !== target.key) continue;
+      this.sendContacts(peer, c);
+      if (action === 'block' || action === 'unblock') await this.sendHistory(peer, c);
+    }
+  }
+
+  private invites = new Map<Sock, { target: string; from: string; until: number }>();
+  private clearInvites(ws: Sock) { this.invites.delete(ws); }
+
+  private async duel(ws: Sock, me: Client, raw: string, accept: boolean) {
+    const target = cleanName(raw).toLowerCase();
+    const key = me.account;
+    const notice = (message: string) => send(ws, { t: 'socialNotice', message });
+    if (!key || key === target || !this.store.pair(key, target).friend) return notice('O duelo exige amizade aceita.');
+    const available = (peer: Sock) => peer.readyState === peer.OPEN && !this.matchmaker.busy(peer);
+    const peers = [...this.clients].filter(([peer, c]) => c.account === target && available(peer));
+    if (!available(ws) || !peers.length) return notice('Jogador indisponível para duelo.');
+    if (!accept) {
+      this.invites.set(ws, { target, from: key, until: Date.now() + 60000 });
+      for (const [peer] of peers) send(peer, { t: 'duelInvite', from: me.name });
+      return notice('Convite enviado. Válido por um minuto.');
+    }
+    const inviter = peers.find(([peer]) => {
+      const invite = this.invites.get(peer);
+      return invite?.from === target && invite.target === key && invite.until > Date.now();
+    });
+    if (!inviter) return notice('O convite expirou.');
+    const [other] = inviter;
+    const accepted = this.invites.get(other)!;
+    const [a, b] = await Promise.all([this.store.getAccount(target), this.store.getAccount(key)]);
+    if (this.invites.get(other) !== accepted || accepted.until <= Date.now() || !a || !b || this.clients.get(other)?.account !== target ||
+        this.clients.get(ws)?.account !== key || !this.store.pair(key, target).friend ||
+        !available(ws) || !available(other)) return notice('Duelo indisponível.');
+    this.invites.delete(other);
+    this.invites.delete(ws);
+    this.matchmaker.privateMatch({ ws: other, name: a.name, account: a.key, outfit: this.outfitOf(a) },
+      { ws, name: b.name, account: b.key, outfit: this.outfitOf(b) });
   }
 
   private async chat(ws: Sock, me: Client, raw: unknown) {
@@ -170,9 +290,11 @@ export class Hub {
     me.lastChat = me.lastChat.filter((t) => now - t < 10_000);
     if (me.lastChat.length >= 5) return send(ws, { t: 'error', message: 'Calma! Espere um pouco para mandar outra mensagem.' });
     me.lastChat.push(now);
-    const line = { from: me.name, text, at: now };
+    const line = { from: me.name, account: me.account ?? undefined, text, at: now };
     await this.store.addChat(line);
-    this.broadcast({ t: 'chat', ...line });
+    for (const [peer, client] of this.clients) {
+      if (!this.blocked(client.account, line.account)) send(peer, { t: 'chat', ...line });
+    }
   }
 
   private broadcast(msg: ServerMessage) {
@@ -187,16 +309,24 @@ export class Hub {
   /** Grava vitória/derrota de quem tem conta. Contra o bot conta como treino (fora do ranking). */
   private async recordResult(m: Match) {
     const w = m.state.winner;
-    if (w !== 0 && w !== 1) return;
-    const vsBot = m.seats.some((s) => s.isBot);
-    for (const [i, seat] of m.seats.entries()) {
+    if (w === null) return;
+    const vsBot = m.seats.some(s=>s.isBot);
+    const at = Date.now();
+    for (const [i,seat] of m.seats.entries()) {
       if (!seat.account) continue;
       const won = i === w;
-      await this.store.addResult(seat.account, vsBot ? (won ? 'botWins' : 'botLosses') : won ? 'wins' : 'losses');
+      if (vsBot) {
+        if (w !== 'draw') await this.store.addResult(seat.account, won ? 'botWins' : 'botLosses');
+      } else {
+        await this.store.recordMatch({id:m.id,account:seat.account,opponent:m.seats[1-i].name,
+          result:w==='draw'?'draw':won?'win':'loss',at,durationMs:Math.max(0,at-m.startedAt),
+          arena:ARENAS[m.state.arena]?.id??ARENAS[0].id,turns:m.state.turn,outfit:sanitizeOutfit(m.state.fighters[i].outfit)});
+      }
     }
   }
 
   close(ws: Sock) {
+    this.clearInvites(ws);
     this.matchmaker.disconnect(ws);
     const had = this.clients.get(ws)?.name;
     this.clients.delete(ws);

@@ -96,6 +96,8 @@ function animationBuffer(events: BattleEvent[]): number {
 export class Match {
   /** Seed fixa para testes (o servidor Node lê de SEED). */
   static seed: number | undefined;
+  readonly id = randomHex(16);
+  readonly startedAt = Date.now();
   state: BattleState;
   seats: [Seat, Seat];
   deadline = 0;
@@ -303,12 +305,26 @@ export class Matchmaker {
     if (vsBot) return this.startMatch(new Match(l, 'bot', (m) => this.cleanup(m), level));
     if (this.waiting && this.waiting.ws !== l.ws && this.waiting.ws.readyState === this.waiting.ws.OPEN) {
       const other = this.waiting;
+      if (l.account && other.account === l.account) {
+        send(l.ws, { t: 'error', message: 'Use duas contas diferentes para um duelo PvP.' });
+        return;
+      }
       this.waiting = null;
       this.startMatch(new Match(other, l, (m) => this.cleanup(m)));
     } else {
       this.waiting = l;
       send(l.ws, { t: 'queued' });
     }
+  }
+
+  busy(ws: Sock) {
+    const match = this.byWs.get(ws);
+    return this.waiting?.ws === ws || Boolean(match && !match.finished);
+  }
+
+  privateMatch(a: Lobbyist, b: Lobbyist) {
+    if (this.busy(a.ws) || this.busy(b.ws)) return;
+    this.startMatch(new Match(a, b, m => this.cleanup(m)));
   }
 
   leaveQueue(ws: Sock) {

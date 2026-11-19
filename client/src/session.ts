@@ -1,4 +1,4 @@
-import { EMPTY_OUTFIT, sanitizeOutfit, type BattleView, type ClientMessage, type Outfit, type PlayerIndex, type PlayerStats, type ServerMessage } from '@oficina/shared';
+import { EMPTY_OUTFIT, sanitizeOutfit, type AvatarId, type BattleView, type ClientMessage, type Outfit, type PlayerIndex, type PlayerStats, type ServerMessage } from '@oficina/shared';
 import { Net, defaultServerUrl } from './net.ts';
 
 const PROFILE_KEY = 'oficina.profile';
@@ -88,6 +88,7 @@ const cleanName = (n: string) => n.replace(/[^\p{L}\p{N} _-]/gu, '').trim().slic
 export const auth = {
   /** Vitórias e derrotas da conta (null para convidado ou antes do servidor responder). */
   stats: null as PlayerStats | null,
+  avatar: null as AvatarId | null,
   get loggedIn(): boolean {
     return !!read(CURRENT_KEY);
   },
@@ -122,6 +123,7 @@ export const auth = {
     write(CURRENT_KEY, `guest:${name}`);
     session.name = name;
     auth.stats = null;
+    auth.avatar = null;
     session.net.send({ t: 'hello', name });
   },
   logout() {
@@ -129,6 +131,7 @@ export const auth = {
     write(SESSION_KEY, null);
     write(CURRENT_KEY, null);
     auth.stats = null;
+    auth.avatar = null;
   },
   /** Guarda as roupas na conta (no servidor). */
   saveCurrent() {
@@ -161,6 +164,9 @@ session.net.on((msg) => {
     session.name = msg.name;
     session.outfit = sanitizeOutfit(msg.outfit);
     auth.stats = msg.stats;
+    auth.avatar = msg.avatar ?? null;
+  } else if (msg.t === 'avatarSaved') {
+    auth.avatar = msg.avatar;
   } else if (msg.t === 'authError' && msg.silent) {
     // Sessão expirou: volta a pedir login na próxima vez.
     write(SESSION_KEY, null);
@@ -174,13 +180,16 @@ session.net.on((msg) => {
 session.net.onOpen(() => {
   const current = read(CURRENT_KEY);
   if (current?.startsWith('guest:')) session.name = current.slice(6);
-  session.net.send({ t: 'hello', name: session.name });
   const token = read(SESSION_KEY);
   if (token) session.net.send({ t: 'resume', session: token });
+  else session.net.send({ t: 'hello', name: session.name });
 });
 
 session.net.on((msg) => {
-  if (msg.t === 'match') session.lastView = null;
+  if (msg.t === 'match') {
+    session.match = { you: msg.you, opponentName: msg.opponentName };
+    session.lastView = null;
+  }
   if (msg.t === 'state' || msg.t === 'resolved') {
     session.lastView = { view: msg.view, deadline: Date.now() + msg.remainingMs };
   }
