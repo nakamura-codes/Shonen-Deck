@@ -1,4 +1,4 @@
-import { CHAT_MAX_LENGTH, EMPTY_OUTFIT, sanitizeOutfit, type BotLevel, type ClientMessage, type PlayerStats, type ServerMessage } from '@oficina/shared';
+import { ARENAS, OUTFIT_SLOTS, CHAT_MAX_LENGTH, EMPTY_OUTFIT, sanitizeOutfit, type PublicProfile, type BotLevel, type ClientMessage, type PlayerStats, type ServerMessage } from '@oficina/shared';
 import { Matchmaker, send, type Match, type Sock } from './rooms.ts';
 import { MemoryStore, hashPassword, randomToken, sameHash, type Account, type Store } from './store.ts';
 
@@ -41,7 +41,7 @@ export class Hub {
   private clients = new Map<Sock, Client>();
 
   constructor(private store: Store = new MemoryStore()) {
-    this.matchmaker.onResult = (m) => void this.recordResult(m);
+    this.matchmaker.onResult = (m) => { void this.recordResult(m).catch(err => console.error('Falha ao registrar partida:', err)); };
   }
 
   private client(ws: Sock): Client {
@@ -95,6 +95,26 @@ export class Hub {
       case 'leaderboard':
         send(ws, { t: 'leaderboard', rows: await this.store.top(20) });
         return;
+      case 'profile': {
+        const name = cleanName(msg.name);
+        if (!me.account) return send(ws, { t:'profileError',name,message:'Entre com uma conta para consultar perfis.' });
+        const a = await this.store.getAccount(name.toLowerCase());
+        if (!a) return send(ws, { t:'profileError',name,message:'Perfil não encontrado.' });
+        const rows = await this.store.matchHistory(a.key);
+        const favorites: PublicProfile['favorites'] = {head:null,body:null,hand:null};
+        for (const slot of OUTFIT_SLOTS) {
+          const counts = new Map<string,number>();
+          for (const row of rows) {
+            const id = sanitizeOutfit(row.outfit)[slot];
+            if (id) counts.set(id,(counts.get(id)??0)+1);
+          }
+          const best = [...counts].sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0]))[0];
+          if (best) favorites[slot]={id:best[0],count:best[1]};
+        }
+        send(ws,{t:'profile',profile:{name:a.name,createdAt:a.createdAt,outfit:this.outfitOf(a),wins:a.wins,losses:a.losses,
+          draws:rows.filter(r=>r.result==='draw').length,recordedMatches:rows.length,playMs:rows.reduce((v,r)=>v+r.durationMs,0),favorites,history:rows.slice(0,20)}});
+        return;
+      }
       case 'chat':
         return this.chat(ws, me, msg.text);
       case 'join': {
@@ -187,12 +207,19 @@ export class Hub {
   /** Grava vitória/derrota de quem tem conta. Contra o bot conta como treino (fora do ranking). */
   private async recordResult(m: Match) {
     const w = m.state.winner;
-    if (w !== 0 && w !== 1) return;
-    const vsBot = m.seats.some((s) => s.isBot);
-    for (const [i, seat] of m.seats.entries()) {
+    if (w === null) return;
+    const vsBot = m.seats.some(s=>s.isBot);
+    const at = Date.now();
+    for (const [i,seat] of m.seats.entries()) {
       if (!seat.account) continue;
       const won = i === w;
-      await this.store.addResult(seat.account, vsBot ? (won ? 'botWins' : 'botLosses') : won ? 'wins' : 'losses');
+      if (vsBot) {
+        if (w !== 'draw') await this.store.addResult(seat.account, won ? 'botWins' : 'botLosses');
+      } else {
+        await this.store.recordMatch({id:m.id,account:seat.account,opponent:m.seats[1-i].name,
+          result:w==='draw'?'draw':won?'win':'loss',at,durationMs:Math.max(0,at-m.startedAt),
+          arena:ARENAS[m.state.arena]?.id??ARENAS[0].id,turns:m.state.turn,outfit:sanitizeOutfit(m.state.fighters[i].outfit)});
+      }
     }
   }
 

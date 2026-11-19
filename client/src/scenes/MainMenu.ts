@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { openProfile, closeProfile } from '../profile.ts';
 import { MARGIN_X, MARGIN_Y } from '../render.ts';
 import { auth, session } from '../session.ts';
 import { isMuted, sfx, toggleMute } from '../sfx.ts';
@@ -27,6 +28,9 @@ export class MainMenuScene extends Phaser.Scene {
     const px = -MARGIN_X + 16, py = -MARGIN_Y + 16;
     placeImage(this, [pk, px, py, pw, ph]);
     centerInk(fitText(txt(this, 0, 0, session.name, 22, '#ffffff', { fontStyle: 'bold', stroke: '#0d0a14', strokeThickness: 4 }), pw * 0.5), px + pw * 0.63, py + ph * 0.36);
+
+    this.add.zone(px+pw/2,py+ph/2,pw,ph).setInteractive({useHandCursor:true}).on('pointerup',()=>openProfile(session.name));
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN,closeProfile);
 
     // Vitórias e derrotas da conta (contra jogadores), logo abaixo do perfil.
     const record = txt(this, px + 12, py + ph + 14, '', 15, '#ffe28a', { stroke: '#0d0a14', strokeThickness: 4 }).setOrigin(0, 0.5);

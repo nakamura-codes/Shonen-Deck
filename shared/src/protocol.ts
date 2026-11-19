@@ -18,6 +18,7 @@ export type ClientMessage =
   | { t: 'saveOutfit'; outfit: Outfit }
   | { t: 'stats' }
   | { t: 'leaderboard' }
+  | { t: 'profile'; name: string }
   // Chat global.
   | { t: 'hello'; name: string }
   | { t: 'chat'; text: string };
@@ -36,7 +37,31 @@ export type ServerMessage =
   | { t: 'leaderboard'; rows: { name: string; wins: number; losses: number }[] }
   | { t: 'chat'; from: string; text: string; at: number }
   | { t: 'chatHistory'; messages: { from: string; text: string; at: number }[] }
-  | { t: 'online'; count: number };
+  | { t: 'online'; count: number }
+  | { t: 'profile'; profile: PublicProfile }
+  | { t: 'profileError'; name: string; message: string };
+
+export interface MatchHistoryRow {
+  opponent: string;
+  result: 'win' | 'loss' | 'draw';
+  at: number;
+  durationMs: number;
+  arena: string;
+  turns: number;
+  outfit: Outfit;
+}
+export interface PublicProfile {
+  name: string;
+  createdAt: number;
+  outfit: Outfit;
+  wins: number;
+  losses: number;
+  draws: number;
+  recordedMatches: number;
+  playMs: number;
+  favorites: Record<keyof Outfit, { id: string; count: number } | null>;
+  history: MatchHistoryRow[];
+}
 
 /** Vitórias e derrotas da conta: contra jogadores (ranking) e contra o bot (treino). */
 export interface PlayerStats {

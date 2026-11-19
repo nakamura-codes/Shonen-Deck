@@ -1,5 +1,6 @@
 import { CHAT_MAX_LENGTH } from '@oficina/shared';
 import { session } from './session.ts';
+import { openProfile, closeProfile } from './profile.ts';
 
 /**
  * Chat global (todos os jogadores conectados). Fica num canto da tela, por cima do jogo, nas telas de
@@ -20,7 +21,8 @@ const STYLE = `
 #chat .head button { background: none; border: none; color: #c8d0e8; font: inherit; font-size: 16px; cursor: pointer; }
 #chat .list { flex: 1; overflow-y: auto; padding: 6px 10px; font-size: 14px; line-height: 1.35; overflow-wrap: anywhere; }
 #chat .list .line { margin: 2px 0; }
-#chat .list .who { color: #8fd0ff; }
+#chat .list .who { color: #8fd0ff; background: none; border: 0; padding: 0; font: inherit; cursor: pointer; }
+#chat .list .who:hover { text-decoration: underline; }
 #chat .list .me .who { color: #7fe0a0; }
 #chat .list .time { color: #7f8bb0; font-size: 12px; margin-right: 4px; }
 #chat .list .empty { color: #7f8bb0; text-align: center; margin-top: 40px; }
@@ -51,7 +53,9 @@ function addLine(m: { from: string; text: string; at: number }) {
   const t = document.createElement('span');
   t.className = 'time';
   t.textContent = time(m.at);
-  const who = document.createElement('span');
+  const who = document.createElement('button');
+  who.type = 'button';
+  who.addEventListener('click',()=>openProfile(m.from));
   who.className = 'who';
   who.textContent = `${m.from}: `;
   const text = document.createElement('span');
@@ -138,7 +142,7 @@ function build() {
 export function setChatVisible(v: boolean) {
   if (!root) build();
   root!.classList.toggle('hidden', !v);
-  if (!v) root!.classList.remove('open');
+  if (!v) { root!.classList.remove('open'); closeProfile(); }
   refreshLabels();
 }
 

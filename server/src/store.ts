@@ -1,3 +1,5 @@
+import type { MatchHistoryRow } from '@oficina/shared';
+
 /**
  * Banco de dados das contas, vitórias/derrotas, sessões e chat.
  *
@@ -38,12 +40,16 @@ export interface RankRow {
   losses: number;
 }
 
+export interface RecordedMatch extends MatchHistoryRow { id: string; account: string }
+
 export interface Store {
   getAccount(key: string): Promise<Account | null>;
   /** Cria a conta; devolve false se o nome já existe. */
   createAccount(a: Account): Promise<boolean>;
   updateOutfit(key: string, outfit: string): Promise<void>;
   addResult(key: string, field: ResultField): Promise<void>;
+  recordMatch(row: RecordedMatch): Promise<void>;
+  matchHistory(key: string): Promise<MatchHistoryRow[]>;
   createSession(token: string, key: string): Promise<void>;
   getSession(token: string): Promise<string | null>;
   deleteSession(token: string): Promise<void>;
@@ -61,10 +67,11 @@ interface MemoryData {
   accounts: Record<string, Account>;
   sessions: Record<string, string>;
   chat: ChatLine[];
+  matches: RecordedMatch[];
 }
 
 export class MemoryStore implements Store {
-  private data: MemoryData = { accounts: {}, sessions: {}, chat: [] };
+  private data: MemoryData = { accounts: {}, sessions: {}, chat: [], matches: [] };
   private saveTimer: ReturnType<typeof setTimeout> | null = null;
 
   /** `persist` recebe os dados para gravar (ex.: num arquivo); `initial` são os dados já gravados. */
@@ -72,7 +79,7 @@ export class MemoryStore implements Store {
     initial?: Partial<MemoryData> | null,
     private persist?: (json: string) => void,
   ) {
-    if (initial) this.data = { accounts: initial.accounts ?? {}, sessions: initial.sessions ?? {}, chat: initial.chat ?? [] };
+    if (initial) this.data = { accounts: initial.accounts ?? {}, sessions: initial.sessions ?? {}, chat: initial.chat ?? [], matches: initial.matches ?? [] };
   }
 
   private changed() {
@@ -104,6 +111,18 @@ export class MemoryStore implements Store {
     if (!a) return;
     a[field] += 1;
     this.changed();
+  }
+  async recordMatch(row: RecordedMatch) {
+    const acc = this.data.accounts[row.account];
+    if (!acc || this.data.matches.some(m => m.id === row.id && m.account === row.account)) return;
+    this.data.matches.push(structuredClone(row));
+    if (row.result === 'win') acc.wins++;
+    if (row.result === 'loss') acc.losses++;
+    this.changed();
+  }
+  async matchHistory(key: string): Promise<MatchHistoryRow[]> {
+    return this.data.matches.filter(m => m.account === key).sort((a,b) => b.at-a.at)
+      .map(({ id, account, ...row }) => structuredClone(row));
   }
   async createSession(token: string, key: string) {
     this.data.sessions[token] = key;
@@ -147,6 +166,15 @@ export class SqlStore implements Store {
       outfit TEXT NOT NULL DEFAULT '{}', wins INTEGER NOT NULL DEFAULT 0, losses INTEGER NOT NULL DEFAULT 0,
       bot_wins INTEGER NOT NULL DEFAULT 0, bot_losses INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL)`);
     sql.exec(`CREATE INDEX IF NOT EXISTS accounts_rank ON accounts (wins DESC, losses ASC)`);
+    sql.exec(`CREATE TABLE IF NOT EXISTS pvp_history (
+      match_id TEXT NOT NULL, account TEXT NOT NULL, opponent TEXT NOT NULL,
+      result TEXT NOT NULL CHECK(result IN ('win','loss','draw')), at INTEGER NOT NULL,
+      duration_ms INTEGER NOT NULL, arena TEXT NOT NULL, turns INTEGER NOT NULL, outfit TEXT NOT NULL,
+      PRIMARY KEY(match_id, account))`);
+    sql.exec(`CREATE INDEX IF NOT EXISTS pvp_history_account ON pvp_history(account, at DESC)`);
+    sql.exec(`CREATE TRIGGER IF NOT EXISTS pvp_history_result AFTER INSERT ON pvp_history
+      BEGIN UPDATE accounts SET wins = wins + CASE WHEN NEW.result = 'win' THEN 1 ELSE 0 END,
+      losses = losses + CASE WHEN NEW.result = 'loss' THEN 1 ELSE 0 END WHERE key = NEW.account; END`);
     sql.exec(`CREATE TABLE IF NOT EXISTS sessions (token TEXT PRIMARY KEY, key TEXT NOT NULL, created_at INTEGER NOT NULL)`);
     sql.exec(`CREATE TABLE IF NOT EXISTS chat (id INTEGER PRIMARY KEY AUTOINCREMENT, sender TEXT NOT NULL, text TEXT NOT NULL, at INTEGER NOT NULL)`);
   }
@@ -184,6 +212,17 @@ export class SqlStore implements Store {
   async addResult(key: string, field: ResultField) {
     const col = { wins: 'wins', losses: 'losses', botWins: 'bot_wins', botLosses: 'bot_losses' }[field];
     this.sql.exec(`UPDATE accounts SET ${col} = ${col} + 1 WHERE key = ?`, key);
+  }
+  async recordMatch(row: RecordedMatch) {
+    this.sql.exec('INSERT OR IGNORE INTO pvp_history (match_id, account, opponent, result, at, duration_ms, arena, turns, outfit) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      row.id, row.account, row.opponent, row.result, row.at, row.durationMs, row.arena, row.turns, JSON.stringify(row.outfit));
+  }
+  async matchHistory(key: string): Promise<MatchHistoryRow[]> {
+    return this.sql.exec('SELECT opponent, result, at, duration_ms, arena, turns, outfit FROM pvp_history WHERE account = ? ORDER BY at DESC', key).toArray().map(r => ({
+      opponent: String(r.opponent), result: String(r.result) as MatchHistoryRow['result'], at: Number(r.at),
+      durationMs: Number(r.duration_ms), arena: String(r.arena), turns: Number(r.turns),
+      outfit: JSON.parse(String(r.outfit)) as MatchHistoryRow['outfit'],
+    }));
   }
   async createSession(token: string, key: string) {
     this.sql.exec('INSERT OR REPLACE INTO sessions (token, key, created_at) VALUES (?, ?, ?)', token, key, Date.now());

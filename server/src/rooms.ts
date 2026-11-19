@@ -96,6 +96,8 @@ function animationBuffer(events: BattleEvent[]): number {
 export class Match {
   /** Seed fixa para testes (o servidor Node lê de SEED). */
   static seed: number | undefined;
+  readonly id = randomHex(16);
+  readonly startedAt = Date.now();
   state: BattleState;
   seats: [Seat, Seat];
   deadline = 0;
