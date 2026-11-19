@@ -8,6 +8,7 @@ import { LobbyScene } from './scenes/Lobby.ts';
 import { BattleScene } from './scenes/Battle.ts';
 import { GalleryScene } from './scenes/Gallery.ts';
 import { unlockAudio } from './sfx.ts';
+import { session } from './session.ts';
 import { setChatVisible } from './chat.ts';
 
 /** Telas com o chat global no canto (fora do login e da batalha). */
@@ -46,6 +47,14 @@ async function start() {
     scale: { mode: Phaser.Scale.EXPAND, autoCenter: Phaser.Scale.CENTER_BOTH },
     scene: [BootScene, LoginScene, MainMenuScene, WardrobeScene, LobbyScene, BattleScene, GalleryScene],
   });
+  // Um convite ou reconexão pode iniciar o combate diretamente em qualquer menu.
+  const enterMatch = () => {
+    if (!session.net.token || !session.match) return;
+    const active = game.scene.getScenes(true).find(s => ['MainMenu','Gallery','Login'].includes(s.scene.key));
+    if (active) active.scene.start('Battle');
+  };
+  const offMatch = session.net.on(msg => { if (msg.t === 'match') enterMatch(); });
+  game.events.once(Phaser.Core.Events.DESTROY, offMatch);
   const centerScene = (scene: Phaser.Scene) => {
     const { width, height } = game.scale.gameSize;
     const camera = scene.cameras.main;
@@ -62,6 +71,7 @@ async function start() {
       scene.sys.events.on(Phaser.Scenes.Events.START, () => {
         centerScene(scene);
         setChatVisible(CHAT_SCENES.includes(scene.sys.settings.key));
+        if (scene.scene.key === 'MainMenu') queueMicrotask(enterMatch);
       });
     }
     game.scale.on(Phaser.Scale.Events.RESIZE, recenter);

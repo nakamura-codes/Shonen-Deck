@@ -1,6 +1,6 @@
 import { CHAT_MAX_LENGTH } from '@oficina/shared';
 import { session } from './session.ts';
-import { openProfile, closeProfile } from './profile.ts';
+import { openPlayerActions, openContacts, closeProfile } from './profile.ts';
 
 /**
  * Chat global (todos os jogadores conectados). Fica num canto da tela, por cima do jogo, nas telas de
@@ -45,7 +45,7 @@ function time(at: number) {
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
 
-function addLine(m: { from: string; text: string; at: number }) {
+function addLine(m: { account?: string; from: string; text: string; at: number }) {
   list.querySelector('.empty')?.remove();
   const atBottom = list.scrollHeight - list.scrollTop - list.clientHeight < 30;
   const line = document.createElement('div');
@@ -53,9 +53,11 @@ function addLine(m: { from: string; text: string; at: number }) {
   const t = document.createElement('span');
   t.className = 'time';
   t.textContent = time(m.at);
-  const who = document.createElement('button');
-  who.type = 'button';
-  who.addEventListener('click',()=>openProfile(m.from));
+  const who = document.createElement(m.account ? 'button' : 'span');
+  if (who instanceof HTMLButtonElement) {
+    who.type = 'button';
+    who.addEventListener('click', () => openPlayerActions(m.from));
+  }
   who.className = 'who';
   who.textContent = `${m.from}: `;
   const text = document.createElement('span');
@@ -89,7 +91,7 @@ function build() {
   root.className = 'hidden';
   root.innerHTML = `
     <div class="panel">
-      <div class="head"><span class="title"></span><button type="button" aria-label="Fechar chat">✕</button></div>
+      <div class="head"><span class="title"></span><button type="button" class="contacts">Amigos</button><button type="button" aria-label="Fechar chat">✕</button></div>
       <div class="list"><div class="empty">Ninguém falou ainda. Diga oi!</div></div>
       <form><input maxlength="${CHAT_MAX_LENGTH}" placeholder="Escreva uma mensagem" aria-label="Mensagem do chat" /><button type="submit">Enviar</button></form>
     </div>
@@ -109,7 +111,10 @@ function build() {
     refreshLabels();
   };
   toggle.addEventListener('click', () => setOpen(!root!.classList.contains('open')));
-  root.querySelector('.head button')!.addEventListener('click', () => setOpen(false));
+  const contacts = root.querySelector<HTMLButtonElement>('.contacts')!;
+  contacts.onclick = () => { contacts.textContent = 'Amigos'; openContacts(); };
+  window.addEventListener('shonen-invite', () => { contacts.textContent = 'Convite de duelo'; unread++; refreshLabels(); });
+  root.querySelector('[aria-label="Fechar chat"]')!.addEventListener('click', () => setOpen(false));
   root.querySelector('form')!.addEventListener('submit', (e) => {
     e.preventDefault();
     const text = input.value.trim();
@@ -121,7 +126,10 @@ function build() {
   input.addEventListener('keydown', (e) => e.stopPropagation());
 
   session.net.on((m) => {
-    if (m.t === 'chatHistory') {
+    if (m.t === 'social') {
+      const pending = m.contacts.filter(c => c.state === 'incoming').length;
+      contacts.textContent = pending ? 'Amigos (' + pending + ')' : 'Amigos';
+    } else if (m.t === 'chatHistory') {
       list.innerHTML = '';
       if (!m.messages.length) list.innerHTML = '<div class="empty">Ninguém falou ainda. Diga oi!</div>';
       for (const line of m.messages) addLine(line);

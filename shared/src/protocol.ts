@@ -16,9 +16,13 @@ export type ClientMessage =
   | { t: 'resume'; session: string }
   | { t: 'logout' }
   | { t: 'saveOutfit'; outfit: Outfit }
+  | { t: 'saveAvatar'; avatar: AvatarId | null }
   | { t: 'stats' }
   | { t: 'leaderboard' }
   | { t: 'profile'; name: string }
+  | { t: 'social' }
+  | { t: 'relationship'; name: string; action: SocialAction }
+  | { t: 'duel'; name: string; accept?: boolean }
   // Chat global.
   | { t: 'hello'; name: string }
   | { t: 'chat'; text: string };
@@ -31,15 +35,23 @@ export type ServerMessage =
   | { t: 'resolved'; events: BattleEvent[]; view: BattleView; remainingMs: number }
   | { t: 'opponentStatus'; connected: boolean }
   | { t: 'error'; message: string }
-  | { t: 'authOk'; name: string; session: string; outfit: Outfit; stats: PlayerStats }
+  | { t: 'avatarSaved'; avatar: AvatarId | null }
+  | { t: 'authOk'; avatar?: AvatarId | null; name: string; session: string; outfit: Outfit; stats: PlayerStats }
   | { t: 'authError'; message: string; silent?: boolean }
   | { t: 'stats'; stats: PlayerStats }
   | { t: 'leaderboard'; rows: { name: string; wins: number; losses: number }[] }
-  | { t: 'chat'; from: string; text: string; at: number }
-  | { t: 'chatHistory'; messages: { from: string; text: string; at: number }[] }
+  | { t: 'chat'; from: string; text: string; at: number; account?: string }
+  | { t: 'chatHistory'; messages: { from: string; text: string; at: number; account?: string }[] }
   | { t: 'online'; count: number }
+  | { t: 'social'; contacts: Contact[] }
+  | { t: 'socialNotice'; message: string }
+  | { t: 'duelInvite'; from: string }
   | { t: 'profile'; profile: PublicProfile }
   | { t: 'profileError'; name: string; message: string };
+
+export type SocialAction = 'request' | 'accept' | 'remove' | 'block' | 'unblock';
+export type ContactState = 'incoming' | 'outgoing' | 'friend' | 'blocked';
+export interface Contact { name: string; state: ContactState }
 
 export interface MatchHistoryRow {
   opponent: string;
@@ -50,7 +62,18 @@ export interface MatchHistoryRow {
   turns: number;
   outfit: Outfit;
 }
+export const AVATARS = {
+  naruto: 'Naruto clássico', goku: 'Goku', luffy: 'Luffy com chapéu', ichigo: 'Ichigo', gojo: 'Gojo',
+  'naruto-bandana': 'Naruto de perfil', trunks: 'Trunks', 'luffy-chapeu': 'Luffy com chapéu nas costas',
+  'ichigo-espada': 'Ichigo com espada', nanami: 'Nanami',
+} as const;
+export type AvatarId = keyof typeof AVATARS;
+export function isAvatar(value: unknown): value is AvatarId {
+  return typeof value === 'string' && Object.hasOwn(AVATARS, value);
+}
+
 export interface PublicProfile {
+  avatar: AvatarId | null;
   name: string;
   createdAt: number;
   outfit: Outfit;
@@ -60,7 +83,8 @@ export interface PublicProfile {
   recordedMatches: number;
   playMs: number;
   favorites: Record<keyof Outfit, { id: string; count: number } | null>;
-  history: MatchHistoryRow[];
+  rank: number | null;
+  history: Pick<MatchHistoryRow, 'opponent' | 'result' | 'at' | 'outfit'>[];
 }
 
 /** Vitórias e derrotas da conta: contra jogadores (ranking) e contra o bot (treino). */

@@ -16,22 +16,22 @@ import type {
 } from './types.ts';
 
 export const RULES = {
-  maxHp: 60,
+  maxHp: 200,
   kiPerTurn: 3,
   /** Ki que sobra passa para o próximo turno, até este limite. */
   maxKi: 5,
   drawPerTurn: 5,
   maxHandSize: 10,
-  turnLimit: 40,
-  bankaiBonus: 3,
+  turnLimit: 24,
+  bankaiBonus: 4,
   /** Fraco que o Bankai deixa quando acaba. */
   bankaiExhaustion: 2,
   /** Força extra enquanto a Hollowficação estiver ativa. */
-  hollowStrength: 3,
+  hollowStrength: 4,
   /** HP que Hollowficação e Gear Second custam em cada turno ativo. */
-  powerHpCost: 5,
+  powerHpCost: 10,
   /** HP que o Gear Second custa em cada turno ativo. */
-  gearSecondHpCost: 4,
+  gearSecondHpCost: 8,
 } as const;
 
 export interface PlayerSetup {
@@ -384,7 +384,7 @@ function dealDamage(
  * Infinity e Boogie Woogie agem sobre uma habilidade inteira (todos os golpes da carta).
  * Boogie Woogie tem prioridade: se o alvo tiver os dois, a habilidade volta no atacante.
  */
-function intercept(state: BattleState, attacker: PlayerIndex, cardId: string, events: BattleEvent[]): 'evade' | 'reflect' | null {
+function intercept(state: BattleState, attacker: PlayerIndex, cardId: string, events: BattleEvent[], cannotEvade = false): 'evade' | 'reflect' | null {
   const target = other(attacker);
   const t = state.fighters[target];
   if (t.reflect > 0) {
@@ -392,7 +392,7 @@ function intercept(state: BattleState, attacker: PlayerIndex, cardId: string, ev
     events.push({ type: 'reflect', player: target, cardId });
     return 'reflect';
   }
-  if (t.evade > 0) {
+  if (!cannotEvade && t.evade > 0) {
     t.evade -= 1;
     events.push({ type: 'evade', player: target, cardId });
     return 'evade';
@@ -497,6 +497,8 @@ function resolveCard(state: BattleState, player: PlayerIndex, q: QueuedCard, eve
             turnsLeft: e.turns,
             damage: e.damage,
             cancelOnDamage: e.cancelOnDamage,
+            cancelOnlyOnStart: e.cancelOnlyOnStart,
+            cannotEvade: e.cannotEvade,
           });
           events.push({ type: 'chargeStart', player, cardId: def.id, turns: e.turns });
           break;
@@ -534,7 +536,7 @@ function tickCharges(state: BattleState, order: PlayerIndex[], events: BattleEve
       ch.turnsLeft -= 1;
       if (ch.turnsLeft <= 0) {
         events.push({ type: 'chargeFire', player: p, cardId: ch.cardId });
-        const caught = intercept(state, p, ch.cardId, events);
+        const caught = intercept(state, p, ch.cardId, events, ch.cannotEvade);
         if (caught !== 'evade') dealDamage(state, p, caught === 'reflect' ? p : other(p), ch.damage, false, ch.cardId, events);
       } else {
         remaining.push(ch);
@@ -612,6 +614,8 @@ export function resolveTurn(state: BattleState): { state: BattleState; events: B
         events.push({ type: 'chargeCancel', player: p, cardId: ch.cardId });
         return false;
       }
+      // A Genki Dama sobrevivendo ao turno de lançamento não pode mais ser interrompida por dano.
+      if (ch.cancelOnlyOnStart) delete ch.cancelOnDamage;
       return true;
     });
   }
@@ -649,6 +653,14 @@ export function resolveTurn(state: BattleState): { state: BattleState; events: B
     }
   }
 
+  // Encerra após resolver a última rodada, sem um turno fantasma ou tick extra.
+  if (next.turn >= RULES.turnLimit) {
+    const [a, b] = next.fighters;
+    next.phase = 'over';
+    next.winner = a.hp === b.hp ? 'draw' : a.hp > b.hp ? 0 : 1;
+    events.push({ type: 'gameOver', winner: next.winner });
+    return { state: next, events };
+  }
   startTurn(next, events);
   return { state: next, events };
 }

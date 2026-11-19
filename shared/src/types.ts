@@ -16,7 +16,7 @@ export type Effect =
   | { kind: 'drawNext'; amount: number }
   | { kind: 'reveal' }
   | { kind: 'clone' }
-  | { kind: 'charge'; turns: number; damage: number; cancelOnDamage?: number }
+  | { kind: 'charge'; turns: number; damage: number; cancelOnDamage?: number; cancelOnlyOnStart?: boolean; cannotEvade?: boolean }
   /** Poder com duração: fica ativo no turno em que é jogado e em mais `turns - 1` turnos. */
   | { kind: 'power'; power: PowerId; turns: number }
   /** Desvia da próxima habilidade de dano do oponente neste turno. */
@@ -85,6 +85,10 @@ export interface Charge {
   turnsLeft: number;
   damage: number;
   cancelOnDamage?: number;
+  /** Se verdadeiro, o limiar de cancelamento vale só na rodada de lançamento. */
+  cancelOnlyOnStart?: boolean;
+  /** Ignora esquiva sem consumir a proteção; reflexão e bloqueio continuam válidos. */
+  cannotEvade?: boolean;
 }
 
 export interface QueuedCard {

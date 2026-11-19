@@ -1,4 +1,7 @@
-# Social & Battle Update — etapa 1
-Perfil e histórico PvP: últimas 20 partidas, set atual e utilizado, favoritos, data da conta, vitórias e derrotas, tempo em partidas finalizadas. Sem dano, cartas, bloqueios ou bots no histórico.
-Migração aditiva: pvp_history e trigger de ranking. Mantém contadores anteriores. Novos dados começam após deploy.
-Pendente: validar SQLite/Workers e navegador, posição no ranking, amizade com aceite, bloqueio persistente e filtro de chat, duelo privado, revanche e melhorias de batalha. Validar npm test, npm run typecheck e npm run build antes de integrar. Consultas de histórico podem precisar de agregação SQL com crescimento.
+# Perfil e histórico PvP
+
+O nome no canto superior esquerdo abre o perfil. Em **Escolher ícone**, o jogador pode selecionar um avatar ou voltar a usar o personagem equipado. A escolha fica salva na conta. Cada partida mostra o resultado, o adversário, a data e o set usado, com até 20 partidas visíveis. O tempo jogado e os equipamentos favoritos consideram todas as partidas PvP finalizadas desde esta atualização. As vitórias e derrotas anteriores continuam no ranking.
+
+Nomes de contas no chat abrem as ações sociais. Solicitações de amizade precisam de aceite. O bloqueio remove a amizade e filtra mensagens identificadas da conta nas duas direções, inclusive no histórico do chat. Mensagens antigas, anteriores à identificação do remetente, continuam como texto simples. A lista de amigos permite aceitar solicitações, desfazer bloqueios e convidar um amigo disponível para um duelo privado. O convite vale por um minuto.
+
+A versão Cloudflare guarda histórico e relações no SQLite do Durable Object. A versão Node usa o mesmo modelo no arquivo JSON de desenvolvimento.

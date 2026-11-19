@@ -99,7 +99,7 @@ describe('embaralhamento', () => {
 });
 
 describe('início', () => {
-  it('cada jogador começa com 5 cartas, 3 de Ki e 60 de HP', () => {
+  it('cada jogador começa com 5 cartas, 3 de Ki e 200 de HP', () => {
     const s = newBattle();
     for (const f of s.fighters) {
       expect(f.hand).toHaveLength(RULES.drawPerTurn);
@@ -118,6 +118,7 @@ describe('jogar cartas', () => {
 
   it('recusa quando falta Ki', () => {
     const s = newBattle();
+    s.fighters[0].ki = 5;
     giveHand(s, 0, ['genki_dama', 'getsuga']);
     const s2 = play(s, 0, 'genki_dama');
     const card = s2.fighters[0].hand.find((c) => c.id === 'getsuga')!;
@@ -161,7 +162,7 @@ describe('resolução', () => {
     s = play(s, 0, 'golpe_basico');
     s = play(s, 1, 'defesa_basica');
     const { state } = readyAndResolve(s);
-    expect(state.fighters[1].hp).toBe(59); // 6 de dano - 5 de bloqueio
+    expect(state.fighters[1].hp).toBe(199); // 8 de dano - 7 de bloqueio
   });
 
   it('o bloqueio zera no início do turno', () => {
@@ -182,7 +183,7 @@ describe('resolução', () => {
     s = play(s, 0, 'chidori');
     s = play(s, 1, 'haki');
     const { state } = readyAndResolve(s);
-    expect(state.fighters[1].hp).toBe(50);
+    expect(state.fighters[1].hp).toBe(184);
   });
 
   it('Gatling acerta 4 vezes e a Força conta em cada golpe', () => {
@@ -192,8 +193,8 @@ describe('resolução', () => {
     s = play(s, 0, 'gatling');
     const { state, events } = readyAndResolve(s);
     expect(events.filter((e) => e.type === 'damage')).toHaveLength(4);
-    expect(state.fighters[1].hp).toBe(60 - 4 * 6);
-    expect(state.fighters[0].hp).toBe(55); // custo do Kaioken
+    expect(state.fighters[1].hp).toBe(200 - 4 * 8);
+    expect(state.fighters[0].hp).toBe(190); // custo do Kaioken
     expect(state.fighters[0].tempStrength).toBe(0); // Força temporária some
   });
 
@@ -202,12 +203,12 @@ describe('resolução', () => {
     giveHand(s, 0, ['rasengan']);
     s = play(s, 0, 'rasengan');
     let r = readyAndResolve(s);
-    expect(r.state.fighters[1].hp).toBe(48);
+    expect(r.state.fighters[1].hp).toBe(182);
     s = r.state;
     giveHand(s, 0, ['golpe_basico']);
     s = play(s, 0, 'golpe_basico');
     r = readyAndResolve(s);
-    expect(r.state.fighters[1].hp).toBe(48 - 7);
+    expect(r.state.fighters[1].hp).toBe(182 - 10);
     expect(r.state.fighters[1].vulnerable).toBe(0);
   });
 
@@ -217,7 +218,7 @@ describe('resolução', () => {
     giveHand(s, 0, ['getsuga']);
     s = play(s, 0, 'getsuga');
     const { state } = readyAndResolve(s);
-    expect(state.fighters[1].hp).toBe(60 - 10);
+    expect(state.fighters[1].hp).toBe(200 - 18);
   });
 
   it('Getsuga é exaurida', () => {
@@ -235,7 +236,7 @@ describe('resolução', () => {
     s = play(s, 0, 'pistol');
     expect(s.fighters[0].queue[1].doubled).toBe(true);
     const { state } = readyAndResolve(s);
-    expect(state.fighters[1].hp).toBe(60 - 14);
+    expect(state.fighters[1].hp).toBe(200 - 20);
   });
 
   it('Sharingan revela a fila do oponente', () => {
@@ -256,42 +257,114 @@ describe('golpes carregados', () => {
     giveHand(s, 0, ['kamehameha']);
     s = play(s, 0, 'kamehameha');
     let r = readyAndResolve(s);
-    expect(r.state.fighters[1].hp).toBe(60);
+    expect(r.state.fighters[1].hp).toBe(200);
     expect(r.state.fighters[0].charges).toHaveLength(1);
     r = readyAndResolve(r.state);
-    expect(r.state.fighters[1].hp).toBe(42);
+    expect(r.state.fighters[1].hp).toBe(174);
     expect(r.state.fighters[0].charges).toHaveLength(0);
     expect(r.events.some((e) => e.type === 'chargeFire')).toBe(true);
   });
 
-  it('Genki Dama dispara depois de 2 turnos', () => {
+  it('Genki Dama custa 5 Ki, dispara no quarto turno contando o lançamento, causa 100 e é exaurida', () => {
     let s = newBattle();
-    giveHand(s, 0, ['genki_dama']);
+    giveHand(s, 0, ['genki_dama', 'kage_bunshin']);
+    expect(playCard(s, 0, s.fighters[0].hand[0].uid).ok).toBe(false);
+    s.fighters[0].ki = 5;
     s = play(s, 0, 'genki_dama');
+    expect(s.fighters[0].ki).toBe(0);
     let r = readyAndResolve(s);
+    expect(r.state.fighters[0].exhausted.some(c => c.id === 'genki_dama')).toBe(true);
+    for (let i = 0; i < 2; i++) {
+      expect(r.state.fighters[1].hp).toBe(200);
+      r = readyAndResolve(r.state);
+    }
+    expect(r.state.fighters[1].hp).toBe(200);
+    expect(r.state.fighters[0].charges[0].turnsLeft).toBe(1);
     r = readyAndResolve(r.state);
-    expect(r.state.fighters[1].hp).toBe(60);
-    r = readyAndResolve(r.state);
-    expect(r.state.fighters[1].hp).toBe(20);
+    expect(r.state.fighters[1].hp).toBe(100);
+    expect(r.events.some(e => e.type === 'chargeFire')).toBe(true);
+    expect(r.state.fighters[0].charges).toHaveLength(0);
   });
 
-  it('Genki Dama é cancelada se o dono sofrer 15+ de dano num turno', () => {
+  it('Genki Dama é cancelada com 25+ de dano no turno de uso, antes ou depois da carta', () => {
+    for (const starter of [0, 1] as PlayerIndex[]) {
+      let s = newBattle();
+      s.firstPlayer = starter;
+      s.fighters[0].ki = 5;
+      giveHand(s, 0, ['genki_dama']);
+      giveHand(s, 1, ['golpe_basico', 'getsuga']);
+      s = play(s, 0, 'genki_dama');
+      s = play(s, 1, 'getsuga');
+      s = play(s, 1, 'golpe_basico');
+      const r = readyAndResolve(s);
+      expect(r.state.fighters[0].hp).toBe(168);
+      expect(r.state.fighters[0].charges).toHaveLength(0);
+      expect(r.events.some(e => e.type === 'chargeCancel' && e.cardId === 'genki_dama')).toBe(true);
+    }
+  });
+
+  it('Genki Dama não cancela com 24 de dano no uso nem com 32 em cada rodada seguinte', () => {
     let s = newBattle();
+    s.fighters[0].ki = 5;
     giveHand(s, 0, ['genki_dama']);
+    giveHand(s, 1, ['getsuga']);
     s = play(s, 0, 'genki_dama');
-    let r = readyAndResolve(s);
-    s = r.state;
-    giveHand(s, 1, ['getsuga', 'kaioken']);
-    s = play(s, 1, 'kaioken');
     s = play(s, 1, 'getsuga');
-    r = readyAndResolve(s);
+    let r = readyAndResolve(s);
+    expect(r.state.fighters[0].hp).toBe(176);
+    expect(r.state.fighters[0].charges).toHaveLength(1);
+    for (let i = 0; i < 2; i++) {
+      s = r.state;
+      giveHand(s, 1, ['getsuga', 'golpe_basico']);
+      s = play(s, 1, 'getsuga');
+      s = play(s, 1, 'golpe_basico');
+      r = readyAndResolve(s);
+      expect(r.state.fighters[0].charges).toHaveLength(1);
+      expect(r.events.some(e => e.type === 'chargeCancel')).toBe(false);
+    }
+    r = readyAndResolve(r.state);
+    expect(r.state.fighters[1].hp).toBe(100);
     expect(r.state.fighters[0].charges).toHaveLength(0);
-    expect(r.events.some((e) => e.type === 'chargeCancel')).toBe(true);
+  });
+
+  it('Genki Dama ignora Infinity, Kawarimi e Hiraishin sem consumir a esquiva de outro ataque', () => {
+    for (const dodge of ['infinity', 'kawarimi', 'hiraishin']) {
+      let s = newBattle();
+      s.fighters[0].ki = 5;
+      giveHand(s, 0, ['genki_dama']);
+      s = play(s, 0, 'genki_dama');
+      s = readyAndResolve(s).state;
+      s = readyAndResolve(s).state;
+      s = readyAndResolve(s).state;
+      giveHand(s, 0, ['golpe_basico']);
+      giveHand(s, 1, [dodge]);
+      s = play(s, 0, 'golpe_basico');
+      s = play(s, 1, dodge);
+      const r = readyAndResolve(s);
+      expect(r.state.fighters[1].hp).toBe(100);
+      expect(r.events.some(e => e.type === 'evade' && e.cardId === 'genki_dama')).toBe(false);
+      expect(r.events.some(e => e.type === 'evade' && e.cardId === 'golpe_basico')).toBe(true);
+    }
+  });
+
+  it('Genki Dama ainda pode ser bloqueada ou refletida', () => {
+    for (const defense of ['defesa_basica', 'boogie_woogie']) {
+      let s = newBattle();
+      s.fighters[0].ki = 5;
+      giveHand(s, 0, ['genki_dama']);
+      s = play(s, 0, 'genki_dama');
+      for (let i = 0; i < 3; i++) s = readyAndResolve(s).state;
+      giveHand(s, 1, [defense]);
+      s = play(s, 1, defense);
+      const r = readyAndResolve(s);
+      expect(r.state.fighters[1].hp).toBe(defense === 'defesa_basica' ? 107 : 200);
+      expect(r.state.fighters[0].hp).toBe(defense === 'boogie_woogie' ? 100 : 200);
+    }
   });
 });
 
 describe('poderes', () => {
-  it('Bankai soma +3 por golpe', () => {
+  it('Bankai soma +4 por golpe', () => {
     let s = newBattle();
     giveHand(s, 0, ['bankai']);
     s = play(s, 0, 'bankai');
@@ -300,20 +373,20 @@ describe('poderes', () => {
     giveHand(s, 0, ['golpe_basico']);
     s = play(s, 0, 'golpe_basico');
     r = readyAndResolve(s);
-    expect(r.state.fighters[1].hp).toBe(60 - 9);
+    expect(r.state.fighters[1].hp).toBe(200 - 12);
   });
 
-  it('Gear Second dura 2 turnos: +1 Ki e perde 4 HP em cada um', () => {
+  it('Gear Second dura 2 turnos: +1 Ki e perde 8 HP em cada um', () => {
     let s = newBattle();
     giveHand(s, 0, ['gear_second']);
     s = play(s, 0, 'gear_second');
     let r = readyAndResolve(s);
-    // 4 HP ao ser jogado + 4 no início do turno seguinte; Ki limitado a 5.
+    // 8 HP ao ser jogado + 8 no início do turno seguinte; Ki limitado a 5.
     expect(r.state.fighters[0].ki).toBe(5);
-    expect(r.state.fighters[0].hp).toBe(52);
+    expect(r.state.fighters[0].hp).toBe(184);
     r = readyAndResolve(r.state);
     expect(r.state.fighters[0].powers).toEqual([]);
-    expect(r.state.fighters[0].hp).toBe(52);
+    expect(r.state.fighters[0].hp).toBe(184);
   });
 
   it('Domain Expansion aplica Fraco no oponente a cada turno', () => {
@@ -386,7 +459,7 @@ describe('ordem de resolução e moeda', () => {
     s = play(s, 1, 'golpe_basico');
     s = play(s, 1, 'defesa_basica');
     const { state } = readyAndResolve(s);
-    expect(state.fighters[1].hp).toBe(60 - 9);
+    expect(state.fighters[1].hp).toBe(200 - 17);
   });
 
   it('as cartas se alternam: o ataque de quem começa vem antes do buff do outro', () => {
@@ -407,14 +480,14 @@ describe('ordem de resolução e moeda', () => {
     s.fighters[0].ki = 5;
     s = play(s, 0, 'blue');
     s = play(s, 0, 'red');
-    expect(readyAndResolve(s).state.fighters[1].hp).toBe(60 - 17);
+    expect(readyAndResolve(s).state.fighters[1].hp).toBe(200 - 25);
 
     s = newBattle();
     giveHand(s, 0, ['blue', 'red']);
     s.fighters[0].ki = 5;
     s = play(s, 0, 'red');
     s = play(s, 0, 'blue');
-    expect(readyAndResolve(s).state.fighters[1].hp).toBe(60 - 14);
+    expect(readyAndResolve(s).state.fighters[1].hp).toBe(200 - 20);
   });
 });
 
@@ -463,7 +536,7 @@ describe('combo Red + Blue → Hollow Purple', () => {
     }
   });
 
-  it('no turno travado só o Hollow Purple pode ser jogado, de graça, e causa exatamente 30', () => {
+  it('no turno travado só o Hollow Purple pode ser jogado, de graça, e causa exatamente 50', () => {
     let s = readyAndResolve(comboTurn()).state;
     const other = s.fighters[0].hand.find((c) => c.id !== 'hollow_purple')!;
     expect(playCard(s, 0, other.uid).ok).toBe(false);
@@ -476,7 +549,7 @@ describe('combo Red + Blue → Hollow Purple', () => {
     expect(s.fighters[0].ki).toBe(kiBefore);
     const { state } = readyAndResolve(s);
     // Ignora o Bloqueio do Haki e o Vulnerável do Blue.
-    expect(state.fighters[1].hp).toBe(hp - 30);
+    expect(state.fighters[1].hp).toBe(hp - 50);
     expect(state.fighters[0].exhausted.map((c) => c.id)).toContain('hollow_purple');
     // O Ki do turno travado não acumula.
     expect(state.fighters[0].ki).toBe(RULES.kiPerTurn);
@@ -523,7 +596,7 @@ describe('novas habilidades', () => {
     s = play(s, 1, 'infinity');
     const { state, events } = readyAndResolve(s);
     expect(events.some((e) => e.type === 'evade' && e.cardId === 'gatling')).toBe(true);
-    expect(state.fighters[1].hp).toBe(60 - 6); // só o Golpe Básico acerta
+    expect(state.fighters[1].hp).toBe(200 - 8); // só o Golpe Básico acerta
   });
 
   it('Infinity desvia do Hollow Purple', () => {
@@ -533,7 +606,7 @@ describe('novas habilidades', () => {
     giveHand(s, 1, ['infinity']);
     s = play(s, 0, 'hollow_purple');
     s = play(s, 1, 'infinity');
-    expect(readyAndResolve(s).state.fighters[1].hp).toBe(60);
+    expect(readyAndResolve(s).state.fighters[1].hp).toBe(200);
   });
 
   it('Boogie Woogie devolve a próxima habilidade no atacante', () => {
@@ -544,8 +617,8 @@ describe('novas habilidades', () => {
     s = play(s, 1, 'boogie_woogie');
     const { state, events } = readyAndResolve(s);
     expect(events.some((e) => e.type === 'reflect')).toBe(true);
-    expect(state.fighters[1].hp).toBe(60);
-    expect(state.fighters[0].hp).toBe(60 - 14);
+    expect(state.fighters[1].hp).toBe(200);
+    expect(state.fighters[0].hp).toBe(200 - 24);
   });
 
   it('Boogie Woogie também devolve golpe carregado', () => {
@@ -556,44 +629,44 @@ describe('novas habilidades', () => {
     giveHand(s, 1, ['boogie_woogie']);
     s = play(s, 1, 'boogie_woogie');
     const { state } = readyAndResolve(s);
-    expect(state.fighters[0].hp).toBe(60 - 18);
-    expect(state.fighters[1].hp).toBe(60);
+    expect(state.fighters[0].hp).toBe(200 - 26);
+    expect(state.fighters[1].hp).toBe(200);
   });
 
-  it('Técnica Reversa cura 10 sem passar do máximo e é exaurida', () => {
+  it('Técnica Reversa cura 24 sem passar do máximo e é exaurida', () => {
     let s = newBattle();
-    s.fighters[0].hp = 45;
+    s.fighters[0].hp = 165;
     giveHand(s, 0, ['tecnica_reversa']);
     s = play(s, 0, 'tecnica_reversa');
     let r = readyAndResolve(s);
-    expect(r.state.fighters[0].hp).toBe(55);
+    expect(r.state.fighters[0].hp).toBe(189);
     expect(r.state.fighters[0].exhausted.map((c) => c.id)).toContain('tecnica_reversa');
     s = newBattle();
-    s.fighters[0].hp = 56;
+    s.fighters[0].hp = 196;
     giveHand(s, 0, ['tecnica_reversa']);
     s = play(s, 0, 'tecnica_reversa');
     r = readyAndResolve(s);
-    expect(r.state.fighters[0].hp).toBe(60);
+    expect(r.state.fighters[0].hp).toBe(200);
   });
 
-  it('Black Flash causa 20 como primeira carta e 8 depois', () => {
+  it('Black Flash causa 28 como primeira carta e 12 depois', () => {
     let s = newBattle();
     giveHand(s, 0, ['black_flash']);
     s = play(s, 0, 'black_flash');
-    expect(readyAndResolve(s).state.fighters[1].hp).toBe(40);
+    expect(readyAndResolve(s).state.fighters[1].hp).toBe(172);
     s = newBattle();
     giveHand(s, 0, ['shunpo', 'black_flash']);
     s = play(s, 0, 'shunpo');
     s = play(s, 0, 'black_flash');
-    expect(readyAndResolve(s).state.fighters[1].hp).toBe(52);
+    expect(readyAndResolve(s).state.fighters[1].hp).toBe(188);
   });
 
-  it('Ki Blast custa 1 e causa 3 duas vezes', () => {
+  it('Ki Blast custa 1 e causa 4 duas vezes', () => {
     let s = newBattle();
     giveHand(s, 0, ['ki_blast']);
     s = play(s, 0, 'ki_blast');
     expect(s.fighters[0].ki).toBe(2);
-    expect(readyAndResolve(s).state.fighters[1].hp).toBe(54);
+    expect(readyAndResolve(s).state.fighters[1].hp).toBe(192);
   });
 
   it('Haki do Rei atordoa 1 turno e reduz o Ki máximo do oponente em 2 por 2 turnos', () => {
@@ -619,39 +692,39 @@ describe('novas habilidades', () => {
 });
 
 describe('Máscara Hollow', () => {
-  it('Cero carrega 1 turno e causa 16', () => {
+  it('Cero carrega 1 turno e causa 24', () => {
     let s = newBattle();
     giveHand(s, 0, ['cero']);
     s = play(s, 0, 'cero');
     let r = readyAndResolve(s);
-    expect(r.state.fighters[1].hp).toBe(60);
+    expect(r.state.fighters[1].hp).toBe(200);
     r = readyAndResolve(r.state);
-    expect(r.state.fighters[1].hp).toBe(44);
+    expect(r.state.fighters[1].hp).toBe(176);
   });
 
-  it('Hollowficação dura 2 turnos: +3 de Força e perde 5 HP em cada um', () => {
+  it('Hollowficação dura 2 turnos: +4 de Força e perde 10 HP em cada um', () => {
     let s = newBattle();
     giveHand(s, 0, ['hollowficacao', 'golpe_basico']);
     s.fighters[0].ki = 3;
     s = play(s, 0, 'hollowficacao');
     s = play(s, 0, 'golpe_basico');
     let r = readyAndResolve(s);
-    // O poder vale já no turno em que é jogado: 6 + 3.
-    expect(r.state.fighters[1].hp).toBe(60 - 9);
-    expect(r.state.fighters[0].hp).toBe(50);
+    // O poder vale já no turno em que é jogado: 8 + 4.
+    expect(r.state.fighters[1].hp).toBe(200 - 12);
+    expect(r.state.fighters[0].hp).toBe(180);
     s = r.state;
     giveHand(s, 0, ['golpe_basico']);
     s = play(s, 0, 'golpe_basico');
     r = readyAndResolve(s);
-    expect(r.state.fighters[1].hp).toBe(60 - 9 - 9);
+    expect(r.state.fighters[1].hp).toBe(200 - 12 - 12);
     // Acabou: não perde mais HP e a Força extra some.
     expect(r.state.fighters[0].powers).toEqual([]);
-    expect(r.state.fighters[0].hp).toBe(50);
+    expect(r.state.fighters[0].hp).toBe(180);
     s = r.state;
     giveHand(s, 0, ['golpe_basico']);
     s = play(s, 0, 'golpe_basico');
     r = readyAndResolve(s);
-    expect(r.state.fighters[1].hp).toBe(60 - 9 - 9 - 6);
+    expect(r.state.fighters[1].hp).toBe(200 - 12 - 12 - 8);
   });
 
   it('Bankai e Gear Second duram 2 turnos', () => {
@@ -670,7 +743,7 @@ describe('Máscara Hollow', () => {
     expect(r.state.fighters[0].weak).toBeGreaterThanOrEqual(1);
   });
 
-  it('Sonído dá 3 de Bloqueio e +3 só no próximo ataque, em todos os golpes dele', () => {
+  it('Sonído dá 5 de Bloqueio e +4 só no próximo ataque, em todos os golpes dele', () => {
     let s = newBattle();
     giveHand(s, 0, ['sonido', 'ki_blast', 'golpe_basico']);
     s = play(s, 0, 'sonido');
@@ -679,10 +752,10 @@ describe('Máscara Hollow', () => {
     giveHand(s, 1, ['golpe_basico']);
     s = play(s, 1, 'golpe_basico');
     const { state } = readyAndResolve(s);
-    // Ki Blast: (3+3)×2 = 12; Golpe Básico: 6 sem bônus.
-    expect(state.fighters[1].hp).toBe(60 - 12 - 6);
-    // Bloqueio de 3 absorve parte do golpe de 6.
-    expect(state.fighters[0].hp).toBe(57);
+    // Ki Blast: (4+4)×2 = 16; Golpe Básico: 8 sem bônus.
+    expect(state.fighters[1].hp).toBe(200 - 16 - 8);
+    // Bloqueio de 5 absorve parte do golpe de 8.
+    expect(state.fighters[0].hp).toBe(197);
   });
 });
 
@@ -691,30 +764,30 @@ describe('prévia de dano na carta', () => {
     let s = newBattle();
     s.fighters[0].strength = 2;
     giveHand(s, 0, ['kaioken', 'golpe_basico', 'chidori']);
-    expect(previewCardDamage(viewFor(s, 0), 'golpe_basico')).toEqual({ base: 6, value: 8 });
+    expect(previewCardDamage(viewFor(s, 0), 'golpe_basico')).toEqual({ base: 8, value: 10 });
     s = play(s, 0, 'kaioken');
-    expect(previewCardDamage(viewFor(s, 0), 'golpe_basico')).toEqual({ base: 6, value: 11 });
+    expect(previewCardDamage(viewFor(s, 0), 'golpe_basico')).toEqual({ base: 8, value: 14 });
     s.fighters[1].vulnerable = 1;
-    expect(previewCardDamage(viewFor(s, 0), 'golpe_basico')).toEqual({ base: 6, value: 13 });
+    expect(previewCardDamage(viewFor(s, 0), 'golpe_basico')).toEqual({ base: 8, value: 17 });
   });
 
   it('Fraco reduz; golpe carregado e dano fixo não têm prévia', () => {
     const s = newBattle();
     s.fighters[0].weak = 1;
-    expect(previewCardDamage(viewFor(s, 0), 'golpe_basico')).toEqual({ base: 6, value: 4 });
+    expect(previewCardDamage(viewFor(s, 0), 'golpe_basico')).toEqual({ base: 8, value: 6 });
     expect(previewCardDamage(viewFor(s, 0), 'kamehameha')).toBeNull();
     expect(previewCardDamage(viewFor(s, 0), 'hollow_purple')).toBeNull();
     expect(previewCardDamage(viewFor(s, 0), 'defesa_basica')).toBeNull();
   });
 
-  it('Black Flash mostra 20 como primeira carta; Sonído vai para o primeiro ataque', () => {
+  it('Black Flash mostra 28 como primeira carta; Sonído vai para o primeiro ataque', () => {
     let s = newBattle();
     giveHand(s, 0, ['black_flash', 'sonido', 'ki_blast', 'golpe_basico']);
-    expect(previewCardDamage(viewFor(s, 0), 'black_flash')).toEqual({ base: 20, value: 20 });
+    expect(previewCardDamage(viewFor(s, 0), 'black_flash')).toEqual({ base: 28, value: 28 });
     s = play(s, 0, 'sonido');
-    expect(previewCardDamage(viewFor(s, 0), 'ki_blast')).toEqual({ base: 3, value: 6 });
+    expect(previewCardDamage(viewFor(s, 0), 'ki_blast')).toEqual({ base: 4, value: 8 });
     s = play(s, 0, 'ki_blast');
-    expect(previewCardDamage(viewFor(s, 0), 'golpe_basico')).toEqual({ base: 6, value: 6 });
+    expect(previewCardDamage(viewFor(s, 0), 'golpe_basico')).toEqual({ base: 8, value: 8 });
   });
 });
 
@@ -735,14 +808,14 @@ describe('Scouter', () => {
     const r = moveToFront(s, 0, bf);
     if (!r.ok) throw new Error(r.error);
     expect(r.state.fighters[0].queue.map((q) => q.card.id)).toEqual(['black_flash', 'golpe_basico', 'leitura_de_poder']);
-    // Black Flash agora é a primeira carta: 20 + Golpe Básico 6.
-    expect(readyAndResolve(r.state).state.fighters[1].hp).toBe(60 - 26);
+    // Black Flash agora é a primeira carta: 28 + Golpe Básico 8.
+    expect(readyAndResolve(r.state).state.fighters[1].hp).toBe(200 - 36);
   });
 
 });
 
 describe('Kunai e Saquê', () => {
-  it('Kunai custa 0 e causa 4; Saquê cura 6 e é exaurido', () => {
+  it('Kunai custa 0 e causa 6; Saquê cura 14 e é exaurido', () => {
     let s = newBattle();
     s.fighters[0].hp = 50;
     giveHand(s, 0, ['kunai', 'sake']);
@@ -750,27 +823,27 @@ describe('Kunai e Saquê', () => {
     expect(s.fighters[0].ki).toBe(3);
     s = play(s, 0, 'sake');
     const { state } = readyAndResolve(s);
-    expect(state.fighters[1].hp).toBe(56);
-    expect(state.fighters[0].hp).toBe(56);
+    expect(state.fighters[1].hp).toBe(194);
+    expect(state.fighters[0].hp).toBe(64);
     expect(state.fighters[0].exhausted.map((c) => c.id)).toContain('sake');
   });
 });
 
 describe('Modo Sábio', () => {
-  it('dá +1 de Força e +1 carta nos 2 turnos seguintes e depois acaba', () => {
+  it('dá +2 de Força e +1 carta nos 2 turnos seguintes e depois acaba', () => {
     let s = newBattle();
     giveHand(s, 0, ['modo_sabio']);
     s = play(s, 0, 'modo_sabio');
     s = readyAndResolve(s).state;
     // Turno 2
-    expect(s.fighters[0].tempStrength).toBe(1);
+    expect(s.fighters[0].tempStrength).toBe(2);
     expect(s.fighters[0].hand).toHaveLength(RULES.drawPerTurn + 1);
     giveHand(s, 0, ['golpe_basico']);
     s = play(s, 0, 'golpe_basico');
     s = readyAndResolve(s).state;
-    expect(s.fighters[1].hp).toBe(60 - 7);
+    expect(s.fighters[1].hp).toBe(200 - 10);
     // Turno 3: ainda ativo
-    expect(s.fighters[0].tempStrength).toBe(1);
+    expect(s.fighters[0].tempStrength).toBe(2);
     s = readyAndResolve(s).state;
     // Turno 4: acabou
     expect(s.fighters[0].tempStrength).toBe(0);
@@ -779,13 +852,13 @@ describe('Modo Sábio', () => {
 });
 
 describe('Galick Gun → Big Bang Attack', () => {
-  it('Galick Gun sem 5 de Ki é um ataque normal (2 Ki, 10 de dano)', () => {
+  it('Galick Gun sem 5 de Ki é um ataque normal (2 Ki, 16 de dano)', () => {
     let s = newBattle();
     giveHand(s, 0, ['galick_gun']);
     s = play(s, 0, 'galick_gun');
     expect(s.fighters[0].ki).toBe(1);
     const r = readyAndResolve(s);
-    expect(r.state.fighters[1].hp).toBe(50);
+    expect(r.state.fighters[1].hp).toBe(184);
     expect(r.state.fighters[0].hand.some((c) => c.id === 'big_bang_attack')).toBe(false);
     expect(r.state.fighters[0].discard.some((c) => c.id === 'galick_gun')).toBe(true);
   });
@@ -808,7 +881,7 @@ describe('Galick Gun → Big Bang Attack', () => {
     s = play(s, 0, 'galick_gun');
     expect(s.fighters[0].ki).toBe(0);
     let r = readyAndResolve(s);
-    expect(r.state.fighters[1].hp).toBe(50); // causa os 10 e evolui
+    expect(r.state.fighters[1].hp).toBe(184); // causa os 16 e evolui
     expect(r.events.some((e) => e.type === 'evolve')).toBe(true)
     s = r.state;
     const bba = () => s.fighters[0].hand.filter((c) => c.id === 'big_bang_attack');
@@ -817,12 +890,12 @@ describe('Galick Gun → Big Bang Attack', () => {
     s = readyAndResolve(s).state;
     expect(bba()).toHaveLength(1);
     expect(s.fighters[0].ki).toBe(5);
-    // Turno 3: usa com 5 de Ki → 30 de dano ignorando Bloqueio.
+    // Turno 3: usa com 5 de Ki → 50 de dano ignorando Bloqueio.
     giveHand(s, 1, ['defesa_basica']);
     s = play(s, 1, 'defesa_basica');
     s = play(s, 0, 'big_bang_attack');
     r = readyAndResolve(s);
-    expect(r.state.fighters[1].hp).toBe(20);
+    expect(r.state.fighters[1].hp).toBe(134);
     // Some, e o Galick Gun volta ao baralho de compra.
     const f = r.state.fighters[0];
     expect([...f.hand, ...f.drawPile, ...f.discard].some((c) => c.id === 'big_bang_attack')).toBe(false);
@@ -874,5 +947,25 @@ describe('travar carta', () => {
     s = newBattle();
     s.fighters[0].hand = [{ uid: 'hp', id: 'hollow_purple' }];
     expect(toggleKeep(s, 0, 'hp').ok).toBe(false);
+  });
+});
+
+ describe('limite de duração PvP', () => {
+  it('encerra na 24ª rodada com vitória por HP, sem abrir outra rodada', () => {
+    let s = newBattle();
+    s.turn = RULES.turnLimit;
+    s.fighters[0].hp = 150;
+    s.fighters[1].hp = 140;
+    const r = readyAndResolve(s);
+    expect(r.state.turn).toBe(24);
+    expect(r.state.phase).toBe('over');
+    expect(r.state.winner).toBe(0);
+  });
+  it('empata quando os HPs são iguais ao final do limite', () => {
+    const s = newBattle();
+    s.turn = RULES.turnLimit;
+    const r = readyAndResolve(s);
+    expect(r.state.turn).toBe(24);
+    expect(r.state.winner).toBe('draw');
   });
 });
