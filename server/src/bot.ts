@@ -150,8 +150,8 @@ function evaluate(afterPlay: BattleState, p: PlayerIndex, omniscient: boolean): 
   }
   let score = (me.hp - op.hp) * 3;
   // Ameaças e vantagens que ficam para os próximos turnos.
-  score += me.charges.reduce((t, c) => t + c.damage, 0) * 1.6;
-  score -= op.charges.reduce((t, c) => t + c.damage, 0) * (omniscient ? 1.2 : 0.8);
+  score += me.charges.reduce((t, c) => t + c.damage / Math.max(1, c.turnsLeft), 0) * 1.6;
+  score -= op.charges.reduce((t, c) => t + c.damage / Math.max(1, c.turnsLeft), 0) * (omniscient ? 1.2 : 0.8);
   score += op.vulnerable * 5 + op.weak * 5 - me.weak * 5 - me.vulnerable * 5;
   score += me.strength * 4;
   score += me.powers.reduce((t, pw, i) => t + (pw === 'bankai' ? 9 : pw === 'hollow' ? 8 : pw === 'gearSecond' ? 4 : 6) * (me.powerTurns[i] ?? 1), 0);
@@ -160,8 +160,8 @@ function evaluate(afterPlay: BattleState, p: PlayerIndex, omniscient: boolean): 
   score += me.hand.length * 1.5;
   if (op.stunned) score += 20;
   // Com pouco HP, cada ponto vale mais.
-  if (me.hp < 20) score += me.hp * 2;
-  if (op.hp < 20) score -= op.hp * 2;
+  if (me.hp < me.maxHp * 0.2) score += me.hp * 2;
+  if (op.hp < op.maxHp * 0.2) score -= op.hp * 2;
   return score;
 }
 

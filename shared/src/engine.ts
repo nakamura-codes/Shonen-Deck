@@ -16,22 +16,22 @@ import type {
 } from './types.ts';
 
 export const RULES = {
-  maxHp: 60,
+  maxHp: 200,
   kiPerTurn: 3,
   /** Ki que sobra passa para o próximo turno, até este limite. */
   maxKi: 5,
   drawPerTurn: 5,
   maxHandSize: 10,
-  turnLimit: 40,
-  bankaiBonus: 3,
+  turnLimit: 24,
+  bankaiBonus: 4,
   /** Fraco que o Bankai deixa quando acaba. */
   bankaiExhaustion: 2,
   /** Força extra enquanto a Hollowficação estiver ativa. */
-  hollowStrength: 3,
+  hollowStrength: 4,
   /** HP que Hollowficação e Gear Second custam em cada turno ativo. */
-  powerHpCost: 5,
+  powerHpCost: 10,
   /** HP que o Gear Second custa em cada turno ativo. */
-  gearSecondHpCost: 4,
+  gearSecondHpCost: 8,
 } as const;
 
 export interface PlayerSetup {
@@ -649,6 +649,14 @@ export function resolveTurn(state: BattleState): { state: BattleState; events: B
     }
   }
 
+  // Encerra após resolver a última rodada, sem um turno fantasma ou tick extra.
+  if (next.turn >= RULES.turnLimit) {
+    const [a, b] = next.fighters;
+    next.phase = 'over';
+    next.winner = a.hp === b.hp ? 'draw' : a.hp > b.hp ? 0 : 1;
+    events.push({ type: 'gameOver', winner: next.winner });
+    return { state: next, events };
+  }
   startTurn(next, events);
   return { state: next, events };
 }

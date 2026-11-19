@@ -53,7 +53,7 @@ describe('ciclo de vida das partidas PvP', () => {
     current.handle(1, { t: 'ready' });
     expect(current.state.phase).toBe('planning');
     expect(current.state.turn).toBe(2);
-    expect(current.state.fighters[0].hp).toBe(54);
+    expect(current.state.fighters[0].hp).toBe(192);
     expect(current.state.fighters[0].hand).toContainEqual(kept);
     current.handle(0, { t: 'play', uid: kept.uid });
     expect(current.state.fighters[0].queue[0]?.card).toEqual(kept);
