@@ -490,6 +490,30 @@ describe('ordem de resolução e moeda', () => {
     ]);
   });
 
+  it('recalcula a prévia privada ao jogar, reordenar e desfazer', () => {
+    let s = newBattle();
+    giveHand(s, 0, ['leitura_de_poder', 'kaioken', 'golpe_basico', 'defesa_basica']);
+    const preview = () => viewFor(s, 0).me.queuePreview;
+    expect(preview()).toEqual({damage: 0, block: 0, hpCost: 0});
+    for (const id of ['leitura_de_poder', 'kaioken', 'golpe_basico', 'defesa_basica']) s = play(s, 0, id);
+    expect(preview()).toEqual({damage: 12, block: 7, hpCost: 10});
+    expect(viewFor(s, 0).me.ki).toBe(0);
+    const reordered = moveToFront(s, 0, s.fighters[0].queue[2].card.uid);
+    if (!reordered.ok) throw Error(reordered.error);
+    s = reordered.state;
+    expect(preview().damage).toBe(8);
+    const undo = undoLastCard(s, 0);
+    if (!undo.ok) throw Error(undo.error);
+    s = undo.state;
+    expect(preview()).toEqual({damage: 8, block: 0, hpCost: 10});
+    expect(viewFor(s, 0).me.ki).toBe(1);
+    giveHand(s, 1, ['defesa_basica']);
+    s = play(s, 1, 'defesa_basica');
+    const before = JSON.stringify(s);
+    expect(preview().damage).toBe(8);
+    expect(JSON.stringify(s)).toBe(before);
+  });
+
   it('Blue antes do Red reforça o Red; Red antes do Blue não', () => {
     let s = newBattle();
     giveHand(s, 0, ['blue', 'red']);

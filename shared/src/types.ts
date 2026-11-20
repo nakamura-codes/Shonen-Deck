@@ -232,6 +232,7 @@ export interface BattleView {
   /** Quem resolve primeiro neste turno. */
   turnStarter: PlayerIndex;
   me: FighterPublicView & {
+    queuePreview: { damage: number; block: number; hpCost: number };
     hand: CardInstance[];
     queue: QueuedCard[];
     cloneNext: boolean;

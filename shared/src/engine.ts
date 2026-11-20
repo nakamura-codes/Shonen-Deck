@@ -700,6 +700,30 @@ function publicView(f: Fighter): FighterPublicView {
   };
 }
 
+/** Project only the player's queued cards against the public target, before its response. */
+function previewQueue(state: BattleState, player: PlayerIndex): BattleView['me']['queuePreview'] {
+  const result = { damage: 0, block: 0, hpCost: 0 };
+  if (state.phase !== 'planning' || !state.fighters[player].queue.length) return result;
+
+  const simulation = clone(state);
+  const rival = simulation.fighters[other(player)];
+  rival.block = rival.evade = rival.reflect = 0;
+  const queue = simulation.fighters[player].queue;
+  const events: BattleEvent[] = [];
+  const armor = queue.filter(card => isArmor(getCard(card.card.id)));
+  const rest = queue.filter(card => !isArmor(getCard(card.card.id)));
+  for (const card of [...armor, ...rest]) {
+    resolveCard(simulation, player, card, events);
+    if (simulation.fighters[player].hp === 0 || rival.hp === 0) break;
+  }
+  for (const event of events) {
+    if (event.type === 'damage' && event.target === other(player)) result.damage += event.amount;
+    if (event.type === 'block' && event.player === player) result.block += event.amount;
+    if (event.type === 'hpLoss' && event.player === player) result.hpCost += event.amount;
+  }
+  return result;
+}
+
 /** Estado visto por um jogador: as cartas escolhidas pelo oponente ficam escondidas, a não ser com Sharingan. */
 export function viewFor(state: BattleState, player: PlayerIndex): BattleView {
   const me = state.fighters[player];
@@ -714,6 +738,7 @@ export function viewFor(state: BattleState, player: PlayerIndex): BattleView {
     turnStarter: turnStarter(state),
     me: {
       ...publicView(me),
+      queuePreview: previewQueue(state, player),
       hand: me.hand,
       queue: me.queue,
       cloneNext: me.cloneNext,

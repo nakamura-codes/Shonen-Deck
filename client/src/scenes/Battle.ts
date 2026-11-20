@@ -395,6 +395,17 @@ export class BattleScene extends Phaser.Scene {
       this.hud.add(this.orderBadge(x - 26, 338, i + 1, COLORS.ki));
       if (q.doubled) this.hud.add(txt(this, x + 24, 338, 'x2', 18, '#ffe28a', { fontStyle: 'bold', stroke: '#0d0a14', strokeThickness: 3, backgroundColor: '#171022', padding: { x: 10, y: 5 } }));
     });
+    if (view.phase === 'planning' && view.me.queuePreview) {
+      const {damage, block, hpCost} = view.me.queuePreview;
+      const values = [
+        ['Dano previsto', damage], ['Bloqueio próprio', block],
+        ['Ki restante', view.me.ki], ['Custo em HP', hpCost],
+      ];
+      this.hud.add(this.add.rectangle(640, 470, 580, 30, 0x171022, 0.95));
+      values.forEach(([label, value], index) => {
+        this.hud.add(txt(this, 427 + 142 * index, 470, `${label}  ${value}`, 16, '#fff0c7', { fontFamily: 'Arial, sans-serif' }));
+      });
+    }
     if (view.me.comboLock) this.hud.add(txt(this, 640, 440, 'Combo! Nenhuma outra carta neste turno. Hollow Purple na próxima rodada.', 15, '#e9b8ff', { stroke: '#0d0a14', strokeThickness: 3, backgroundColor: '#171022', padding: { x: 10, y: 5 } }));
     if (view.me.canReorder && !view.me.ready && mq.length > 1) this.hud.add(txt(this, 640, 418, 'Scouter: clique numa carta da sua jogada para ela resolver primeiro', 15, '#9dff8a', { stroke: '#0d0a14', strokeThickness: 3, backgroundColor: '#171022', padding: { x: 10, y: 5 } }));
     if (view.me.stunned) this.hud.add(txt(this, 640, 418, 'Atordoado pelo Haki do Rei: você não pode jogar cartas neste turno.', 15, '#ffd060', { stroke: '#0d0a14', strokeThickness: 3, backgroundColor: '#171022', padding: { x: 10, y: 5 } }));
