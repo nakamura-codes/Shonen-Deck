@@ -18,7 +18,7 @@ function randomHex(bytes: number): string {
 }
 import {
   RECONNECT_SECONDS,
-  TURN_SECONDS,
+  TURN_SECONDS, VS_INTRO_MS, type AvatarId,
   bothReady,
   createBattle,
   moveToFront,
@@ -39,6 +39,7 @@ import {
 import { botPlays } from './bot.ts';
 
 export interface Lobbyist {
+  avatar?: AvatarId | null;
   ws: Sock;
   name: string;
   outfit: Outfit;
@@ -47,6 +48,7 @@ export interface Lobbyist {
 }
 
 export interface Seat {
+  avatar: AvatarId | null;
   ws: Sock | null;
   name: string;
   token: string;
@@ -121,20 +123,20 @@ export class Match {
     ]);
     const token = () => randomHex(16);
     this.seats = [
-      { ws: a.ws, name: a.name, token: token(), isBot: false, account: a.account ?? null, reconnectTimer: null },
+      { avatar: a.avatar ?? null, ws: a.ws, name: a.name, token: token(), isBot: false, account: a.account ?? null, reconnectTimer: null },
       b === 'bot'
-        ? { ws: null, name: botName, token: token(), isBot: true, account: null, reconnectTimer: null }
-        : { ws: b.ws, name: b.name, token: token(), isBot: false, account: b.account ?? null, reconnectTimer: null },
+        ? { avatar: null, ws: null, name: botName, token: token(), isBot: true, account: null, reconnectTimer: null }
+        : { avatar: b.avatar ?? null, ws: b.ws, name: b.name, token: token(), isBot: false, account: b.account ?? null, reconnectTimer: null },
     ];
   }
 
   start() {
     for (const p of [0, 1] as PlayerIndex[]) {
       const opp = this.seats[p === 0 ? 1 : 0];
-      send(this.seats[p].ws, { t: 'match', you: p, opponentName: opp.name, token: this.seats[p].token });
+      send(this.seats[p].ws, { t: 'match', you: p, opponentName: opp.name, token: this.seats[p].token, avatars: [this.seats[0].avatar, this.seats[1].avatar] });
     }
     // Tempo para a animação da moeda antes do relógio do turno 1.
-    this.beginPlanning(COIN_MS);
+    this.beginPlanning(VS_INTRO_MS + COIN_MS);
     this.broadcastState();
   }
 
@@ -253,7 +255,7 @@ export class Match {
     seat.reconnectTimer = null;
     seat.ws = ws;
     const oppIdx: PlayerIndex = p === 0 ? 1 : 0;
-    send(ws, { t: 'match', you: p, opponentName: this.seats[oppIdx].name, token: seat.token });
+    send(ws, { t: 'match', you: p, opponentName: this.seats[oppIdx].name, token: seat.token, resumed: true });
     send(ws, { t: 'state', view: viewFor(this.state, p), remainingMs: this.remainingMs() });
     send(this.seats[oppIdx].ws, { t: 'opponentStatus', connected: true });
   }

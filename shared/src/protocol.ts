@@ -30,7 +30,7 @@ export type ClientMessage =
 /** Mensagens do servidor para o cliente. */
 export type ServerMessage =
   | { t: 'queued' }
-  | { t: 'match'; you: PlayerIndex; opponentName: string; token: string }
+  | { t: 'match'; you: PlayerIndex; opponentName: string; token: string; avatars?: [AvatarId | null, AvatarId | null]; resumed?: boolean }
   | { t: 'state'; view: BattleView; remainingMs: number }
   | { t: 'resolved'; events: BattleEvent[]; view: BattleView; remainingMs: number }
   | { t: 'opponentStatus'; connected: boolean }
@@ -97,5 +97,6 @@ export interface PlayerStats {
 
 export const CHAT_MAX_LENGTH = 200;
 
+export const VS_INTRO_MS = 1600;
 export const TURN_SECONDS = 30;
 export const RECONNECT_SECONDS = 30;

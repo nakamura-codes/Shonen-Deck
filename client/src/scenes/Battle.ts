@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import {
-  COMBOS,
+  COMBOS, VS_INTRO_MS, TURN_SECONDS,
   getCard,
   previewCardDamage,
   type BattleEvent,
@@ -20,7 +20,7 @@ import {
   CARD_H,
   CARD_W,
   COLORS,
-  floatText,
+  floatText, fullBackground, fitText, showCardReading, hideCardReading,
   makeButton,
   makeCard,
   makeCharacter,
@@ -173,7 +173,7 @@ export class BattleScene extends Phaser.Scene {
       this.timerText.setText('');
       return;
     }
-    const secs = Math.max(0, Math.ceil((this.deadline - Date.now()) / 1000));
+    const secs = Math.min(TURN_SECONDS, Math.max(0, Math.ceil((this.deadline - Date.now()) / 1000)));
     this.timerText.setText(this.animating ? '' : `${secs}s`);
     this.timerText.setColor(secs <= 5 ? '#ff6060' : '#ffffff');
   }
@@ -374,7 +374,7 @@ export class BattleScene extends Phaser.Scene {
     this.hud.add(
       mq.length
         ? txt(this, 640, 300, 'Sua jogada', 16, '#ffffff', { stroke: '#0d0a14', strokeThickness: 3, backgroundColor: '#171022', padding: { x: 10, y: 5 } })
-        : txt(this, 640, 310, 'Clique nas cartas da mão para jogar\no cadeado guarda 1 carta para o próximo turno', 18, '#ffffff', { stroke: '#0d0a14', strokeThickness: 3, backgroundColor: '#171022', padding: { x: 10, y: 5 }, align: 'center', lineSpacing: 6 }),
+        : txt(this, 640, 310, (matchMedia('(pointer: coarse)').matches ? 'Toque para jogar · segure para ler' : 'Clique para jogar · passe o mouse para ler') + '\nO cadeado guarda 1 carta para o próximo turno', 18, '#ffffff', { stroke: '#0d0a14', strokeThickness: 3, backgroundColor: '#171022', padding: { x: 10, y: 5 }, align: 'center', lineSpacing: 6 }),
     );
     mq.forEach((q, i) => {
       const x = 640 - (mq.length - 1) * 40 + i * 80;
@@ -429,19 +429,41 @@ export class BattleScene extends Phaser.Scene {
         card.add([band, txt(this, 0, -10, blockedReason!, 13, '#e9b8ff', { fontStyle: 'bold' })]);
       }
       card.setInteractive({ useHandCursor: playable });
-      card.on('pointerover', () => {
+      card.on('pointerover', (pointer: Phaser.Input.Pointer) => {
+        if (pointer.wasTouch) return;
+        showCardReading(card, c.id);
         this.hand.bringToTop(card);
         // Amplia para ler, sem sair da tela.
         this.tweens.add({ targets: card, y: 720 - (CARD_H * 1.5) / 2 - 4, scale: 1.5, duration: 120 });
       });
-      card.on('pointerout', () => this.tweens.add({ targets: card, y, scale: handScale, duration: 120 }));
-      card.on('pointerdown', () => {
+      let hold: Phaser.Time.TimerEvent | undefined;
+      let inspected = false;
+      const clearHold = () => { hold?.remove(); hold = undefined; };
+      card.once('destroy', clearHold);
+      card.on('pointerout', () => {
+        clearHold();
+        hideCardReading(card);
+        this.tweens.add({ targets: card, y, scale: handScale, duration: 120 });
+      });
+      const play = () => {
         if (!playable) {
           if (canAct && blockedReason) this.toast(blockedReason);
           return;
         }
         sfx('card');
         session.net.send({ t: 'play', uid: c.uid });
+      };
+      card.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+        if (!pointer.wasTouch) return play();
+        clearHold();
+        inspected = false;
+        hold = this.time.delayedCall(320, () => { inspected = true; showCardReading(card, c.id); });
+      });
+      card.on('pointerup', (pointer: Phaser.Input.Pointer) => {
+        if (!pointer.wasTouch) return;
+        const tapped = !!hold && !inspected;
+        clearHold();
+        if (tapped) play();
       });
       if (c.uid === view.me.keepUid) {
         card.add(this.add.rectangle(0, 0, CARD_W + 10, CARD_H + 10).setStrokeStyle(5, 0xffd040));
@@ -875,8 +897,8 @@ export class BattleScene extends Phaser.Scene {
   /** Sorteio visual de duas faces: a decisão continua sendo do servidor. */
   private async maybeCoinFlip(view: BattleView) {
     const key = `${session.net.token}:coin`;
-    if (view.turn !== 1 || view.phase !== 'planning' || BattleScene.coinShown.has(key)) return;
-    BattleScene.coinShown.add(key);
+    if (view.turn !== 1 || view.phase !== 'planning' || session.match?.resumed || BattleScene.lastIntro === key) return;
+    BattleScene.lastIntro = key;
     const names: Record<PlayerIndex, string> = { [view.you]: 'Você', [view.you === 0 ? 1 : 0]: view.opponent.name } as Record<PlayerIndex, string>;
     const winner = view.firstPlayer;
     const textureFor = (p: PlayerIndex) => p === 0 ? 'coin_blue' : 'coin_red';
@@ -884,6 +906,7 @@ export class BattleScene extends Phaser.Scene {
     this.hand.setVisible(false);
     this.readyBtn.setEnabled(false);
     this.undoBtn.setEnabled(false);
+    await this.showVersus(view);
     const shade = viewportRect(this, 0x0d0a14, 0.72).setDepth(80);
     const coin = this.add.container(640, 330).setDepth(81);
     // A borda de metal fica visível quando a face passa de perfil.
@@ -898,10 +921,11 @@ export class BattleScene extends Phaser.Scene {
     const result = txt(this, 640, 445, '', 30, '#ffe28a', { fontStyle: 'bold', backgroundColor: '#21182f', padding: { x: 16, y: 7 }, stroke: '#0d0a14', strokeThickness: 5 }).setDepth(82).setVisible(false);
     // Começa com a face 0. Um número par de meias-voltas termina em 0;
     // um número ímpar termina em 1, sem trocar a face artificialmente no fim.
-    const flips = winner === 0 ? 10 : 11;
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const flips = reduced ? 0 : winner === 0 ? 10 : 11;
     let shown: PlayerIndex = 0;
     const halfDuration = Array.from({ length: flips }, (_, i) => 55 + i * 8).reduce((a, b) => a + b, 0);
-    this.tweens.add({ targets: coin, y: 185, duration: halfDuration, yoyo: true, ease: 'Sine.easeOut' });
+    if (!reduced) this.tweens.add({ targets: coin, y: 185, duration: halfDuration, yoyo: true, ease: 'Sine.easeOut' });
     try {
       for (let i = 0; i < flips; i++) {
         const d = 55 + i * 8;
@@ -928,7 +952,42 @@ export class BattleScene extends Phaser.Scene {
     if (this.view) this.render(session.lastView?.view ?? this.view);
   }
 
-  private static coinShown = new Set<string>();
+  private static lastIntro = '';
+
+  private async showVersus(view: BattleView) {
+    const arena = fullBackground(this, 'arena_' + view.arena, 79);
+    const shade = viewportRect(this, 0x151022, 0.18).setDepth(80).setInteractive();
+    const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const panels = [view.you, (1 - view.you) as PlayerIndex].map((seat, i) => {
+      const x = i === 0 ? 320 : 960;
+      const panel = this.add.container(x, 408).setDepth(81);
+      const frame = this.add.graphics();
+      const corners = [{x:-94,y:-83},{x:-83,y:-94},{x:83,y:-94},{x:94,y:-83},
+        {x:94,y:83},{x:83,y:94},{x:-83,y:94},{x:-94,y:83}];
+      frame.fillStyle(0x211f39).fillPoints(corners, true);
+      frame.lineStyle(6, 0xffcf42).strokePoints(corners, true);
+      const avatar = session.match?.avatars?.[seat] ?? 'padrao';
+      const portrait = this.add.image(0, 0, 'avatar_' + avatar).setDisplaySize(166, 166);
+      const plate = this.add.image(0, 141, 'molduras_painel_perfil').setDisplaySize(395, 83);
+      const accent = this.add.rectangle(-139, 134, 33, 8, seat === 0 ? 0x429cff : 0xff6053);
+      const label = fitText(txt(this, 22, 134, i === 0 ? view.me.name : view.opponent.name, 35, '#ffe28a', {fontStyle:'bold'}), 260);
+      panel.add([frame, portrait, plate, accent, label]);
+      if (!still) {
+        panel.x += i === 0 ? -270 : 270;
+        this.tweens.add({targets:panel, x, duration:300, ease:'Cubic.easeOut'});
+      }
+      return panel;
+    });
+    const vs = txt(this, 640, 330, 'VS', 88, '#ffd34d', {fontStyle:'bold italic', stroke:'#2a1025', strokeThickness:10}).setDepth(82);
+    vs.setVisible(still);
+    await wait(this, 300);
+    vs.setVisible(true);
+    sfx('confirm');
+    await wait(this, VS_INTRO_MS - 600);
+    if (still) await wait(this, 300);
+    else await tweenPromise(this, {targets:[...panels, vs], alpha:0, duration:300});
+    [arena, shade, ...panels, vs].forEach(o => o.destroy());
+  }
 
   private async bigShout(side: Side, text: string, color: number) {
     this.flashAura(side, color);

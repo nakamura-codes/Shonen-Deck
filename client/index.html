@@ -13,6 +13,14 @@
       html, body { margin: 0; height: 100%; background: #120f1c; overflow: hidden; }
       #game { width: 100vw; height: 100vh; height: 100dvh; }
       #game canvas { image-rendering: pixelated; }
+      .card-reading {
+        position: fixed; z-index: 30; left: 50%; transform: translateX(-50%);
+        width: max-content; max-width: min(36rem, calc(100vw - 24px)); box-sizing: border-box;
+        padding: 10px 16px; background: #211d30; color: #fff6e6; border: 2px solid #efbb62;
+        box-shadow: 0 3px 0 #100c18; border-radius: 5px; pointer-events: none;
+        font: 17px/1.45 Arial, sans-serif; overflow-wrap: anywhere;
+      }
+      .card-reading strong { display: block; color: #ffda88; }
       input.name-input {
         font-family: 'GameFont', monospace; font-size: 18px; width: 220px; padding: 6px 10px;
         background: #1f1a2e; color: #f4ecd8; border: 3px solid #f0a830; border-radius: 4px; outline: none;

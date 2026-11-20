@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { webcrypto } from 'node:crypto';
-import { EMPTY_OUTFIT, type ServerMessage } from '@oficina/shared';
+import { EMPTY_OUTFIT, TURN_SECONDS, VS_INTRO_MS, type ServerMessage } from '@oficina/shared';
 import { Matchmaker, type Sock } from '../src/rooms.ts';
 
 class TestSocket implements Sock {
@@ -30,6 +30,23 @@ afterEach(() => {
 });
 
 describe('ciclo de vida das partidas PvP', () => {
+  it('envia os avatares por assento e reserva a abertura antes do primeiro turno', () => {
+    const mm = new Matchmaker();
+    const a = new TestSocket(), b = new TestSocket();
+    mm.join({ws: a, name: 'A', avatar: 'naruto', outfit: EMPTY_OUTFIT}, false);
+    mm.join({ws: b, name: 'B', outfit: EMPTY_OUTFIT}, false);
+    for (const peer of [a, b]) {
+      expect(peer.messages.find(m => m.t === 'match')).toMatchObject({avatars: ['naruto', null]});
+    }
+    const match = mm.matchOf(a)!.match;
+    vi.advanceTimersByTime(VS_INTRO_MS + 3500);
+    expect(match.remainingMs()).toBe(TURN_SECONDS * 1000);
+    const resumed = new TestSocket();
+    mm.disconnect(a);
+    expect(mm.rejoin(match.seats[0].token, resumed)).toBe(true);
+    expect(resumed.messages.find(m => m.t === 'match')).toMatchObject({resumed: true});
+  });
+
   it('a limpeza atrasada da partida anterior não remove os dois jogadores da revanche', () => {
     const mm = new Matchmaker();
     const a = new TestSocket(), b = new TestSocket();

@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { startMenuMusic } from '../music.ts';
 import { BASE_DECK, CARDS, COMBOS, OUTFIT_ITEMS, getCard, type CardDef } from '@oficina/shared';
-import { COLORS, NUM_FONT, TYPE_COLOR, centerInk, fitText, makeButton, makeCard, txt, fullBackground, fullShade } from '../ui.ts';
+import { showCardReading, COLORS, NUM_FONT, TYPE_COLOR, centerInk, fitText, makeButton, makeCard, txt, fullBackground, fullShade } from '../ui.ts';
 import { auth } from '../session.ts';
 import { sfx } from '../sfx.ts';
 import { COLLECTION } from '../collection.generated.ts';
@@ -145,6 +145,7 @@ export class GalleryScene extends Phaser.Scene {
       hover.setFillStyle(0xffffff, 0.12);
       this.showPreview(def, r);
     });
+    z.on('pointerdown', () => this.showPreview(def, r));
     z.on('pointerout', () => {
       hover.setFillStyle(0xffffff, 0);
       this.hidePreview();
@@ -167,6 +168,7 @@ export class GalleryScene extends Phaser.Scene {
     c.add(this.add.rectangle(x, label.y, label.width + 18, label.height + 8, 0x0d0a14, 0.85).setStrokeStyle(2, 0xf0a830));
     c.add(label);
     this.preview = c;
+    showCardReading(c, def.id);
   }
 
   private hidePreview() {

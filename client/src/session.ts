@@ -1,4 +1,4 @@
-import { EMPTY_OUTFIT, sanitizeOutfit, type AvatarId, type BattleView, type ClientMessage, type Outfit, type PlayerIndex, type PlayerStats, type ServerMessage } from '@oficina/shared';
+import { EMPTY_OUTFIT, sanitizeOutfit, type AvatarId, type BattleView, type ClientMessage, type Outfit, type PlayerStats, type ServerMessage } from '@oficina/shared';
 import { Net, defaultServerUrl } from './net.ts';
 
 const PROFILE_KEY = 'oficina.profile';
@@ -30,7 +30,7 @@ export const session = {
   created: profile.created,
   name: profile.name || `Jogador${Math.floor(Math.random() * 900 + 100)}`,
   outfit: profile.outfit,
-  match: null as null | { you: PlayerIndex; opponentName: string },
+  match: null as Extract<ServerMessage, { t: 'match' }> | null,
   /** Último estado recebido (a cena de batalha pode abrir depois da primeira mensagem chegar). */
   lastView: null as null | { view: BattleView; deadline: number },
   save() {
@@ -187,7 +187,7 @@ session.net.onOpen(() => {
 
 session.net.on((msg) => {
   if (msg.t === 'match') {
-    session.match = { you: msg.you, opponentName: msg.opponentName };
+    session.match = msg;
     session.lastView = null;
   }
   if (msg.t === 'state' || msg.t === 'resolved') {

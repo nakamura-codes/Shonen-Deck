@@ -33,7 +33,6 @@ export class LobbyScene extends Phaser.Scene {
 
     const off = session.net.on((msg: ServerMessage) => {
       if (msg.t === 'match') {
-        session.match = { you: msg.you, opponentName: msg.opponentName };
         this.scene.start('Battle');
       } else if (msg.t === 'queued') {
         status.setText('Na fila. Abra o jogo em outra aba ou chame um amigo!');

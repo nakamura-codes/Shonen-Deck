@@ -138,7 +138,8 @@ export class Hub {
         // Com conta, o nome da partida é sempre o da conta (o ranking não pode ser falsificado).
         const name = me.account ? me.name : cleanName(msg.name) || 'Jogador';
         const level = BOT_LEVELS.includes(msg.botLevel as BotLevel) ? (msg.botLevel as BotLevel) : 'competitivo';
-        mm.join({ ws, name, outfit: sanitizeOutfit(msg.outfit), account: me.account }, msg.vsBot === true, level);
+        const avatar = me.account ? (await this.store.getAccount(me.account))?.avatar ?? null : null;
+        mm.join({ ws, name, avatar, outfit: sanitizeOutfit(msg.outfit), account: me.account }, msg.vsBot === true, level);
         return;
       }
       case 'rejoin':
@@ -277,8 +278,8 @@ export class Hub {
         !available(ws) || !available(other)) return notice('Duelo indisponível.');
     this.invites.delete(other);
     this.invites.delete(ws);
-    this.matchmaker.privateMatch({ ws: other, name: a.name, account: a.key, outfit: this.outfitOf(a) },
-      { ws, name: b.name, account: b.key, outfit: this.outfitOf(b) });
+    this.matchmaker.privateMatch({ ws: other, name: a.name, account: a.key, avatar: a.avatar, outfit: this.outfitOf(a) },
+      { ws, name: b.name, account: b.key, avatar: b.avatar, outfit: this.outfitOf(b) });
   }
 
   private async chat(ws: Sock, me: Client, raw: unknown) {

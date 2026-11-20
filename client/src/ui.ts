@@ -40,11 +40,65 @@ export const TYPE_LABEL: Record<CardDef['type'], string> = {
 
 /**
  * Tamanhos de texto pedidos em pixels de uma tela 1920×1080 (o layout de 1280×720 aparece 1,5× maior).
- * Nomes de itens: Pixelify Sans SemiBold 20 px. Descrições de habilidades: Pixelify Sans Regular 18 px.
+ * Nomes de itens: Pixelify Sans SemiBold 20 px.
  */
 const SCREEN_PX = 1080 / 720;
 export const ITEM_NAME = { size: 20 / SCREEN_PX, style: { fontStyle: '600' } } as const;
-export const SKILL_DESC = { size: 18 / SCREEN_PX, style: { fontStyle: 'normal' } } as const;
+// O texto de regras usa uma fonte de leitura, independente da pixel art.
+function description(scene: Phaser.Scene, x: number, y: number, value: string, width: number, height: number) {
+  const body = txt(scene, x, y, value, 15, '#201a22', {
+    fontFamily: 'Arial, sans-serif', color: '#201a22', wordWrap: { width }, align: 'left', lineSpacing: 0,
+  });
+  for (const size of [14, 13]) {
+    if (body.height <= height) break;
+    body.setFontSize(size);
+  }
+  if (body.height > height) {
+    const lines = body.getWrappedText(value);
+    while (body.height > height && lines.length > 1) {
+      lines.pop();
+      body.setText(lines.join('\n').replace(/[.,;:]?$/, '…'));
+    }
+  }
+  return body;
+}
+
+let reader: { owner: Phaser.GameObjects.Container; dispose: () => void } | null = null;
+
+export function hideCardReading(owner: Phaser.GameObjects.Container) {
+  if (reader?.owner === owner) reader.dispose();
+}
+
+/** Texto integral em pixels de tela, mesmo quando as cartas da mão ficam muito pequenas. */
+export function showCardReading(owner: Phaser.GameObjects.Container, id: string) {
+  if (reader?.owner === owner) return;
+  reader?.dispose();
+  const def = getCard(id);
+  const node = document.createElement('aside');
+  node.className = 'card-reading';
+  node.setAttribute('role', 'tooltip');
+  const title = document.createElement('strong');
+  title.textContent = def.name;
+  const rules = document.createElement('div');
+  rules.textContent = def.text;
+  node.append(title, rules);
+  const pointer = owner.scene.input.activePointer;
+  const canvas = owner.scene.game.canvas;
+  const rect = canvas.getBoundingClientRect();
+  const y = rect.top + pointer.y / owner.scene.scale.gameSize.height * rect.height;
+  node.style[y < window.innerHeight / 2 ? 'bottom' : 'top'] = '12px';
+  document.body.append(node);
+  const dismissTouch = (e: PointerEvent) => { if (e.pointerType === 'touch') dispose(); };
+  document.addEventListener('pointerdown', dismissTouch, true);
+  const dispose = () => {
+    document.removeEventListener('pointerdown', dismissTouch, true);
+    owner.off('destroy', dispose);
+    node.remove();
+    reader = null;
+  };
+  owner.once('destroy', dispose);
+  reader = {owner, dispose};
+}
 
 export function txt(
   scene: Phaser.Scene,
@@ -219,16 +273,7 @@ function makeFramedCard(scene: Phaser.Scene, cardId: string, opts: CardOpts) {
   c.add(orb);
 
   c.add(fitText(txt(scene, cx(L.name), cy(L.name), def.name, 14, '#ffffff', { fontStyle: 'bold' }), L.name.w - 8));
-  // Descrição centralizada na caixa, com a maior fonte que couber.
-  const body = txt(scene, cx(L.text), cy(L.text), def.text, SKILL_DESC.size, '#1c1424', {
-    ...SKILL_DESC.style,
-    align: 'center',
-    wordWrap: { width: L.text.w - 6 },
-    lineSpacing: -3,
-  });
-  // Só diminui se a descrição não couber na caixa.
-  for (let size = SKILL_DESC.size; size > 9 && body.height > L.text.h; size -= 0.5) body.setFontSize(size);
-  c.add(body);
+  c.add(description(scene, cx(L.text), cy(L.text), def.text, L.text.w - 8, L.text.h - 2));
   const typeLabel = def.ethereal ? `${TYPE_LABEL[def.type]} · Etérea` : TYPE_LABEL[def.type];
   c.add(fitText(txt(scene, cx(L.type), cy(L.type), typeLabel, 10, def.ethereal ? '#e9b8ff' : '#f4ecd8'), L.type.w - 6));
 
@@ -275,13 +320,7 @@ function makeClassicCard(scene: Phaser.Scene, cardId: string, opts: CardOpts = {
   c.add(fitText(txt(scene, 0, 18, def.name, 15, '#ffffff', { fontStyle: 'bold' }), w - 14));
 
   const panelH = h / 2 - 50;
-  const body = txt(scene, 0, 30 + panelH / 2, def.text, 13, '#2a2030', {
-    align: 'center',
-    wordWrap: { width: w - 24 },
-    lineSpacing: -2,
-  });
-  if (body.height > panelH - 4) body.setFontSize(11);
-  c.add(body);
+  c.add(description(scene, 0, 30 + panelH / 2, def.text, w - 24, panelH - 4));
 
   c.add(txt(scene, 0, h / 2 - 12, def.ethereal ? `${TYPE_LABEL[def.type]} · Etérea` : TYPE_LABEL[def.type], 12, def.ethereal ? '#e9b8ff' : '#f4ecd8'));
 

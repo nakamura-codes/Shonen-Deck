@@ -3,7 +3,7 @@ import { startMenuMusic } from '../music.ts';
 import { OUTFIT_SLOTS, SLOT_LABELS, buildDeck, getItem, itemsForSlot, type BotLevel, type OutfitSlot, type ServerMessage } from '@oficina/shared';
 import { session } from '../session.ts';
 import { sfx } from '../sfx.ts';
-import { COLORS, fitText, makeButton, makeCard, makeCharacter, makeItemIcon, makeMiniIcon, txt, fullBackground, viewportRect } from '../ui.ts';
+import { showCardReading, COLORS, fitText, makeButton, makeCard, makeCharacter, makeItemIcon, makeMiniIcon, txt, fullBackground, viewportRect } from '../ui.ts';
 import { menuButton, placeImage } from '../menuUi.ts';
 
 const LABELS: Record<OutfitSlot, string> = { head: 'Acessórios', body: 'Roupas', hand: 'Armas' };
@@ -96,7 +96,6 @@ export class WardrobeScene extends Phaser.Scene {
 
     const off = session.net.on((msg: ServerMessage) => {
       if (msg.t === 'match') {
-        session.match = { you: msg.you, opponentName: msg.opponentName };
         this.scene.start('Battle');
       } else if (msg.t === 'error' && msg.message === 'Partida não encontrada.') {
         session.net.token = null;
@@ -252,6 +251,7 @@ export class WardrobeScene extends Phaser.Scene {
     this.tooltip = makeCard(this, cardId)
       .setDepth(100)
       .setPosition(Phaser.Math.Clamp(x, 130, 1150), y > 360 ? y - 150 : y + 140);
+    showCardReading(this.tooltip, cardId);
   }
 
   private hideTooltip() {
