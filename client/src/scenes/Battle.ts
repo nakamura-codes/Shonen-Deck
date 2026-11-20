@@ -568,10 +568,21 @@ export class BattleScene extends Phaser.Scene {
     this.hud.removeAll(true);
     const plays = events.filter((e): e is Extract<BattleEvent, { type: 'play' }> => e.type === 'play');
     if (plays.length) await this.showReveal(plays);
+    const queue = events.some(e => e.type === 'cardFocus') ? this.executionQueue(plays) : undefined;
+    let activeSince = 0;
 
     let lastCard = '';
     for (const ev of mergeRepeats(events)) {
       switch (ev.type) {
+        case 'cardFocus':
+          if (ev.index === null) {
+            const remaining = 180 - (this.time.now - activeSince);
+            if (remaining > 0) await wait(this, remaining);
+          } else {
+            activeSince = this.time.now;
+          }
+          queue?.focus(ev.index);
+          break;
         case 'damage': {
           const fast = lastCard === `${ev.source}:${ev.cardId}`;
           // Golpe devolvido pelo Boogie Woogie: a animação sai de quem devolveu.
@@ -726,6 +737,7 @@ export class BattleScene extends Phaser.Scene {
       if (ev.type !== 'damage') lastCard = '';
     }
 
+    queue?.row.destroy();
     await wait(this, 300);
     // O Bloqueio zera no início do turno: o escudo some junto.
     for (const sd of [0, 1] as Side[]) shields[sd]?.destroy();
@@ -755,6 +767,40 @@ export class BattleScene extends Phaser.Scene {
     await wait(this, 900 + plays.length * 90);
     await tweenPromise(this, { targets: objs, alpha: 0, duration: 200 });
     objs.forEach((o) => o.destroy());
+  }
+
+  private executionQueue(plays: Extract<BattleEvent, {type: 'play'}>[]) {
+    const row = this.add.container(640, 515).setDepth(40);
+    const spacing = Math.min(62, 820 / Math.max(1, plays.length));
+    const scale = Math.min(0.62, spacing / 84);
+    const icons = plays.map((p, i) => {
+      const x = (i - (plays.length - 1) / 2) * spacing;
+      const icon = makeMiniIcon(this, p.cardId, scale).setPosition(x, 0).setAlpha(0.64);
+      const badge = this.orderBadge(x - 23 * scale, -30 * scale, i + 1, this.side(p.player) === 0 ? COLORS.ki : COLORS.hp);
+      row.add([icon, badge]);
+      return icon;
+    });
+    const frame = this.add.rectangle(0, 0, 74 * scale, 84 * scale)
+      .setStrokeStyle(3, 0xffde81).setVisible(false);
+    const label = txt(this, 0, 43, '', 18, '#fff0bd', {
+      stroke: '#191421', strokeThickness: 5, align: 'center',
+    }).setVisible(false);
+    row.addAt(frame, 0);
+    row.add(label);
+    let previous: number | null = null;
+    const focus = (index: number | null) => {
+      if (previous !== null) icons[previous].setAlpha(0.40);
+      previous = index;
+      frame.setVisible(index !== null);
+      label.setVisible(index !== null);
+      if (index === null) return;
+      const icon = icons[index];
+      icon.setAlpha(1);
+      frame.setX(icon.x);
+      const p = plays[index];
+      label.setText(`${this.side(p.player) === 0 ? 'Você' : 'Oponente'} · ${getCard(p.cardId).name}`);
+    };
+    return {row, focus};
   }
 
   private orderBadge(x: number, y: number, n: number, color: number) {

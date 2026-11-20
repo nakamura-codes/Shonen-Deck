@@ -595,14 +595,20 @@ export function resolveTurn(state: BattleState): { state: BattleState; events: B
 
   for (const [p, q] of [...armor, ...rest]) events.push({ type: 'play', player: p, cardId: q.card.id, doubled: q.doubled });
 
-  for (const [p, q] of armor) {
+  let playIndex = 0;
+  const resolvePlay = (p: PlayerIndex, q: QueuedCard) => {
+    events.push({ type: 'cardFocus', index: playIndex++ });
     resolveCard(next, p, q, events);
+    events.push({ type: 'cardFocus', index: null });
+  };
+  for (const [p, q] of armor) {
+    resolvePlay(p, q);
     if (checkGameOver(next, events)) return { state: next, events };
   }
   tickCharges(next, order, events);
   if (checkGameOver(next, events)) return { state: next, events };
   for (const [p, q] of rest) {
-    resolveCard(next, p, q, events);
+    resolvePlay(p, q);
     if (checkGameOver(next, events)) return { state: next, events };
   }
 

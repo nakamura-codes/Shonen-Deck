@@ -174,6 +174,7 @@ export interface BattleState {
 }
 
 export type BattleEvent =
+  | { type: 'cardFocus'; index: number | null }
   | { type: 'play'; player: PlayerIndex; cardId: string; doubled: boolean }
   | { type: 'damage'; source: PlayerIndex; target: PlayerIndex; cardId: string; amount: number; blocked: number }
   | { type: 'block'; player: PlayerIndex; amount: number }

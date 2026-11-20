@@ -92,7 +92,7 @@ function botOutfitFor(level: BotLevel): Outfit {
 
 /** Tempo extra para o cliente animar a revelação antes do relógio voltar a correr. */
 function animationBuffer(events: BattleEvent[]): number {
-  return Math.min(8000, 1200 + events.length * 350);
+  return Math.min(8000, 1200 + events.filter(e => e.type !== 'cardFocus').length * 350);
 }
 
 export class Match {

@@ -474,6 +474,22 @@ describe('ordem de resolução e moeda', () => {
     expect(order).toEqual(['golpe_basico', 'kaioken', 'golpe_basico']);
   });
 
+  it('destaca apenas as cartas que chegam a executar antes do nocaute', () => {
+    let s = newBattle();
+    s.fighters[1].hp = 1;
+    for (const player of [0, 1] as const) {
+      giveHand(s, player, ['golpe_basico']);
+      s = play(s, player, 'golpe_basico');
+    }
+    const {events} = readyAndResolve(s);
+    expect(events.filter(e => e.type === 'play')).toHaveLength(2);
+    expect(events.filter(e => e.type === 'cardFocus' || e.type === 'damage')).toMatchObject([
+      {type: 'cardFocus', index: 0},
+      {type: 'damage', source: 0, target: 1},
+      {type: 'cardFocus', index: null},
+    ]);
+  });
+
   it('Blue antes do Red reforça o Red; Red antes do Blue não', () => {
     let s = newBattle();
     giveHand(s, 0, ['blue', 'red']);
