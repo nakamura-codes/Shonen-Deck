@@ -10,6 +10,7 @@ import {
   type PowerId,
   type ServerMessage,
 } from '@oficina/shared';
+import { basicStrike } from '../basicStrike.ts';
 import { session } from '../session.ts';
 import { attackSound, isMuted, sfx, toggleMute } from '../sfx.ts';
 import { hasMusic, isMusicMuted, startBattleMusic, stopBattleMusic, toggleMusic } from '../music.ts';
@@ -577,16 +578,26 @@ export class BattleScene extends Phaser.Scene {
           const reflected = ev.source === ev.target;
           const from: Side = reflected ? (this.side(ev.target) === 0 ? 1 : 0) : this.side(ev.source);
           if (!fast) sfx(attackSound(ev.cardId));
-          await this.attackAnim(from, ev.cardId, fast);
           const t = this.side(ev.target);
-          hp[t] -= ev.amount;
-          this.drawHpBar(t, hp[t], max[t]);
-          sfx(ev.amount >= 25 ? 'explosionBig' : ev.amount >= 15 ? 'hitHeavy' : ev.amount > 0 ? 'hit' : 'block');
-          if (ev.blocked > 0 && ev.amount > 0) sfx('block');
-          this.impactFx(t, ev.cardId, ev.amount, ev.blocked);
-          if (ev.blocked > 0) setShield(t, block[t] - ev.blocked, true);
-          this.hitAnim(t, ev.amount, ev.blocked);
-          await wait(this, fast ? 60 : 220);
+          const attacker = this.chars[from], defender = this.chars[t];
+          const basic = ev.cardId === 'golpe_basico' && attacker && defender;
+          const contact = () => {
+            hp[t] -= ev.amount;
+            this.drawHpBar(t, hp[t], max[t]);
+            sfx(ev.amount >= 25 ? 'explosionBig' : ev.amount >= 15 ? 'hitHeavy' : ev.amount > 0 ? 'hit' : 'block');
+            if (ev.blocked > 0 && ev.amount > 0) sfx('block');
+            if (basic && ev.blocked > 0) playFx(this, 'hit-spark', CHAR_X[t] + (t === 0 ? 48 : -48), BODY_Y, {scale: 2, tint: 0x86dcff});
+            else this.impactFx(t, ev.cardId, ev.amount, ev.blocked);
+            if (ev.blocked > 0) setShield(t, block[t] - ev.blocked, true);
+            this.hitAnim(t, ev.amount, ev.blocked, !basic);
+          };
+          if (basic) {
+            await basicStrike(this, attacker, defender, ev.blocked > 0 ? 'guard' : 'hit', contact);
+          } else {
+            await this.attackAnim(from, ev.cardId, fast);
+            contact();
+            await wait(this, fast ? 60 : 220);
+          }
           lastCard = `${ev.source}:${ev.cardId}`;
           break;
         }
@@ -644,6 +655,15 @@ export class BattleScene extends Phaser.Scene {
           await wait(this, 700);
           break;
         case 'evade': {
+          const target = this.side(ev.player);
+          const attacker = this.chars[target === 0 ? 1 : 0], defender = this.chars[target];
+          if (ev.cardId === 'golpe_basico' && attacker && defender) {
+            await basicStrike(this, attacker, defender, 'evade', () => {
+              sfx('dodge');
+              floatText(this, CHAR_X[target], BODY_Y - 120, 'Esquivou!', '#c4f3ee', 22);
+            });
+            break;
+          }
           sfx('dodge');
           playFx(this, 'fumaca', CHAR_X[this.side(ev.player)], BODY_Y, { scale: 3, tint: 0xd8c8ff });
           playFx(this, 'blink-dash', CHAR_X[this.side(ev.player)], BODY_Y, { scale: 2, flipX: this.side(ev.player) === 1 });
@@ -1009,9 +1029,9 @@ export class BattleScene extends Phaser.Scene {
     this.tweens.add({ targets: ring, scale: 1.4, alpha: 0, duration: 500, onComplete: () => ring.destroy() });
   }
 
-  private hitAnim(side: Side, amount: number, blocked: number) {
+  private hitAnim(side: Side, amount: number, blocked: number, shake = true) {
     const c = this.chars[side];
-    if (c) {
+    if (c && shake) {
       const x0 = CHAR_X[side];
       this.tweens.add({ targets: c, x: x0 + (side === 0 ? -10 : 10), yoyo: true, duration: 50, repeat: 2, onComplete: () => c.setX(x0) });
       c.list.forEach((o) => o instanceof Phaser.GameObjects.Image && o.setTintFill(0xffffff));
