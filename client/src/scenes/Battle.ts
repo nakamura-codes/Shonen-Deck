@@ -10,6 +10,7 @@ import {
   type PowerId,
   type ServerMessage,
 } from '@oficina/shared';
+import { GenkiCharge } from '../genkiCharge.ts';
 import { basicStrike } from '../basicStrike.ts';
 import { session } from '../session.ts';
 import { attackSound, isMuted, sfx, toggleMute } from '../sfx.ts';
@@ -61,6 +62,7 @@ export class BattleScene extends Phaser.Scene {
   private ended = false;
 
   private chars: Partial<Record<Side, Phaser.GameObjects.Container>> = {};
+  private genki!: [GenkiCharge, GenkiCharge];
   private hud!: Phaser.GameObjects.Container;
   private hand!: Phaser.GameObjects.Container;
   private hpBars: Partial<Record<Side, { g: Phaser.GameObjects.Graphics; t: Phaser.GameObjects.Text; max: number }>> = {};
@@ -83,6 +85,7 @@ export class BattleScene extends Phaser.Scene {
     this.ended = false;
     this.chars = {};
     this.hpBars = {};
+    this.genki = [new GenkiCharge(this, CHAR_X[0]), new GenkiCharge(this, CHAR_X[1])];
 
     this.arenaImage = undefined;
     // A arena (tela inteira) entra por trás quando chega o primeiro estado.
@@ -341,7 +344,8 @@ export class BattleScene extends Phaser.Scene {
     });
 
     // Golpes carregando (o oponente vê!).
-    f.charges.forEach((ch, i) => {
+    this.genki[side].sync(this.view?.phase === 'over' ? [] : f.charges.filter(ch => ch.cardId === 'genki_dama').map(ch => ch.turnsLeft));
+    f.charges.filter(ch => ch.cardId !== 'genki_dama').forEach((ch, i) => {
       const cx = x + (side === 0 ? 115 : -115);
       const cy = BODY_Y - 40 + i * 70;
       const icon = makeMiniIcon(this, ch.cardId, 0.6).setPosition(cx, cy);
@@ -605,7 +609,11 @@ export class BattleScene extends Phaser.Scene {
           if (basic) {
             await basicStrike(this, attacker, defender, ev.blocked > 0 ? 'guard' : 'hit', contact);
           } else {
-            await this.attackAnim(from, ev.cardId, fast);
+            if (ev.cardId === 'genki_dama') {
+              await this.genki[this.side(ev.source)].fire(CHAR_X[t], BODY_Y, reflected);
+            } else {
+              await this.attackAnim(from, ev.cardId, fast);
+            }
             contact();
             await wait(this, fast ? 60 : 220);
           }
@@ -649,6 +657,7 @@ export class BattleScene extends Phaser.Scene {
           await wait(this, 500);
           break;
         case 'chargeStart':
+          if (ev.cardId === 'genki_dama') this.genki[this.side(ev.player)].start();
           sfx('charge');
           playFx(this, 'arcane-cast', CHAR_X[this.side(ev.player)], BODY_Y, { scale: 3 });
           this.flashAura(this.side(ev.player), 0x6fd0ff);
@@ -656,11 +665,13 @@ export class BattleScene extends Phaser.Scene {
           await wait(this, 600);
           break;
         case 'chargeFire':
+          if (ev.cardId === 'genki_dama') this.genki[this.side(ev.player)].prime();
           sfx('chargeBig');
           await this.bigShout(this.side(ev.player), getCard(ev.cardId).name.toUpperCase() + '!', 0x6fd0ff);
           lastCard = '';
           break;
         case 'chargeCancel':
+          if (ev.cardId === 'genki_dama') this.genki[this.side(ev.player)].cancel();
           sfx('debuff');
           floatText(this, CHAR_X[this.side(ev.player)], BODY_Y - 110, `${getCard(ev.cardId).name} cancelada!`, '#ff8080', 22);
           await wait(this, 700);
@@ -1130,16 +1141,6 @@ export class BattleScene extends Phaser.Scene {
         this.cameras.main.shake(big ? 380 : 220, big ? 0.02 : 0.01);
         await tweenPromise(this, { targets: [glow, ray, core, orb], alpha: 0, scaleY: 0.2, duration: 280 });
         [orb, glow, ray, core].forEach((o) => o.destroy());
-        return;
-      }
-      case 'genki_dama': {
-        const ball = this.add.circle(CHAR_X[from], 90, 44, 0xe8f8ff).setDepth(depth).setStrokeStyle(8, 0x6fd0ff);
-        await tweenPromise(this, { targets: ball, scale: 2.6, duration: 450, ease: 'Sine.easeOut' });
-        await tweenPromise(this, { targets: ball, x: tx, y, duration: 420, ease: 'Quad.easeIn' });
-        this.cameras.main.flash(250, 220, 240, 255);
-        this.cameras.main.shake(400, 0.02);
-        await tweenPromise(this, { targets: ball, alpha: 0, scale: 4, duration: 250 });
-        ball.destroy();
         return;
       }
       case 'getsuga': {
